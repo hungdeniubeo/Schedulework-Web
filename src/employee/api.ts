@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/config";
+import { isRegistrationLocked } from "../lib/week";
 import { hasEmployeeAccess } from "../auth/access";
 import type {
   Availability,
@@ -170,7 +171,18 @@ export async function saveEmployeeAvailability(input: {
     .single();
   if (error) {
     console.error(error);
-    const locked = error.code === "42501";
+    let locked = false;
+    if (error.code === "42501") {
+      const weekResult = await getSupabase()
+        .from("registration_weeks")
+        .select("status,lock_at")
+        .eq("id", input.weekId)
+        .maybeSingle();
+      locked =
+        !weekResult.error &&
+        weekResult.data !== null &&
+        isRegistrationLocked(weekResult.data.status, weekResult.data.lock_at);
+    }
     throw new EmployeePortalError(
       locked
         ? "Đăng ký đã khóa. Vui lòng liên hệ quản lý nếu cần thay đổi."

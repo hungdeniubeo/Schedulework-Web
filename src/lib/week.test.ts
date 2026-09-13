@@ -20,13 +20,14 @@ describe("online week helpers", () => {
     expect(formatWeekRange("2026-09-21")).toBe("21/09 - 27/09");
   });
 
-  it("locks when status is locked or the deadline has passed", () => {
-    const before = new Date("2026-09-24T14:59:59.000Z");
-    const after = new Date("2026-09-24T15:00:00.000Z");
-    const lockAt = "2026-09-24T15:00:00.000Z";
+  it("uses the Friday 22:00 Ho Chi Minh deadline and every non-open status", () => {
+    const before = new Date("2026-09-18T14:59:59.999Z");
+    const atDeadline = new Date("2026-09-18T15:00:00.000Z");
+    const lockAt = "2026-09-18T15:00:00.000Z";
     expect(isRegistrationLocked("open", lockAt, before)).toBe(false);
-    expect(isRegistrationLocked("open", lockAt, after)).toBe(true);
+    expect(isRegistrationLocked("open", lockAt, atDeadline)).toBe(true);
     expect(isRegistrationLocked("locked", lockAt, before)).toBe(true);
+    expect(isRegistrationLocked("archived", lockAt, before)).toBe(true);
   });
 
   it("formats deadline in Ho Chi Minh time", () => {

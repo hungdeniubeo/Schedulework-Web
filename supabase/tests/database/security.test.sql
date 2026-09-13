@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(11);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -54,6 +54,23 @@ select is(
 select ok(
   private.is_valid_availability('{"version":1,"days":{"1":{"status":"off","periods":[],"start":null,"end":null},"2":{"status":"off","periods":[],"start":null,"end":null},"3":{"status":"off","periods":[],"start":null,"end":null},"4":{"status":"off","periods":[],"start":null,"end":null},"5":{"status":"off","periods":[],"start":null,"end":null},"6":{"status":"off","periods":[],"start":null,"end":null},"7":{"status":"off","periods":[],"start":null,"end":null}}}'::jsonb),
   'version 1 seven-day availability passes database validation'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'private.is_valid_availability(jsonb)', 'EXECUTE')
+  and not has_function_privilege('anon', 'private.is_valid_availability(jsonb)', 'EXECUTE'),
+  'only authenticated clients can execute availability validation during INSERT checks'
+);
+
+select ok(
+  (
+    select
+      pg_get_expr(policy.polqual, policy.polrelid) like '%registration_is_open%'
+      and pg_get_expr(policy.polwithcheck, policy.polrelid) like '%registration_is_open%'
+    from pg_policy policy
+    where policy.polname = 'availability_submissions_update_own_open'
+  ),
+  'employee availability updates require both original and target weeks to be open'
 );
 
 select * from finish();
