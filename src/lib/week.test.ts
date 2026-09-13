@@ -30,6 +30,16 @@ describe("online week helpers", () => {
     expect(isRegistrationLocked("archived", lockAt, before)).toBe(true);
   });
 
+  it("keeps the 2026-09-21 registration open on Monday in Ho Chi Minh time", () => {
+    expect(
+      isRegistrationLocked(
+        "open",
+        "2026-09-18T22:00:00+07:00",
+        new Date("2026-09-14T00:00:00+07:00"),
+      ),
+    ).toBe(false);
+  });
+
   it("formats deadline in Ho Chi Minh time", () => {
     expect(formatDeadline("2026-09-24T15:00:00.000Z")).toContain("22:00");
   });
@@ -43,12 +53,17 @@ describe("online week helpers", () => {
     );
   });
 
-  it("prefills the next week whose Friday 22:00 deadline is still in the future", () => {
-    expect(
-      defaultRegistrationWindow(new Date("2026-09-13T05:00:00.000Z")),
-    ).toEqual({
+  it("prefills the same next week for the Monday instant expressed in another offset", () => {
+    const expected = {
       weekStart: "2026-09-21",
       lockAtInput: "2026-09-18T22:00",
-    });
+    };
+
+    expect(
+      defaultRegistrationWindow(new Date("2026-09-14T00:00:00+07:00")),
+    ).toEqual(expected);
+    expect(
+      defaultRegistrationWindow(new Date("2026-09-13T19:00:00+09:00")),
+    ).toEqual(expected);
   });
 });
