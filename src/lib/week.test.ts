@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatDeadline,
   defaultRegistrationWindow,
@@ -10,6 +10,10 @@ import {
 } from "./week";
 
 describe("online week helpers", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("recognizes Monday date-only values", () => {
     expect(isMondayDate("2026-09-21")).toBe(true);
     expect(isMondayDate("2026-09-22")).toBe(false);
@@ -53,7 +57,9 @@ describe("online week helpers", () => {
     );
   });
 
-  it("prefills the same next week for the Monday instant expressed in another offset", () => {
+  it("prefills the same next week across input and runtime timezones", () => {
+    vi.stubEnv("TZ", "America/Los_Angeles");
+
     const expected = {
       weekStart: "2026-09-21",
       lockAtInput: "2026-09-18T22:00",
@@ -63,7 +69,7 @@ describe("online week helpers", () => {
       defaultRegistrationWindow(new Date("2026-09-14T00:00:00+07:00")),
     ).toEqual(expected);
     expect(
-      defaultRegistrationWindow(new Date("2026-09-13T19:00:00+09:00")),
+      defaultRegistrationWindow(new Date("2026-09-14T02:00:00+09:00")),
     ).toEqual(expected);
   });
 });
