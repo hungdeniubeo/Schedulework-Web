@@ -1,0 +1,155 @@
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { AppState } from "../components/AppState";
+import { AuthLoginPage } from "../components/AuthLoginPage";
+import { employeeDestination } from "../auth/access";
+import { configurationError, getSupabase } from "../lib/config";
+import { EmployeeRegistrationPage } from "./EmployeeRegistrationPage";
+import { MySchedulePage, TeamSchedulePage } from "./ScheduleViews";
+import { getEmployeeAccess } from "./api";
+
+type Props = {
+  loginRoute: boolean;
+  section: "availability" | "my-schedule" | "team-schedule";
+  navigate: (path: string) => void;
+};
+
+export function EmployeeApp({ loginRoute, section, navigate }: Props) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(configurationError);
+
+  useEffect(() => {
+    if (configurationError) {
+      setLoading(false);
+      return;
+    }
+    const supabase = getSupabase();
+    void supabase.auth.getSession().then(({ data, error: authError }) => {
+      if (authError) setError("Không kiểm tra được phiên đăng nhập.");
+      setSession(data.session);
+      setLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, next) => {
+        setSession(next);
+        setAllowed(null);
+      },
+    );
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setAllowed(null);
+      return;
+    }
+    setLoading(true);
+    getEmployeeAccess(session.user)
+      .then((access) => {
+        setAllowed(access.allowed);
+        setMustChangePassword(access.mustChangePassword);
+      })
+      .catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Không kiểm tra được quyền truy cập.",
+        );
+        setAllowed(false);
+      })
+      .finally(() => setLoading(false));
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || !allowed) return;
+    const destination = employeeDestination({
+      role: "employee",
+      must_change_password: mustChangePassword,
+    });
+    if (mustChangePassword || loginRoute) navigate(destination);
+  }, [allowed, loginRoute, mustChangePassword, navigate, session]);
+
+  async function logout() {
+    await getSupabase().auth.signOut();
+    navigate("/login");
+  }
+
+  if (error) return <AppState title="Chưa thể mở đăng ký" message={error} />;
+  if (loading)
+    return (
+      <AppState title="Một chút thôi…" message="Đang kiểm tra tài khoản." />
+    );
+  if (!session)
+    return (
+      <AuthLoginPage
+        title="Đăng nhập nhân viên"
+        description="Đăng nhập để đăng ký lịch làm việc của bạn."
+      />
+    );
+  if (allowed === false)
+    return (
+      <AppState
+        title="Không có quyền truy cập"
+        message="Tài khoản này không phải tài khoản nhân viên đang hoạt động."
+        action={{ label: "Đăng xuất", onClick: () => void logout() }}
+      />
+    );
+  if (!allowed)
+    return (
+      <AppState title="Một chút thôi…" message="Đang kiểm tra tài khoản." />
+    );
+  if (mustChangePassword)
+    return (
+      <AppState
+        title="Đổi mật khẩu"
+        message="Đang chuyển đến trang đổi mật khẩu bắt buộc."
+      />
+    );
+  return (
+    <div className="employee-app">
+      <nav className="employee-nav">
+        <strong>ScheduleWork</strong>
+        <div>
+          <button
+            className={section === "availability" ? "active" : ""}
+            onClick={() => navigate("/app/availability")}
+          >
+            Đăng ký lịch
+          </button>
+          <button
+            className={section === "my-schedule" ? "active" : ""}
+            onClick={() => navigate("/app/my-schedule")}
+          >
+            Lịch của tôi
+          </button>
+          <button
+            className={section === "team-schedule" ? "active" : ""}
+            onClick={() => navigate("/app/team-schedule")}
+          >
+            Lịch tổng
+          </button>
+        </div>
+        <button
+          className="employee-password"
+          onClick={() => navigate("/change-password")}
+        >
+          Đổi mật khẩu
+        </button>
+        <button className="employee-logout" onClick={() => void logout()}>
+          Đăng xuất
+        </button>
+      </nav>
+      {section === "availability" ? (
+        <EmployeeRegistrationPage onLogout={logout} />
+      ) : section === "my-schedule" ? (
+        <MySchedulePage />
+      ) : (
+        <TeamSchedulePage />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,112 @@
+.employee-password {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  background: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.credentials-card {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #b9ddd7;
+  border-radius: 14px;
+  background: #eef9f7;
+}
+
+.credentials-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.credentials-card label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.credentials-card code {
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
+  border: 1px solid #d2e7e3;
+  border-radius: 8px;
+  color: #173e39;
+  background: white;
+  font-size: 0.9rem;
+}
+
+.credentials-card .button {
+  justify-self: start;
+}
+.credentials-card p {
+  margin: 0;
+  color: #53645f;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.schedule-entry-chip.readonly {
+  display: block;
+  text-align: center;
+}
+.schedule-off {
+  display: block;
+  padding: 7px 4px;
+  color: #87938f;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.schedule-staffing-row th,
+.schedule-staffing-row td {
+  height: 28px;
+  padding: 4px 7px;
+  vertical-align: middle;
+  text-align: center;
+  color: #50605c;
+  background: #f4f8f7;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.published-schedule-sheet .cloud-schedule-table thead th:first-child,
+.published-schedule-sheet
+  .cloud-schedule-table
+  tbody
+  tr:not(.schedule-group-row)
+  > th:first-child,
+.published-schedule-sheet .cloud-schedule-table tfoot th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 #dfe8e5;
+}
+
+.published-schedule-sheet .cloud-schedule-table thead th:first-child {
+  z-index: 3;
+  background: #f4f8f7;
+}
+
+.published-schedule-sheet .cloud-schedule-table tfoot th:first-child {
+  background: #f4f8f7;
+}
+
+@media (max-width: 520px) {
+  .employee-nav {
+    overflow-x: auto;
+  }
+
+  .employee-nav .employee-password,
+  .employee-nav .employee-logout {
+    display: block;
+    flex: 0 0 auto;
+  }
+}

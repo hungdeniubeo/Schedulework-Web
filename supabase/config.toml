@@ -1,0 +1,4 @@
+[functions.admin-users]
+# The platform validates the Auth JWT first. The handler separately authorizes
+# admin account management and active-employee password changes.
+verify_jwt = true
