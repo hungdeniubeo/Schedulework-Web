@@ -222,6 +222,10 @@ export function TeamSchedulePage({ employeeId }: { employeeId: string }) {
         <h1>Lịch tổng</h1>
         <p>{formatWeekRange(data.week.weekStart)}</p>
       </header>
+      <div className="team-scroll-guide" aria-hidden="true">
+        <span>↔</span>
+        Vuốt ngang để xem đủ 7 ngày
+      </div>
       <div className="team-schedule-scroll schedule-table-scroll">
         <ScheduleSheet
           className="published-schedule-sheet"

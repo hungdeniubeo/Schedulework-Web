@@ -31,19 +31,62 @@ export function formatDateShort(value: string): string {
 }
 
 export function formatWeekRange(weekStart: string): string {
-  return `${formatDateShort(weekStart)} - ${formatDateShort(addDateOnlyDays(weekStart, 6))}`;
+  return `${formatDateShort(weekStart)} – ${formatDateShort(addDateOnlyDays(weekStart, 6))}`;
+}
+
+export function formatRegistrationWeekLabel(weekStart: string): string {
+  const date = parseDateOnly(weekStart);
+  if (!date) return "Đăng ký lịch tuần";
+  const firstDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
+  );
+  const firstDayOffset = (firstDay.getUTCDay() + 6) % 7;
+  const weekOfMonth = Math.floor(
+    (date.getUTCDate() - 1 + firstDayOffset) / 7,
+  ) + 1;
+  return `Đăng ký lịch tuần ${weekOfMonth} tháng ${date.getUTCMonth() + 1}`;
 }
 
 export function formatDeadline(lockAt: string): string {
   const date = new Date(lockAt);
   if (Number.isNaN(date.getTime())) return lockAt;
-  return new Intl.DateTimeFormat("vi-VN", {
+  const weekday = new Intl.DateTimeFormat("vi-VN", {
     timeZone: SYSTEM_TIME_ZONE,
     weekday: "long",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: SYSTEM_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).format(date);
+  const calendarParts = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: SYSTEM_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    calendarParts.find((item) => item.type === type)?.value ?? "";
+  const calendarDate = `${part("day")}/${part("month")}`;
+  return `${time} ${weekday}, ${calendarDate}`;
+}
+
+export function formatAdminDeadline(lockAt: string): string {
+  const date = new Date(lockAt);
+  if (Number.isNaN(date.getTime())) return lockAt;
+  const parts = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: SYSTEM_TIME_ZONE,
+    weekday: "long",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("hour")}:${part("minute")} · ${part("weekday")}, ${part("day")}/${part("month")}/${part("year")}`;
 }
 
 export function vietnamDateTimeToIso(value: string): string {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyShiftLabel,
   consolidatedShiftLabel,
   formatShiftLabel,
+  resolvedShiftColor,
   semanticShiftColor,
 } from "./shiftStyle";
 
@@ -24,6 +26,28 @@ describe("cloud shift display parity", () => {
     ["10:00-23:00", "#8064A2"],
   ])("classifies %s with the desktop semantic color", (label, color) => {
     expect(semanticShiftColor(label)).toBe(color);
+  });
+
+  it.each([
+    ["10:00-14:00", "morning"],
+    ["10:00-17:00", "morningAfternoon"],
+    ["10:00-18:00", "morningAfternoon"],
+    ["14:00-17:00", "afternoon"],
+    ["14:00-18:00", "afternoon"],
+    ["14:00-23:00", "afternoonNight"],
+    ["17:00-23:00", "night"],
+    ["18:00-23:00", "night"],
+    ["10:00-14:00/17:00-23:00", "full"],
+    ["10:00-23:00", "long"],
+  ])("classifies %s as %s", (label, category) => {
+    expect(classifyShiftLabel(label)).toBe(category);
+  });
+
+  it("uses saved colors for base shifts and semantic colors for changed coverage", () => {
+    expect(resolvedShiftColor("10:00-14:00", "#123456")).toBe("#123456");
+    expect(resolvedShiftColor("10:00-14:00", "#123456", true)).toBe(
+      "#70AD47",
+    );
   });
 
   it("sorts ranges and merges only touching coverage", () => {

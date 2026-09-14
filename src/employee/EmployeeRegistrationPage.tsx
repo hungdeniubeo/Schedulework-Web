@@ -8,7 +8,15 @@ import {
   validateAvailability,
 } from "../lib/availability";
 import {
+  availabilityMatches,
+  clearAvailabilityDraft,
+  loadAvailabilityDraft,
+  saveAvailabilityDraft,
+  selectAvailabilityDraft,
+} from "../lib/draftStorage";
+import {
   formatDeadline,
+  formatRegistrationWeekLabel,
   formatWeekRange,
   isRegistrationLocked,
   remainingUntil,
@@ -37,6 +45,7 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
   );
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const savingRef = useRef(false);
 
@@ -58,11 +67,21 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
       .then((data) => {
         if (!active) return;
         setContext(data);
-        setAvailability(
-          data.submission
-            ? normalizeAvailability(data.submission.availability)
-            : createEmptyAvailability(),
-        );
+        const submitted = data.submission
+          ? normalizeAvailability(data.submission.availability)
+          : createEmptyAvailability();
+        const locked =
+          data.week.locked ||
+          isRegistrationLocked(data.week.status, data.week.lockAt);
+        const draft = locked
+          ? null
+          : loadAvailabilityDraft(data.employee.id, data.week.id);
+        if (locked) clearAvailabilityDraft(data.employee.id, data.week.id);
+        const selected = selectAvailabilityDraft(submitted, draft, locked);
+        if (draft && !selected.restored)
+          clearAvailabilityDraft(data.employee.id, data.week.id);
+        setAvailability(selected.availability);
+        setHasDraft(selected.restored);
       })
       .catch((reason: unknown) => {
         if (!active) return;
@@ -85,6 +104,22 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
       active = false;
     };
   }, [employee]);
+
+  useEffect(() => {
+    if (
+      !context ||
+      !hasDraft ||
+      !isRegistrationLocked(context.week.status, context.week.lockAt, now)
+    )
+      return;
+    clearAvailabilityDraft(context.employee.id, context.week.id);
+    setAvailability(
+      context.submission
+        ? normalizeAvailability(context.submission.availability)
+        : createEmptyAvailability(),
+    );
+    setHasDraft(false);
+  }, [context, hasDraft, now]);
 
   async function submit() {
     if (
@@ -112,8 +147,10 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         availability: availabilityForSave,
         note: legacyNote,
       });
+      clearAvailabilityDraft(context.employee.id, context.week.id);
       setContext({ ...context, submission });
       setAvailability(normalizeAvailability(submission.availability));
+      setHasDraft(false);
       setSuccessMessage(getSaveSuccessMessage(updating));
     } catch (reason) {
       console.error(reason);
@@ -121,6 +158,13 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         reason instanceof EmployeePortalError &&
         reason.code === "REGISTRATION_LOCKED"
       ) {
+        clearAvailabilityDraft(context.employee.id, context.week.id);
+        setAvailability(
+          context.submission
+            ? normalizeAvailability(context.submission.availability)
+            : createEmptyAvailability(),
+        );
+        setHasDraft(false);
         setContext({ ...context, week: { ...context.week, locked: true } });
       }
       setFormError(
@@ -155,12 +199,16 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
     context.week.locked ||
     isRegistrationLocked(context.week.status, context.week.lockAt, now);
 
+  const submittedAvailability = context.submission
+    ? normalizeAvailability(context.submission.availability)
+    : createEmptyAvailability();
+
   return (
     <div className="employee-page">
       <header className="employee-hero">
         <span className="eyebrow">ScheduleWork</span>
         <h1>Chào, {context.employee.name}</h1>
-        <p>Đăng ký lịch tuần</p>
+        <p>{formatRegistrationWeekLabel(context.week.weekStart)}</p>
         <strong className="week-range">
           {formatWeekRange(context.week.weekStart)}
         </strong>
@@ -193,6 +241,17 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
             setAvailability(next);
             setSuccessMessage(null);
             setFormError(null);
+            if (availabilityMatches(next, submittedAvailability)) {
+              clearAvailabilityDraft(context.employee.id, context.week.id);
+              setHasDraft(false);
+            } else {
+              saveAvailabilityDraft(
+                context.employee.id,
+                context.week.id,
+                next,
+              );
+              setHasDraft(true);
+            }
           }}
         />
         {context.submission?.note?.trim() && (
@@ -207,6 +266,9 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         <footer className="sticky-submit">
           <div aria-live="polite">
             {formError && <span className="form-error">{formError}</span>}
+            {hasDraft && (
+              <span className="draft-status">Chưa lưu thay đổi</span>
+            )}
             {context.submission && (
               <span className="submission-status">
                 {formatSubmissionStatus(context.submission)}

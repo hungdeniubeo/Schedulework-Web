@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PRESET_OPTIONS,
   HOUR_OPTIONS,
+  availabilityPresetForIntervals,
   availabilityByEmployee,
   createEmptyAvailability,
   createPresetDay,
@@ -15,6 +16,7 @@ import {
   normalizeDayAvailability,
   normalizeOffDay,
   prepareAvailabilityForSave,
+  updateAvailabilityInterval,
   validateAvailability,
 } from "./availability";
 import type { Availability, AvailabilityPreset } from "../types/domain";
@@ -22,9 +24,10 @@ import type { Availability, AvailabilityPreset } from "../types/domain";
 const expectedPresets: Array<[AvailabilityPreset, string, string]> = [
   ["morning", "Sáng", "10h–14h"],
   ["morning_afternoon", "Sáng + Trưa", "10h–17h"],
+  ["afternoon", "Trưa", "14h–17h"],
+  ["afternoon_evening", "Trưa + Tối", "14h–23h"],
   ["evening", "Tối", "17h–23h"],
   ["full", "Full", "10h–14h / 17h–23h"],
-  ["afternoon_evening", "Trưa + Tối", "14h–23h"],
 ];
 
 describe("availability presets", () => {
@@ -44,7 +47,7 @@ describe("availability presets", () => {
     expect(formatAvailabilityCell(full)).toBe("10h–14h / 18h–23h");
   });
 
-  it("contains only the five required presets", () => {
+  it("contains the six shared employee presets", () => {
     expect(PRESET_OPTIONS.map((option) => option.value)).toEqual(
       expectedPresets.map(([preset]) => preset),
     );
@@ -58,9 +61,10 @@ describe("availability presets", () => {
     ).toEqual({
       morning: "10h–14h",
       morning_afternoon: "10h–17h/18h",
+      afternoon: "14h–17h/18h",
+      afternoon_evening: "14h–23h",
       evening: "17h/18h–23h",
       full: "10h–14h / 17h/18h–23h",
-      afternoon_evening: "14h–23h",
     });
   });
 
@@ -100,6 +104,46 @@ describe("availability presets", () => {
     expect(normalizeAvailability(availability).days["1"]).toMatchObject({
       intervals: [{ start: "10:00", end: "14:00" }],
     });
+  });
+
+  it("reclassifies edited hours so preset and time cannot contradict", () => {
+    const afternoonNight = createPresetDay("afternoon_evening");
+    const night = updateAvailabilityInterval(
+      afternoonNight,
+      0,
+      "start",
+      "19:00",
+    );
+    expect(night).toMatchObject({
+      preset: "evening",
+      intervals: [{ start: "19:00", end: "23:00" }],
+    });
+    expect(formatAvailabilityPreset(night)).toBe("Tối");
+
+    const morningAfternoon = createPresetDay("morning_afternoon");
+    const afternoon = updateAvailabilityInterval(
+      morningAfternoon,
+      0,
+      "start",
+      "14:00",
+    );
+    expect(afternoon).toMatchObject({ preset: "afternoon" });
+    expect(formatAvailabilityPreset(afternoon)).toBe("Trưa");
+  });
+
+  it("maps actual whole-hour intervals back to the shared preset", () => {
+    expect(
+      availabilityPresetForIntervals([{ start: "14:00", end: "18:00" }]),
+    ).toBe("afternoon");
+    expect(
+      availabilityPresetForIntervals([{ start: "18:00", end: "23:00" }]),
+    ).toBe("evening");
+    expect(
+      availabilityPresetForIntervals([
+        { start: "10:00", end: "14:00" },
+        { start: "18:00", end: "23:00" },
+      ]),
+    ).toBe("full");
   });
 });
 

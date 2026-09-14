@@ -69,6 +69,26 @@ Deno.test("accepts v2 hour-only presets including a split Full shift", () => {
   if (!validateAvailability(value)) throw new Error("expected v2 payload to be valid");
 });
 
+Deno.test("accepts the Trưa preset and rejects a contradictory stored preset", () => {
+  const afternoon = completeV2Availability();
+  afternoon.days["1"] = {
+    status: "available",
+    preset: "afternoon",
+    intervals: [{ start: "14:00", end: "18:00" }],
+  };
+  if (!validateAvailability(afternoon))
+    throw new Error("expected afternoon payload to be valid");
+
+  const contradictory = completeV2Availability();
+  contradictory.days["1"] = {
+    status: "available",
+    preset: "afternoon_evening",
+    intervals: [{ start: "19:00", end: "23:00" }],
+  };
+  if (validateAvailability(contradictory))
+    throw new Error("expected contradictory preset to be invalid");
+});
+
 Deno.test("rejects v2 minutes and overlapping split intervals", () => {
   const minutes = completeV2Availability();
   minutes.days["1"] = {

@@ -22,13 +22,19 @@ type Form = {
   end: string;
   start2: string;
   end2: string;
+  color: string;
 };
 const emptyForm = (): Form => ({
   start: "10:00",
   end: "14:00",
   start2: "",
   end2: "",
+  color: semanticShiftColor("10:00-14:00"),
 });
+
+function formLabel(form: Form, split: boolean): string {
+  return `${form.start}-${form.end}${split ? `/${form.start2}-${form.end2}` : ""}`;
+}
 
 function fromShift(shift: ShiftType): Form {
   const [first, second = "-"] = shift.label.split("/");
@@ -42,6 +48,7 @@ function fromShift(shift: ShiftType): Form {
     end: normalize(end),
     start2: normalize(start2),
     end2: normalize(end2),
+    color: shift.color,
   };
 }
 
@@ -53,6 +60,12 @@ export function ShiftManager() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+  const updateTime = (changes: Partial<Form>, nextSplit = split) => {
+    setForm((current) => {
+      const next = { ...current, ...changes };
+      return { ...next, color: semanticShiftColor(formLabel(next, nextSplit)) };
+    });
+  };
   const load = async () => {
     const [nextShifts, nextEntries] = await Promise.all([
       listShiftTypes(),
@@ -82,12 +95,12 @@ export function ShiftManager() {
         "Giờ kết thúc phải sau giờ bắt đầu; hai khoảng giờ không được trùng nhau.",
       );
     }
-    const label = `${form.start}-${form.end}${split ? `/${form.start2}-${form.end2}` : ""}`;
+    const label = formLabel(form, split);
     setBusy(true);
     try {
       const input = {
         label,
-        color: semanticShiftColor(label),
+        color: form.color,
         isPreset: false,
       };
       if (form.id) {
@@ -183,7 +196,7 @@ export function ShiftManager() {
                 type="time"
                 required
                 value={form.start}
-                onChange={(e) => setForm({ ...form, start: e.target.value })}
+                onChange={(e) => updateTime({ start: e.target.value })}
               />
             </label>
             <label>
@@ -192,7 +205,7 @@ export function ShiftManager() {
                 type="time"
                 required
                 value={form.end}
-                onChange={(e) => setForm({ ...form, end: e.target.value })}
+                onChange={(e) => updateTime({ end: e.target.value })}
               />
             </label>
           </div>
@@ -200,7 +213,11 @@ export function ShiftManager() {
             <input
               type="checkbox"
               checked={split}
-              onChange={(e) => setSplit(e.target.checked)}
+              onChange={(e) => {
+                const nextSplit = e.target.checked;
+                setSplit(nextSplit);
+                updateTime({}, nextSplit);
+              }}
             />{" "}
             Thêm khoảng giờ thứ hai (ca gãy)
           </label>
@@ -212,7 +229,7 @@ export function ShiftManager() {
                   type="time"
                   required
                   value={form.start2}
-                  onChange={(e) => setForm({ ...form, start2: e.target.value })}
+                  onChange={(e) => updateTime({ start2: e.target.value })}
                 />
               </label>
               <label>
@@ -221,18 +238,28 @@ export function ShiftManager() {
                   type="time"
                   required
                   value={form.end2}
-                  onChange={(e) => setForm({ ...form, end2: e.target.value })}
+                  onChange={(e) => updateTime({ end2: e.target.value })}
                 />
               </label>
             </div>
           )}
+          <label className="shift-color-field">
+            Màu ca
+            <span>
+              <input
+                type="color"
+                value={form.color}
+                aria-label="Màu ca làm"
+                onChange={(event) =>
+                  setForm({ ...form, color: event.target.value.toUpperCase() })
+                }
+              />
+              <code>{form.color.toUpperCase()}</code>
+            </span>
+          </label>
           <div
             className="shift-preview"
-            style={shiftStyle(
-              semanticShiftColor(
-                `${form.start}-${form.end}${split ? `/${form.start2}-${form.end2}` : ""}`,
-              ),
-            )}
+            style={shiftStyle(form.color)}
           >
             {formatShiftLabel(
               `${form.start}-${form.end}${split ? `/${form.start2 || "--:--"}-${form.end2 || "--:--"}` : ""}`,

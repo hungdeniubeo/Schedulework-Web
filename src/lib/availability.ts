@@ -11,6 +11,12 @@ import {
   type LegacyDayAvailability,
   type Period,
 } from "../types/domain";
+import {
+  SHIFT_CATEGORY_LABELS,
+  classifyShiftRanges,
+  clockToMinutes,
+  type ShiftCategory,
+} from "../scheduling/shiftStyle";
 
 export const DAY_LABELS: Record<DayKey, string> = {
   "1": "Thứ 2",
@@ -30,6 +36,7 @@ export const PERIOD_LABELS: Record<Period, string> = {
 
 export const PRESET_OPTIONS: ReadonlyArray<{
   value: AvailabilityPreset;
+  category: ShiftCategory;
   label: string;
   pickerDescription: string;
   intervals: AvailabilityInterval[];
@@ -37,28 +44,48 @@ export const PRESET_OPTIONS: ReadonlyArray<{
 }> = [
   {
     value: "morning",
-    label: "Sáng",
+    category: "morning",
+    label: SHIFT_CATEGORY_LABELS.morning,
     pickerDescription: "10h–14h",
     intervals: [{ start: "10:00", end: "14:00" }],
     windows: [{ start: "10:00", end: "14:00" }],
   },
   {
     value: "morning_afternoon",
-    label: "Sáng + Trưa",
+    category: "morningAfternoon",
+    label: SHIFT_CATEGORY_LABELS.morningAfternoon,
     pickerDescription: "10h–17h/18h",
     intervals: [{ start: "10:00", end: "17:00" }],
     windows: [{ start: "10:00", end: "18:00" }],
   },
   {
+    value: "afternoon",
+    category: "afternoon",
+    label: SHIFT_CATEGORY_LABELS.afternoon,
+    pickerDescription: "14h–17h/18h",
+    intervals: [{ start: "14:00", end: "17:00" }],
+    windows: [{ start: "14:00", end: "18:00" }],
+  },
+  {
+    value: "afternoon_evening",
+    category: "afternoonNight",
+    label: SHIFT_CATEGORY_LABELS.afternoonNight,
+    pickerDescription: "14h–23h",
+    intervals: [{ start: "14:00", end: "23:00" }],
+    windows: [{ start: "14:00", end: "23:00" }],
+  },
+  {
     value: "evening",
-    label: "Tối",
+    category: "night",
+    label: SHIFT_CATEGORY_LABELS.night,
     pickerDescription: "17h/18h–23h",
     intervals: [{ start: "17:00", end: "23:00" }],
     windows: [{ start: "17:00", end: "23:00" }],
   },
   {
     value: "full",
-    label: "Full",
+    category: "full",
+    label: SHIFT_CATEGORY_LABELS.full,
     pickerDescription: "10h–14h / 17h/18h–23h",
     intervals: [
       { start: "10:00", end: "14:00" },
@@ -68,13 +95,6 @@ export const PRESET_OPTIONS: ReadonlyArray<{
       { start: "10:00", end: "14:00" },
       { start: "17:00", end: "23:00" },
     ],
-  },
-  {
-    value: "afternoon_evening",
-    label: "Trưa + Tối",
-    pickerDescription: "14h–23h",
-    intervals: [{ start: "14:00", end: "23:00" }],
-    windows: [{ start: "14:00", end: "23:00" }],
   },
 ];
 
@@ -140,6 +160,43 @@ function presetOption(preset: AvailabilityPreset) {
   return PRESET_OPTIONS.find((option) => option.value === preset)!;
 }
 
+function rangesForIntervals(intervals: AvailabilityInterval[]) {
+  return intervals.flatMap(({ start, end }) => {
+    const startMinutes = clockToMinutes(start);
+    const endMinutes = clockToMinutes(end);
+    return startMinutes !== null && endMinutes !== null && endMinutes > startMinutes
+      ? [{ start: startMinutes, end: endMinutes }]
+      : [];
+  });
+}
+
+export function availabilityPresetForIntervals(
+  intervals: AvailabilityInterval[],
+): AvailabilityPreset | null {
+  if (
+    intervals.length === 0 ||
+    intervals.some(
+      ({ start, end }) =>
+        !HOUR_TIME_PATTERN.test(start) || !HOUR_TIME_PATTERN.test(end),
+    )
+  )
+    return null;
+  const category = classifyShiftRanges(rangesForIntervals(intervals));
+  return PRESET_OPTIONS.find((option) => option.category === category)?.value ?? null;
+}
+
+function intervalsAreOrdered(intervals: AvailabilityInterval[]): boolean {
+  return intervals.every(
+    (interval, index) =>
+      HOUR_TIME_PATTERN.test(interval.start) &&
+      HOUR_TIME_PATTERN.test(interval.end) &&
+      interval.start >= "10:00" &&
+      interval.end <= "23:00" &&
+      interval.start < interval.end &&
+      (index === 0 || intervals[index - 1].end < interval.start),
+  );
+}
+
 function intervalsFitPreset(
   preset: AvailabilityPreset,
   intervals: AvailabilityInterval[],
@@ -147,15 +204,35 @@ function intervalsFitPreset(
   const windows = presetOption(preset).windows;
   return (
     intervals.length === windows.length &&
+    intervalsAreOrdered(intervals) &&
+    availabilityPresetForIntervals(intervals) === preset &&
     intervals.every(
       (interval, index) =>
-        HOUR_TIME_PATTERN.test(interval.start) &&
-        HOUR_TIME_PATTERN.test(interval.end) &&
         interval.start >= windows[index].start &&
         interval.end <= windows[index].end &&
         interval.start < interval.end,
     )
   );
+}
+
+export function updateAvailabilityInterval(
+  day: DayAvailability,
+  intervalIndex: number,
+  edge: "start" | "end",
+  value: string,
+): DayAvailability {
+  if (day.status !== "available" || isLegacyDay(day)) return day;
+  const intervals = day.intervals.map((interval, index) =>
+    index === intervalIndex ? { ...interval, [edge]: value } : interval,
+  );
+  const preset = availabilityPresetForIntervals(intervals);
+  if (!preset) return day;
+  return {
+    status: "available",
+    preset,
+    intervals,
+    offReason: null,
+  };
 }
 
 export function hourOptionsForInterval(
@@ -182,6 +259,7 @@ function presetFromLegacy(day: LegacyDayAvailability): AvailabilityPreset | null
   const periods = day.periods.join(",");
   if (periods === "morning") return "morning";
   if (periods === "morning,afternoon") return "morning_afternoon";
+  if (periods === "afternoon") return "afternoon";
   if (periods === "evening") return "evening";
   if (periods === "morning,afternoon,evening") return "full";
   if (periods === "afternoon,evening") return "afternoon_evening";
@@ -193,8 +271,10 @@ export function normalizeDayAvailability(day: DayAvailability): DayAvailability 
     return normalizeOffDay(day);
   }
   if (!isLegacyDay(day)) {
-    const preset = day.preset ?? "morning";
-    const intervals = intervalsFitPreset(preset, day.intervals)
+    const classifiedPreset = availabilityPresetForIntervals(day.intervals);
+    const preset = classifiedPreset ?? day.preset ?? "morning";
+    const intervals =
+      classifiedPreset && intervalsFitPreset(classifiedPreset, day.intervals)
       ? day.intervals
       : presetOption(preset).intervals;
     return {
@@ -205,23 +285,24 @@ export function normalizeDayAvailability(day: DayAvailability): DayAvailability 
     };
   }
   let preset = presetFromLegacy(day);
-  if (!preset)
-    preset = day.start && day.start >= "14:00"
-      ? "afternoon_evening"
-      : "morning_afternoon";
   if (day.start && day.end) {
+    const intervals = [legacyInterval(day.start, day.end)];
+    preset =
+      preset ??
+      availabilityPresetForIntervals(intervals) ??
+      (day.start >= "14:00" ? "afternoon" : "morning_afternoon");
     if (preset === "full") preset = "morning_afternoon";
     const normalized = {
       status: "available",
       preset,
-      intervals: [legacyInterval(day.start, day.end)],
+      intervals,
       offReason: null,
     } satisfies DayAvailability;
     return intervalsFitPreset(preset, normalized.intervals)
       ? normalized
       : createPresetDay(preset);
   }
-  return createPresetDay(preset);
+  return createPresetDay(preset ?? "morning");
 }
 
 export function normalizeAvailability(availability: Availability): Availability {
@@ -246,7 +327,11 @@ export function availabilityByEmployee(
 
 export function getPreset(day: DayAvailability): AvailabilityPreset | null {
   if (day.status === "off") return null;
-  return isLegacyDay(day) ? presetFromLegacy(day) : day.preset;
+  if (isLegacyDay(day)) {
+    const intervals = getIntervals(day);
+    return availabilityPresetForIntervals(intervals) ?? presetFromLegacy(day);
+  }
+  return availabilityPresetForIntervals(day.intervals) ?? day.preset;
 }
 
 export function getIntervals(day: DayAvailability): AvailabilityInterval[] {

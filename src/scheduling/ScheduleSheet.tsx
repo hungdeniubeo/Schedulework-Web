@@ -40,7 +40,11 @@ function ReadOnlyCell({
       <span
         className="schedule-entry-chip readonly"
         style={shiftStyle(
-          resolvedShiftColor(label, shift?.color ?? "#A6A6A6"),
+          resolvedShiftColor(
+            label,
+            shift?.color ?? "#A6A6A6",
+            Boolean(entry.customLabel || entry.customStart || entry.customEnd),
+          ),
         )}
         key={entry.id}
       >
@@ -139,7 +143,9 @@ function ScheduleSection({
   return (
     <>
       <tr className="schedule-group-row">
-        <th colSpan={8}>{groupName}</th>
+        <th colSpan={8}>
+          <span className="schedule-group-label">{groupName}</span>
+        </th>
       </tr>
       {employees.map((employee) => (
         <tr

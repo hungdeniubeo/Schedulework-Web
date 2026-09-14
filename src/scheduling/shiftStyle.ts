@@ -11,6 +11,34 @@ export const SEMANTIC_SHIFT_COLORS = {
 
 export type ShiftRange = { start: number; end: number };
 export type ShiftSemantic = keyof typeof SEMANTIC_SHIFT_COLORS;
+export type ShiftCategory =
+  | "morning"
+  | "morningAfternoon"
+  | "afternoon"
+  | "afternoonNight"
+  | "night"
+  | "full"
+  | "long";
+
+export const SHIFT_CATEGORY_LABELS: Record<ShiftCategory, string> = {
+  morning: "Sáng",
+  morningAfternoon: "Sáng + Trưa",
+  afternoon: "Trưa",
+  afternoonNight: "Trưa + Tối",
+  night: "Tối",
+  full: "Full",
+  long: "Ca dài",
+};
+
+const CATEGORY_SEMANTICS: Record<ShiftCategory, ShiftSemantic> = {
+  morning: "morning",
+  morningAfternoon: "morningAfternoon",
+  afternoon: "morningAfternoon",
+  afternoonNight: "afternoonNight",
+  night: "night",
+  full: "full",
+  long: "long",
+};
 
 export function clockToMinutes(value: string): number | null {
   const match = /^(\d{1,2})(?:h(\d{2})?|:(\d{2}))?$/.exec(value.trim());
@@ -35,29 +63,55 @@ export function shiftRangesFromLabel(label: string): ShiftRange[] {
     : [];
 }
 
-function isSingleRange(label: string, start: number, end: number): boolean {
-  const ranges = shiftRangesFromLabel(label);
-  return (
-    ranges.length === 1 && ranges[0].start === start && ranges[0].end === end
+export function classifyShiftRanges(
+  sourceRanges: readonly ShiftRange[],
+): ShiftCategory | null {
+  const ranges = [...sourceRanges].sort(
+    (first, second) => first.start - second.start || first.end - second.end,
   );
-}
+  if (
+    ranges.length === 0 ||
+    ranges.some(
+      (range, index) =>
+        range.end <= range.start ||
+        (index > 0 && ranges[index - 1].end > range.start),
+    )
+  )
+    return null;
 
-export function semanticShiftKind(label: string): ShiftSemantic | null {
-  const ranges = shiftRangesFromLabel(label);
-  if (ranges.length === 0) return null;
+  if (ranges.length === 1) {
+    const [{ start, end }] = ranges;
+    if (start === 600 && end === 1380) return "long";
+    if (start >= 1020 && end <= 1380) return "night";
+    if (start >= 840 && start < 1020 && end <= 1080) return "afternoon";
+    if (start >= 840 && start < 1020 && end > 1080 && end <= 1380)
+      return "afternoonNight";
+    if (start < 840 && end <= 840) return "morning";
+    if (start < 840 && end > 840 && end <= 1080)
+      return "morningAfternoon";
+  }
+
   const covers = (start: number, end: number) =>
     ranges.some((range) => range.start < end && range.end > start);
   const morning = covers(600, 840);
   const afternoon = covers(840, 1020);
-  const night = covers(1020, 1440);
-  if (isSingleRange(label, 600, 1380)) return "long";
-  if (isSingleRange(label, 600, 1080)) return "morningAfternoon";
+  const night = covers(1020, 1380);
   if (morning && night) return "full";
   if (afternoon && night) return "afternoonNight";
   if (morning && afternoon) return "morningAfternoon";
   if (night) return "night";
-  if (afternoon) return "morningAfternoon";
-  return "morning";
+  if (afternoon) return "afternoon";
+  if (morning) return "morning";
+  return null;
+}
+
+export function classifyShiftLabel(label: string): ShiftCategory | null {
+  return classifyShiftRanges(shiftRangesFromLabel(label));
+}
+
+export function semanticShiftKind(label: string): ShiftSemantic | null {
+  const category = classifyShiftLabel(label);
+  return category ? CATEGORY_SEMANTICS[category] : null;
 }
 
 export function semanticShiftColor(label: string): string {
@@ -65,9 +119,13 @@ export function semanticShiftColor(label: string): string {
   return SEMANTIC_SHIFT_COLORS[semantic ?? "morning"];
 }
 
-export function resolvedShiftColor(label: string, fallback: string): string {
-  const semantic = semanticShiftKind(label);
-  return semantic ? SEMANTIC_SHIFT_COLORS[semantic] : fallback;
+export function resolvedShiftColor(
+  label: string,
+  persistedColor: string,
+  deriveFromCoverage = false,
+): string {
+  const semantic = deriveFromCoverage ? semanticShiftKind(label) : null;
+  return semantic ? SEMANTIC_SHIFT_COLORS[semantic] : persistedColor;
 }
 
 function clockLabel(minutes: number): string {
@@ -80,11 +138,8 @@ export function consolidatedShiftLabel(ranges: ShiftRange[]): string {
     (first, second) => first.start - second.start || first.end - second.end,
   )) {
     const previous = consolidated[consolidated.length - 1];
-    if (previous && range.start === previous.end) {
-      previous.end = range.end;
-    } else {
-      consolidated.push({ ...range });
-    }
+    if (previous && range.start === previous.end) previous.end = range.end;
+    else consolidated.push({ ...range });
   }
   return consolidated
     .map((range) => `${clockLabel(range.start)}-${clockLabel(range.end)}`)

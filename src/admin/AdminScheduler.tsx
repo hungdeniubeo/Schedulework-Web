@@ -39,6 +39,7 @@ import {
 import type {
   ScheduleEntry,
   ScheduleWeek,
+  ScheduleWeekStatus,
   ShiftType,
 } from "../scheduling/types";
 import { ScheduleGrid } from "./ScheduleGrid";
@@ -46,6 +47,12 @@ import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import type { Availability } from "../types/domain";
 import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
+
+export function scheduleWeekStatusLabel(status: ScheduleWeekStatus): string {
+  if (status === "published") return "Đã công bố";
+  if (status === "archived") return "Đã lưu trữ";
+  return "Bản nháp";
+}
 
 type EntryEditorProps = {
   entry: ScheduleEntry;
@@ -423,7 +430,7 @@ export function AdminScheduler() {
   async function createWeek(event: FormEvent) {
     event.preventDefault();
     if (!isMondayDate(newWeekStart))
-      return setError("Ngày bắt đầu tuần phải là Thứ 2.");
+      return setError("Ngày bắt đầu tuần phải là Thứ Hai.");
     setBusy(true);
     try {
       await addScheduleWeek(newWeekStart);
@@ -496,13 +503,9 @@ export function AdminScheduler() {
           {week && (
             <>
               <span
-                className={`status-badge ${week.status === "published" ? "open" : week.status === "draft" ? "locked" : "archived"}`}
+                className={`status-badge ${week.status === "published" ? "open" : week.status === "draft" ? "draft" : "archived"}`}
               >
-                {week.status === "published"
-                  ? "Đã công bố"
-                  : week.status === "draft"
-                    ? "Bản nháp"
-                    : "Đã lưu trữ"}
+                {scheduleWeekStatusLabel(week.status)}
               </span>
               {week.status === "published" && (
                 <button
@@ -536,11 +539,11 @@ export function AdminScheduler() {
               </button>
               {week.status !== "archived" && (
                 <button
-                  className="button ghost"
+                  className="button ghost danger"
                   disabled={busy || weekDataLoading}
                   onClick={() => void setStatus("archived")}
                 >
-                  Archive
+                  Lưu trữ
                 </button>
               )}
             </>
@@ -556,7 +559,7 @@ export function AdminScheduler() {
             { value: "", label: "Chọn tuần" },
             ...weeks.map((item) => ({
               value: item.id,
-              label: `${formatWeekRange(item.weekStart)} · ${item.status}`,
+              label: `Tuần ${formatWeekRange(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}`,
             })),
           ]}
           onChange={(nextWeekId) => {
@@ -601,15 +604,18 @@ export function AdminScheduler() {
           className="new-schedule-week"
           onSubmit={(event) => void createWeek(event)}
         >
-          <input
-            aria-label="Thứ 2 bắt đầu tuần xếp lịch"
-            type="date"
-            required
-            value={newWeekStart}
-            onChange={(e) => setNewWeekStart(e.target.value)}
-          />
+          <label>
+            <span>Tuần bắt đầu từ Thứ Hai</span>
+            <input
+              aria-label="Tuần bắt đầu từ Thứ Hai"
+              type="date"
+              required
+              value={newWeekStart}
+              onChange={(e) => setNewWeekStart(e.target.value)}
+            />
+          </label>
           <button className="button secondary" disabled={busy}>
-            Tạo tuần
+            Tạo lịch tuần
           </button>
         </form>
         {editable && (

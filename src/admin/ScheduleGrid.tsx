@@ -91,7 +91,11 @@ function EntryChip({
       className="schedule-entry-chip"
       style={{
         ...shiftStyle(
-          resolvedShiftColor(label, shift?.color ?? "#A6A6A6"),
+          resolvedShiftColor(
+            label,
+            shift?.color ?? "#A6A6A6",
+            Boolean(entry.customLabel || entry.customStart || entry.customEnd),
+          ),
         ),
         transform: CSS.Translate.toString(drag.transform),
       }}

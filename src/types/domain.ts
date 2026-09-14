@@ -8,6 +8,7 @@ export type AvailabilityStatus = "available" | "off";
 export const AVAILABILITY_PRESETS = [
   "morning",
   "morning_afternoon",
+  "afternoon",
   "evening",
   "full",
   "afternoon_evening",

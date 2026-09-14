@@ -9,6 +9,7 @@ import {
   hourOptionsForInterval,
   normalizeAvailability,
   normalizeOffDay,
+  updateAvailabilityInterval,
 } from "../lib/availability";
 import { addDateOnlyDays, formatDateShort } from "../lib/week";
 import {
@@ -153,15 +154,15 @@ export function AvailabilityEditor({
                           ),
                         )}
                         onChange={(nextStart) =>
-                          updateDay(key, {
-                            status: "available",
-                            preset,
-                            intervals: intervals.map((item, itemIndex) =>
-                              itemIndex === intervalIndex
-                                ? { ...item, start: nextStart }
-                                : item,
+                          updateDay(
+                            key,
+                            updateAvailabilityInterval(
+                              day,
+                              intervalIndex,
+                              "start",
+                              nextStart,
                             ),
-                          })
+                          )
                         }
                       />
                       <span aria-hidden="true">→</span>
@@ -180,15 +181,15 @@ export function AvailabilityEditor({
                           ),
                         )}
                         onChange={(nextEnd) =>
-                          updateDay(key, {
-                            status: "available",
-                            preset,
-                            intervals: intervals.map((item, itemIndex) =>
-                              itemIndex === intervalIndex
-                                ? { ...item, end: nextEnd }
-                                : item,
+                          updateDay(
+                            key,
+                            updateAvailabilityInterval(
+                              day,
+                              intervalIndex,
+                              "end",
+                              nextEnd,
                             ),
-                          })
+                          )
                         }
                       />
                     </div>

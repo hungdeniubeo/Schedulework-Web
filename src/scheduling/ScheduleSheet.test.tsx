@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ScheduleSheet } from "./ScheduleSheet";
+import { shiftStyle } from "./shiftStyle";
 import type { CloudEmployee, ScheduleEntry, ShiftType } from "./types";
 
 const employee = (positionName: string | null): CloudEmployee => ({
@@ -39,6 +40,12 @@ describe("ScheduleSheet employee labels", () => {
     expect(renderEmployee("Bếp trưởng")).not.toContain("ĐK");
   });
 
+  it("provides a stable group-label hook for the mobile team schedule", () => {
+    const html = renderEmployee("Bếp trưởng");
+    expect(html).toContain('class="schedule-group-label"');
+    expect(html).toContain("Chưa có nhóm");
+  });
+
   it("keeps unassigned official cells blank instead of labeling them off", () => {
     const html = renderEmployee("Bếp trưởng");
     expect(html).not.toContain("Nghỉ");
@@ -73,6 +80,39 @@ describe("ScheduleSheet employee labels", () => {
       />,
     );
     expect(html).toContain("10:00 – 14:00");
+  });
+
+  it("renders a base official shift with its latest persisted ShiftType color", () => {
+    const shift: ShiftType = {
+      id: "shift-1",
+      label: "10:00-14:00",
+      color: "#123456",
+      isPreset: true,
+    };
+    const entry: ScheduleEntry = {
+      id: "entry-1",
+      scheduleWeekId: "week-1",
+      employeeId: "employee-1",
+      dayOfWeek: 1,
+      shiftTypeId: shift.id,
+      customStart: null,
+      customEnd: null,
+      customLabel: null,
+      sortOrderInCell: 0,
+    };
+    const html = renderToStaticMarkup(
+      <ScheduleSheet
+        groups={[]}
+        employees={[employee(null)]}
+        entries={[entry]}
+        shifts={[shift]}
+        weekStart="2026-09-14"
+      />,
+    );
+    const expectedBackground = String(
+      (shiftStyle(shift.color) as Record<string, string>)["--shift-bg"],
+    );
+    expect(html).toContain(`--shift-bg:${expectedBackground}`);
   });
 
   it("adds the employee-only current-row marker only when requested", () => {

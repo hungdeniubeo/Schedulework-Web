@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  formatAdminDeadline,
   formatDeadline,
   defaultRegistrationWindow,
+  formatRegistrationWeekLabel,
   formatWeekRange,
   isoToVietnamDateTimeInput,
   isMondayDate,
@@ -21,7 +23,34 @@ describe("online week helpers", () => {
   });
 
   it("formats the Monday to Sunday range without timezone drift", () => {
-    expect(formatWeekRange("2026-09-21")).toBe("21/09 - 27/09");
+    expect(formatWeekRange("2026-09-21")).toBe("21/09 – 27/09");
+  });
+
+  it("formats the registration week from its Monday inside the month", () => {
+    expect(formatRegistrationWeekLabel("2026-09-21")).toBe(
+      "Đăng ký lịch tuần 4 tháng 9",
+    );
+    expect(formatRegistrationWeekLabel("2026-12-28")).toBe(
+      "Đăng ký lịch tuần 5 tháng 12",
+    );
+    expect(formatRegistrationWeekLabel("2027-01-04")).toBe(
+      "Đăng ký lịch tuần 2 tháng 1",
+    );
+  });
+
+  it("formats the configured deadline in Ho Chi Minh City with date", () => {
+    expect(formatDeadline("2026-09-18T15:00:00.000Z")).toBe(
+      "22:00 Thứ Sáu, 18/09",
+    );
+    expect(formatDeadline("2026-09-20T02:30:00.000Z")).toBe(
+      "09:30 Chủ Nhật, 20/09",
+    );
+  });
+
+  it("formats the Admin deadline with the configured date and year", () => {
+    expect(formatAdminDeadline("2026-09-18T15:00:00.000Z")).toBe(
+      "22:00 · Thứ Sáu, 18/09/2026",
+    );
   });
 
   it("uses the Friday 22:00 Ho Chi Minh deadline and every non-open status", () => {

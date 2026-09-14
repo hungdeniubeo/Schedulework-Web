@@ -4,6 +4,7 @@ import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
 import { employeeDestination } from "../auth/access";
 import { configurationError, getSupabase } from "../lib/config";
+import { clearEmployeeAvailabilityDrafts } from "../lib/draftStorage";
 import { getEmployeeAccess } from "./api";
 
 const EmployeeRegistrationPage = lazy(() =>
@@ -99,6 +100,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
   }, [allowed, loginRoute, mustChangePassword, navigate, session]);
 
   async function logout() {
+    if (employee) clearEmployeeAvailabilityDrafts(employee.id);
     await getSupabase().auth.signOut();
     navigate("/login");
   }
