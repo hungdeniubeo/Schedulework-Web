@@ -6,6 +6,8 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { CustomSelect } from "../components/CustomSelect";
+import { ModalBackdrop } from "../components/ModalBackdrop";
 import {
   isMondayDate,
   defaultRegistrationWindow,
@@ -53,7 +55,7 @@ type EntryEditorProps = {
   onDelete: (id: string) => Promise<void>;
 };
 
-function EntryEditor({
+export function EntryEditor({
   entry,
   shifts,
   entries,
@@ -79,33 +81,38 @@ function EntryEditor({
     }
   }
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <section className="entry-dialog">
+    <ModalBackdrop onClose={onClose}>
+      <section
+        className="entry-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entry-editor-title"
+      >
         <header>
-          <h2>Chỉnh sửa ca</h2>
-          <button className="icon-button" onClick={onClose}>
+          <h2 id="entry-editor-title">Chỉnh sửa ca</h2>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Đóng"
+            autoFocus
+            onClick={onClose}
+          >
             ×
           </button>
         </header>
         <div className="dialog-content">
-          <label className="field">
-            Loại ca
-            <select
+          <div className="field">
+            <span>Loại ca</span>
+            <CustomSelect
+              ariaLabel="Loại ca"
               value={draft.shiftTypeId}
-              onChange={(e) =>
-                setDraft({ ...draft, shiftTypeId: e.target.value })
-              }
-            >
-              {shifts.map((shift) => (
-                <option value={shift.id} key={shift.id}>
-                  {shift.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={shifts.map((shift) => ({
+                value: shift.id,
+                label: shift.label,
+              }))}
+              onChange={(shiftTypeId) => setDraft({ ...draft, shiftTypeId })}
+            />
+          </div>
           <div className="time-pair">
             <label>
               Giờ bắt đầu
@@ -143,6 +150,7 @@ function EntryEditor({
         <footer>
           <button
             className="button ghost danger"
+            type="button"
             disabled={saving}
             onClick={() => void onDelete(entry.id)}
           >
@@ -162,7 +170,7 @@ function EntryEditor({
           </div>
         </footer>
       </section>
-    </div>
+    </ModalBackdrop>
   );
 }
 
@@ -189,6 +197,7 @@ export function AdminScheduler() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const [newWeekStart, setNewWeekStart] = useState(
     defaultRegistrationWindow().weekStart,
   );
@@ -368,10 +377,12 @@ export function AdminScheduler() {
     try {
       await clearScheduleWeek(week.id);
       await loadEntries();
+      setConfirmingClear(false);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Không xóa được lịch tuần.",
       );
+      setConfirmingClear(false);
     } finally {
       setBusy(false);
     }
@@ -505,39 +516,42 @@ export function AdminScheduler() {
         </div>
       </section>
       <section className="panel scheduler-filters">
-        <select
+        <CustomSelect
+          ariaLabel="Tuần xếp lịch"
           value={weekId}
           disabled={busy || weekDataLoading}
-          onChange={(event) => {
+          options={[
+            { value: "", label: "Chọn tuần" },
+            ...weeks.map((item) => ({
+              value: item.id,
+              label: `${formatWeekRange(item.weekStart)} · ${item.status}`,
+            })),
+          ]}
+          onChange={(nextWeekId) => {
             setWeekDataLoading(true);
             setEntries([]);
             setAvailabilityByEmployee({});
-            setWeekId(event.target.value);
+            setWeekId(nextWeekId);
           }}
-        >
-          <option value="">Chọn tuần</option>
-          {weeks.map((item) => (
-            <option key={item.id} value={item.id}>
-              {formatWeekRange(item.weekStart)} · {item.status}
-            </option>
-          ))}
-        </select>
+        />
         <input
+          aria-label="Tìm nhân viên"
           placeholder="Tìm nhân viên"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
+        <CustomSelect
+          ariaLabel="Lọc theo nhóm"
           value={groupFilter}
-          onChange={(e) => setGroupFilter(e.target.value)}
-        >
-          <option value="all">Tất cả nhóm</option>
-          {groups.map((group) => (
-            <option value={group.id} key={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "all", label: "Tất cả nhóm" },
+            ...groups.map((group) => ({
+              value: group.id,
+              label: group.name,
+            })),
+          ]}
+          onChange={setGroupFilter}
+        />
         <button
           type="button"
           className="button secondary"
@@ -556,6 +570,7 @@ export function AdminScheduler() {
           onSubmit={(event) => void createWeek(event)}
         >
           <input
+            aria-label="Thứ 2 bắt đầu tuần xếp lịch"
             type="date"
             required
             value={newWeekStart}
@@ -568,11 +583,9 @@ export function AdminScheduler() {
         {editable && (
           <button
             className="button ghost danger"
+            type="button"
             disabled={busy || entries.length === 0}
-            onClick={() => {
-              if (window.confirm("Xóa toàn bộ ca của tuần này?"))
-                void clearWeekEntries();
-            }}
+            onClick={() => setConfirmingClear(true)}
           >
             Xóa lịch tuần
           </button>
@@ -581,7 +594,13 @@ export function AdminScheduler() {
       {error && (
         <div className="inline-error scheduler-error" role="alert">
           {error}
-          <button onClick={() => setError(null)}>×</button>
+          <button
+            type="button"
+            aria-label="Đóng thông báo lỗi"
+            onClick={() => setError(null)}
+          >
+            ×
+          </button>
         </div>
       )}
       {week ? (
@@ -663,6 +682,43 @@ export function AdminScheduler() {
           onSave={saveEntry}
           onDelete={deleteEntry}
         />
+      )}
+      {confirmingClear && (
+        <ModalBackdrop onClose={() => setConfirmingClear(false)}>
+          <section
+            className="confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="clear-week-title"
+            aria-describedby="clear-week-description"
+          >
+            <header>
+              <h2 id="clear-week-title">Xóa lịch tuần?</h2>
+            </header>
+            <p id="clear-week-description">
+              Toàn bộ ca đã xếp trong tuần này sẽ bị xóa. Thao tác này không thể
+              hoàn tác.
+            </p>
+            <footer>
+              <button
+                className="button secondary"
+                type="button"
+                autoFocus
+                onClick={() => setConfirmingClear(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="button ghost danger"
+                type="button"
+                disabled={busy}
+                onClick={() => void clearWeekEntries()}
+              >
+                {busy ? "Đang xóa..." : "Xóa lịch tuần"}
+              </button>
+            </footer>
+          </section>
+        </ModalBackdrop>
       )}
     </div>
   );

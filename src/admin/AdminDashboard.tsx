@@ -261,7 +261,9 @@ export function AdminDashboard({
         ].map(([key, path, label]) => (
           <button
             key={key}
+            type="button"
             className={section === key ? "active" : ""}
+            aria-current={section === key ? "page" : undefined}
             onClick={() => navigate(path)}
           >
             {label}
@@ -303,6 +305,7 @@ export function AdminDashboard({
         ) : section === "dashboard" ? (
           <div className="admin-home-grid">
             <button
+              type="button"
               className="panel"
               onClick={() => navigate("/admin/availability")}
             >
@@ -313,6 +316,7 @@ export function AdminDashboard({
               <p>nhân viên đã đăng ký tuần đang chọn</p>
             </button>
             <button
+              type="button"
               className="panel"
               onClick={() => navigate("/admin/schedule")}
             >
@@ -321,6 +325,7 @@ export function AdminDashboard({
               <p>Tạo bản nháp, kiểm tra và công bố lịch.</p>
             </button>
             <button
+              type="button"
               className="panel"
               onClick={() => navigate("/admin/employees")}
             >

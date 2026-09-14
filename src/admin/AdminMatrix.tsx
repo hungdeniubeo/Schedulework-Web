@@ -43,7 +43,17 @@ export function AdminMatrix({ employees, submissions, onSelect }: Props) {
                 onClick={() => onSelect(row.employee, row.submission)}
               >
                 <th>
-                  <strong>{row.employee.name}</strong>
+                  <button
+                    type="button"
+                    className="matrix-employee-button"
+                    aria-label={`Xem đăng ký của ${row.employee.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelect(row.employee, row.submission);
+                    }}
+                  >
+                    <strong>{row.employee.name}</strong>
+                  </button>
                   {!row.submitted && <small>Chưa đăng ký</small>}
                 </th>
                 {DAY_KEYS.map((key) => {

@@ -32,7 +32,7 @@ const entry: ScheduleEntry = {
   sortOrderInCell: 0,
 };
 
-function render(availabilityByEmployee = {}) {
+function render(availabilityByEmployee = {}, selectedShiftId: string | null = null) {
   return renderToStaticMarkup(
     <ScheduleGrid
       groups={[{ id: "group-1", name: "Bếp nóng", sortOrder: 0 }]}
@@ -41,7 +41,7 @@ function render(availabilityByEmployee = {}) {
       shifts={[shift]}
       weekStart="2026-09-21"
       editable
-      selectedShiftId={null}
+      selectedShiftId={selectedShiftId}
       onSelectShift={() => undefined}
       onAssign={() => undefined}
       onMove={() => undefined}
@@ -65,5 +65,11 @@ describe("Admin scheduler availability guidance", () => {
 
   it("does not show a registration hint when no submission exists", () => {
     expect(render()).not.toContain("availability-hint");
+  });
+
+  it("makes assignable cells keyboard reachable", () => {
+    const html = render({}, shift.id);
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-label="Xếp ca cho Nguyễn Phi Hùng, ngày 1"');
   });
 });

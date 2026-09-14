@@ -121,12 +121,26 @@ function ScheduleCell({
     data: { employeeId: employee.id, day },
     disabled: !editable,
   });
+  const assignable = Boolean(selectedShiftId && editable);
   return (
     <td
       ref={drop.setNodeRef}
-      className={`${drop.isOver ? "drag-over" : ""} ${selectedShiftId && editable ? "assignable" : ""}`}
+      className={`${drop.isOver ? "drag-over" : ""} ${assignable ? "assignable" : ""}`}
+      role={assignable ? "button" : undefined}
+      tabIndex={assignable ? 0 : undefined}
+      aria-label={assignable ? `Xếp ca cho ${employee.name}, ngày ${day}` : undefined}
       onClick={() => {
-        if (editable && selectedShiftId) onAssign(employee.id, day);
+        if (assignable) onAssign(employee.id, day);
+      }}
+      onKeyDown={(event) => {
+        if (
+          event.target !== event.currentTarget ||
+          !assignable ||
+          (event.key !== "Enter" && event.key !== " ")
+        )
+          return;
+        event.preventDefault();
+        onAssign(employee.id, day);
       }}
     >
       {availability && (

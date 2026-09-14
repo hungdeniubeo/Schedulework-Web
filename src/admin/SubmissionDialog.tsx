@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
+import { ModalBackdrop } from "../components/ModalBackdrop";
 import {
   createEmptyAvailability,
   validateAvailability,
@@ -54,11 +55,7 @@ export function SubmissionDialog({
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      role="presentation"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <ModalBackdrop onClose={onClose}>
       <section
         className="submission-dialog"
         role="dialog"
@@ -73,6 +70,7 @@ export function SubmissionDialog({
           <button
             className="icon-button"
             type="button"
+            autoFocus
             onClick={onClose}
             aria-label="Đóng"
           >
@@ -120,6 +118,6 @@ export function SubmissionDialog({
           </div>
         </footer>
       </section>
-    </div>
+    </ModalBackdrop>
   );
 }

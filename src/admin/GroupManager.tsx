@@ -10,6 +10,7 @@ import type { Group } from "../scheduling/types";
 export function GroupManager() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const load = async () => setGroups(await listGroups());
@@ -18,7 +19,7 @@ export function GroupManager() {
       setError(
         reason instanceof Error ? reason.message : "Không tải được nhóm.",
       ),
-    );
+    ).finally(() => setLoading(false));
   }, []);
 
   async function create(event: FormEvent) {
@@ -74,6 +75,7 @@ export function GroupManager() {
       </div>
       <form className="inline-form" onSubmit={(event) => void create(event)}>
         <input
+          aria-label="Tên nhóm mới"
           value={name}
           maxLength={80}
           required
@@ -102,6 +104,8 @@ export function GroupManager() {
             <div className="row-actions">
               <button
                 className="button ghost"
+                type="button"
+                aria-label={`Đưa ${group.name} lên`}
                 disabled={busy || index === 0}
                 onClick={() => void move(index, -1)}
               >
@@ -109,6 +113,8 @@ export function GroupManager() {
               </button>
               <button
                 className="button ghost"
+                type="button"
+                aria-label={`Đưa ${group.name} xuống`}
                 disabled={busy || index === groups.length - 1}
                 onClick={() => void move(index, 1)}
               >
@@ -116,6 +122,7 @@ export function GroupManager() {
               </button>
               <button
                 className="button ghost danger"
+                type="button"
                 disabled={busy}
                 onClick={() =>
                   void removeGroup(group.id)
@@ -128,6 +135,12 @@ export function GroupManager() {
             </div>
           </div>
         ))}
+        {loading && <div className="list-state loading">Đang tải danh sách nhóm…</div>}
+        {groups.length === 0 && (
+          <div className="list-state" hidden={loading}>
+            Chưa có nhóm. Thêm nhóm để sắp xếp nhân viên.
+          </div>
+        )}
       </div>
     </section>
   );

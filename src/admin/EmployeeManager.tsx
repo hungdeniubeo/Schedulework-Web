@@ -449,8 +449,8 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                       }}
                     />
                   </label>
-                  <label>
-                    Nhóm
+                  <div className="field">
+                    <span>Nhóm</span>
                     <CustomSelect
                       ariaLabel={`Nhóm của ${employee.name}`}
                       value={employee.groupId ?? ""}
@@ -464,9 +464,9 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                         sortOrder: 0,
                       })}
                     />
-                  </label>
-                  <label>
-                    Vị trí
+                  </div>
+                  <div className="field">
+                    <span>Vị trí</span>
                     <CustomSelect
                       ariaLabel={`Vị trí của ${employee.name}`}
                       value={employee.positionId ?? ""}
@@ -482,7 +482,7 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                         positionId: value || null,
                       })}
                     />
-                  </label>
+                  </div>
                   <div className="employee-flags">
                     <label>
                       <input
@@ -497,8 +497,8 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                   <div className="employee-actions">
                     <div className="employee-order-actions">
                       <span>Thứ tự trong nhóm</span>
-                      <button className="button ghost" type="button" disabled={busyId !== null || positionBusy} onClick={() => void move(employee, -1)}>↑</button>
-                      <button className="button ghost" type="button" disabled={busyId !== null || positionBusy} onClick={() => void move(employee, 1)}>↓</button>
+                      <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} lên trong nhóm`} disabled={busyId !== null || positionBusy} onClick={() => void move(employee, -1)}>↑</button>
+                      <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} xuống trong nhóm`} disabled={busyId !== null || positionBusy} onClick={() => void move(employee, 1)}>↓</button>
                     </div>
                     <button className="button ghost" type="button" disabled={busyId !== null || positionBusy} onClick={() => void resetPassword(employee.id)}>
                       Reset mật khẩu
@@ -512,6 +512,14 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
             </article>
           );
         })}
+        {initialLoading && (
+          <div className="list-state loading">Đang tải danh sách nhân viên…</div>
+        )}
+        {employees.length === 0 && (
+          <div className="list-state" hidden={initialLoading}>
+            Chưa có nhân viên. Tạo tài khoản để bắt đầu.
+          </div>
+        )}
       </div>
     </section>
   );

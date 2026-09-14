@@ -17,6 +17,22 @@ import {
   type DayAvailability,
   type DayKey,
 } from "../types/domain";
+import {
+  MobileOptionPicker,
+  type MobileOptionPickerOption,
+} from "./MobileOptionPicker";
+
+const PRESET_PICKER_OPTIONS: ReadonlyArray<MobileOptionPickerOption> =
+  PRESET_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label,
+    description: option.intervals
+      .map(({ start, end }) => `${formatHour(start)}–${formatHour(end)}`)
+      .join(" / "),
+  }));
+
+const HOUR_PICKER_OPTIONS: ReadonlyArray<MobileOptionPickerOption> =
+  HOUR_OPTIONS.map((hour) => ({ value: hour, label: formatHour(hour) }));
 
 type Props = {
   value: Availability;
@@ -82,70 +98,64 @@ export function AvailabilityEditor({
             </div>
             {day.status === "available" && (
               <div className="availability-shift-editor">
-                <label className="shift-preset-field">
+                <div className="shift-preset-field">
                   <span>Ca</span>
-                  <select
-                    aria-label={`Ca ${DAY_LABELS[key]}`}
+                  <MobileOptionPicker
+                    title="Chọn ca"
+                    ariaLabel={`Ca ${DAY_LABELS[key]}`}
                     value={preset}
                     disabled={readOnly}
-                    onChange={(event) =>
+                    options={PRESET_PICKER_OPTIONS}
+                    onChange={(nextPreset) =>
                       updateDay(
                         key,
-                        createPresetDay(event.target.value as AvailabilityPreset),
+                        createPresetDay(nextPreset as AvailabilityPreset),
                       )
                     }
-                  >
-                    {PRESET_OPTIONS.map((option) => (
-                      <option value={option.value} key={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  />
+                </div>
                 <div className="hour-intervals">
                   {intervals.map((interval, intervalIndex) => (
                     <div className="hour-row" key={intervalIndex}>
-                      <select
-                        aria-label={`Giờ bắt đầu ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
+                      <MobileOptionPicker
+                        title="Chọn giờ bắt đầu"
+                        ariaLabel={`Giờ bắt đầu ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
                         value={interval.start}
                         disabled={readOnly}
-                        onChange={(event) =>
+                        layout="grid"
+                        options={HOUR_PICKER_OPTIONS}
+                        onChange={(nextStart) =>
                           updateDay(key, {
                             status: "available",
                             preset,
                             intervals: intervals.map((item, itemIndex) =>
                               itemIndex === intervalIndex
-                                ? { ...item, start: event.target.value }
+                                ? { ...item, start: nextStart }
                                 : item,
                             ),
                           })
                         }
-                      >
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option value={hour} key={hour}>{formatHour(hour)}</option>
-                        ))}
-                      </select>
+                      />
                       <span aria-hidden="true">→</span>
-                      <select
-                        aria-label={`Giờ kết thúc ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
+                      <MobileOptionPicker
+                        title="Chọn giờ kết thúc"
+                        ariaLabel={`Giờ kết thúc ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
                         value={interval.end}
                         disabled={readOnly}
-                        onChange={(event) =>
+                        layout="grid"
+                        options={HOUR_PICKER_OPTIONS}
+                        onChange={(nextEnd) =>
                           updateDay(key, {
                             status: "available",
                             preset,
                             intervals: intervals.map((item, itemIndex) =>
                               itemIndex === intervalIndex
-                                ? { ...item, end: event.target.value }
+                                ? { ...item, end: nextEnd }
                                 : item,
                             ),
                           })
                         }
-                      >
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option value={hour} key={hour}>{formatHour(hour)}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   ))}
                 </div>

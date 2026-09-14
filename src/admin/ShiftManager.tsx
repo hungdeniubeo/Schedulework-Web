@@ -50,6 +50,7 @@ export function ShiftManager() {
   const [split, setSplit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const load = async () => {
     const [nextShifts, nextEntries] = await Promise.all([
@@ -60,7 +61,9 @@ export function ShiftManager() {
     setEntries(nextEntries);
   };
   useEffect(() => {
-    load().catch((reason) => setError(reason.message));
+    load()
+      .catch((reason) => setError(reason.message))
+      .finally(() => setLoading(false));
   }, []);
 
   async function save(event: FormEvent) {
@@ -139,6 +142,7 @@ export function ShiftManager() {
               <div className="row-actions">
                 <button
                   className="button ghost"
+                  type="button"
                   onClick={() => {
                     setForm(fromShift(shift));
                     setSplit(shift.label.includes("/"));
@@ -148,6 +152,7 @@ export function ShiftManager() {
                 </button>
                 <button
                   className="button ghost danger"
+                  type="button"
                   onClick={() =>
                     void removeShiftType(shift.id)
                       .then(load)
@@ -159,6 +164,12 @@ export function ShiftManager() {
               </div>
             </div>
           ))}
+          {loading && <div className="list-state loading">Đang tải danh sách ca…</div>}
+          {shifts.length === 0 && (
+            <div className="list-state" hidden={loading}>
+              Chưa có ca làm. Thêm ca để bắt đầu xếp lịch.
+            </div>
+          )}
         </div>
       </section>
       <section className="panel">

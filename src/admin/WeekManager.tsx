@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   defaultRegistrationWindow,
   formatDeadline,
@@ -90,16 +91,19 @@ export function WeekManager({
           <p>Tạo tuần, chỉnh deadline và trạng thái nhận đăng ký.</p>
         </div>
       </div>
-      <label className="field">
-        Tuần đang xem
-        <select value={selectedId} onChange={(e) => onSelect(e.target.value)}>
-          {weeks.map((week) => (
-            <option key={week.id} value={week.id}>
-              {formatWeekRange(week.week_start)} · {week.status}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="field">
+        <span>Tuần đang xem</span>
+        <CustomSelect
+          ariaLabel="Tuần đang xem"
+          value={selectedId}
+          disabled={busy || weeks.length === 0}
+          options={weeks.map((week) => ({
+            value: week.id,
+            label: `${formatWeekRange(week.week_start)} · ${week.status}`,
+          }))}
+          onChange={onSelect}
+        />
+      </div>
       {selected && (
         <div className="week-controls">
           <div className="week-status-line">

@@ -140,31 +140,38 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         <strong>ScheduleWork</strong>
         <div>
           <button
+            type="button"
             className={section === "availability" ? "active" : ""}
+            aria-current={section === "availability" ? "page" : undefined}
             onClick={() => navigate("/app/availability")}
           >
             Đăng ký lịch
           </button>
           <button
+            type="button"
             className={section === "my-schedule" ? "active" : ""}
+            aria-current={section === "my-schedule" ? "page" : undefined}
             onClick={() => navigate("/app/my-schedule")}
           >
             Lịch của tôi
           </button>
           <button
+            type="button"
             className={section === "team-schedule" ? "active" : ""}
+            aria-current={section === "team-schedule" ? "page" : undefined}
             onClick={() => navigate("/app/team-schedule")}
           >
             Lịch tổng
           </button>
         </div>
         <button
+          type="button"
           className="employee-password"
           onClick={() => navigate("/change-password")}
         >
           Đổi mật khẩu
         </button>
-        <button className="employee-logout" onClick={() => void logout()}>
+        <button type="button" className="employee-logout" onClick={() => void logout()}>
           Đăng xuất
         </button>
       </nav>
