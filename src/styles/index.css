@@ -424,7 +424,9 @@ textarea:disabled {
     radial-gradient(circle at 20% 0, #d9efea, transparent 38%), #f3f7f6;
 }
 .login-card {
-  width: min(420px, 100%);
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
   padding: 28px;
   border: 1px solid var(--line);
   border-radius: 22px;
