@@ -11,7 +11,10 @@ import {
   swapPositionOrder,
 } from "../scheduling/api";
 import type { CloudEmployee, Group, Position } from "../scheduling/types";
-import { employeesWithRenamedPosition } from "./employeePositions";
+import {
+  employeesWithRenamedPosition,
+  employeesWithUpdatedPosition,
+} from "./employeePositions";
 
 type Props = {
   onAdd: (name: string, email: string) => Promise<TemporaryCredentials>;
@@ -233,17 +236,22 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
     setError(null);
     try {
       await patchEmployee(employee.id, changes);
-      setEmployees((current) => current.map((item) =>
-        item.id === employee.id
-          ? {
-              ...item,
-              ...changes,
-              positionName: changes.positionId === undefined
-                ? item.positionName
-                : (positions.find((position) => position.id === changes.positionId)?.name ?? null),
-            }
-          : item,
-      ).sort((first, second) => first.sortOrder - second.sortOrder));
+      setEmployees((current) => {
+        let updated = current.map((item) =>
+          item.id === employee.id ? { ...item, ...changes } : item,
+        );
+        if (changes.positionId !== undefined) {
+          updated = employeesWithUpdatedPosition(
+            updated,
+            employee.id,
+            changes.positionId,
+            positions,
+          );
+        }
+        return updated.sort(
+          (first, second) => first.sortOrder - second.sortOrder,
+        );
+      });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không cập nhật được nhân viên.");
     } finally {
@@ -472,15 +480,6 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                     </select>
                   </label>
                   <div className="employee-flags">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={employee.isFullTime}
-                        disabled={busyId !== null || positionBusy}
-                        onChange={(event) => void update(employee, { isFullTime: event.target.checked })}
-                      />
-                      Full-time
-                    </label>
                     <label>
                       <input
                         type="checkbox"

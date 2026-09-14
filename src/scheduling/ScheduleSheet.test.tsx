@@ -11,7 +11,6 @@ const employee = (positionName: string | null): CloudEmployee => ({
   positionId: positionName ? "position-1" : null,
   positionName,
   sortOrder: 0,
-  isFullTime: true,
   isNew: false,
 });
 

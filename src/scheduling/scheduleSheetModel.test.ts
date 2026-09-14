@@ -10,14 +10,13 @@ const employee = (
 ): CloudEmployee => ({
   id,
   name: id,
-    active: true,
-    groupId,
-    positionId: null,
-    positionName: null,
-    sortOrder,
-    isFullTime: false,
-    isNew: false,
-  });
+  active: true,
+  groupId,
+  positionId: null,
+  positionName: null,
+  sortOrder,
+  isNew: false,
+});
 
 describe("buildScheduleGroups", () => {
   it("renders desktop-style group sections and keeps ungrouped employees last", () => {

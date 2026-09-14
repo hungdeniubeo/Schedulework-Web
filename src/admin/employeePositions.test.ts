@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { employeesWithRenamedPosition } from "./employeePositions";
+import {
+  employeesWithRenamedPosition,
+  employeesWithUpdatedPosition,
+} from "./employeePositions";
 import type { CloudEmployee } from "../scheduling/types";
 
 const employees: CloudEmployee[] = [
@@ -11,7 +14,6 @@ const employees: CloudEmployee[] = [
     positionId: "position-1",
     positionName: "Bếp trưởng",
     sortOrder: 0,
-    isFullTime: true,
     isNew: false,
   },
   {
@@ -22,7 +24,6 @@ const employees: CloudEmployee[] = [
     positionId: null,
     positionName: null,
     sortOrder: 1,
-    isFullTime: false,
     isNew: true,
   },
 ];
@@ -37,5 +38,39 @@ describe("employeesWithRenamedPosition", () => {
 
     expect(renamed[0].positionName).toBe("Bếp chính");
     expect(renamed[1]).toBe(employees[1]);
+  });
+});
+
+describe("employeesWithUpdatedPosition", () => {
+  it("updates an employee position assignment and keeps the new employee flag", () => {
+    const updated = employeesWithUpdatedPosition(
+      employees,
+      "employee-2",
+      "position-1",
+      [
+        { id: "position-1", name: "Bếp trưởng", sortOrder: 0 },
+      ],
+    );
+
+    expect(updated[1]).toMatchObject({
+      positionId: "position-1",
+      positionName: "Bếp trưởng",
+      isNew: true,
+    });
+  });
+
+  it("removes an employee position without showing a stale label", () => {
+    const updated = employeesWithUpdatedPosition(
+      employees,
+      "employee-1",
+      null,
+      [],
+    );
+
+    expect(updated[0]).toMatchObject({
+      positionId: null,
+      positionName: null,
+      isNew: false,
+    });
   });
 });

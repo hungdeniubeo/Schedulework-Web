@@ -1,6 +1,6 @@
 begin;
 
-select plan(27);
+select plan(29);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -316,6 +316,20 @@ select throws_ok(
   '23503',
   'update or delete on table "positions" violates foreign key constraint "employees_position_id_fkey" on table "employees"',
   'an assigned position cannot be deleted'
+);
+
+select lives_ok(
+  $$
+    delete from public.positions
+    where id = 'e5be9ad0-c88b-4e21-9137-2ad6f39a6c95'
+  $$,
+  'an unused position can be deleted'
+);
+
+select is(
+  (select count(*) from public.positions),
+  1::bigint,
+  'deleting an unused position removes only that position'
 );
 
 select * from finish();

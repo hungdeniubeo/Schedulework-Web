@@ -18,7 +18,7 @@ function fail(error: { message: string } | null, message: string): void {
 }
 
 const employeeColumns =
-  "id,name,active,group_id,position_id,positions(name),sort_order,is_full_time,is_new";
+  "id,name,active,group_id,position_id,positions(name),sort_order,is_new";
 
 export function employeeFromRow(row: Record<string, unknown>): CloudEmployee {
   const position = row.positions as { name?: unknown } | null;
@@ -30,7 +30,6 @@ export function employeeFromRow(row: Record<string, unknown>): CloudEmployee {
     positionId: row.position_id ? String(row.position_id) : null,
     positionName: position?.name ? String(position.name) : null,
     sortOrder: Number(row.sort_order),
-    isFullTime: Boolean(row.is_full_time),
     isNew: Boolean(row.is_new),
   };
 }
@@ -158,7 +157,7 @@ export async function removePosition(id: string): Promise<void> {
   console.error(error);
   throw new Error(
     error.code === "23503"
-      ? "Không thể xóa vị trí đang có nhân viên. Hãy bỏ gán vị trí trước."
+      ? "Vị trí này đang được sử dụng. Hãy bỏ vị trí khỏi nhân viên trước khi xóa."
       : "Không xóa được vị trí.",
   );
 }
@@ -182,8 +181,6 @@ export async function patchEmployee(
   if (changes.groupId !== undefined) payload.group_id = changes.groupId;
   if (changes.positionId !== undefined) payload.position_id = changes.positionId;
   if (changes.sortOrder !== undefined) payload.sort_order = changes.sortOrder;
-  if (changes.isFullTime !== undefined)
-    payload.is_full_time = changes.isFullTime;
   if (changes.isNew !== undefined) payload.is_new = changes.isNew;
   const { error } = await getSupabase()
     .from("employees")

@@ -18,7 +18,6 @@ export type CloudEmployee = {
   positionId: string | null;
   positionName: string | null;
   sortOrder: number;
-  isFullTime: boolean;
   isNew: boolean;
 };
 

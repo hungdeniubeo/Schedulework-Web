@@ -10,3 +10,18 @@ export function employeesWithRenamedPosition(
       : employee,
   );
 }
+
+export function employeesWithUpdatedPosition(
+  employees: CloudEmployee[],
+  employeeId: string,
+  positionId: string | null,
+  positions: Position[],
+): CloudEmployee[] {
+  const positionName =
+    positions.find((position) => position.id === positionId)?.name ?? null;
+  return employees.map((employee) =>
+    employee.id === employeeId
+      ? { ...employee, positionId, positionName }
+      : employee,
+  );
+}
