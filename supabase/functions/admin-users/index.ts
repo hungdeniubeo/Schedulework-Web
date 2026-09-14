@@ -75,6 +75,7 @@ async function requireActiveEmployee(request: Request, admin: SupabaseClient) {
       .select("id")
       .eq("user_id", user.id)
       .eq("active", true)
+      .is("deleted_at", null)
       .maybeSingle(),
   ]);
   if (profile.error) throw profile.error;
@@ -164,6 +165,7 @@ async function resetEmployeePassword(
     .from("employees")
     .select("user_id")
     .eq("id", employeeId)
+    .is("deleted_at", null)
     .maybeSingle();
   if (employee.error) throw employee.error;
   if (!employee.data) {

@@ -54,6 +54,24 @@ describe("my schedule availability selection", () => {
       selectSubmittedAvailability([week("week-1", "2026-09-21")], []),
     ).toBeNull();
   });
+
+  it("ignores archived weeks even when they contain the newest submission", () => {
+    const current = week("week-current", "2026-09-21");
+    const archived = {
+      ...week("week-archived", "2026-09-28"),
+      status: "archived" as const,
+    };
+
+    const selected = selectSubmittedAvailability(
+      [archived, current],
+      [
+        submission("archived-submission", archived.id),
+        submission("current-submission", current.id),
+      ],
+    );
+
+    expect(selected?.submission.id).toBe("current-submission");
+  });
 });
 
 describe("loadMyScheduleData", () => {

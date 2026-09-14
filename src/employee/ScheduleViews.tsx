@@ -39,11 +39,20 @@ function usePublishedSchedule(employeeId: string) {
   return { data, error };
 }
 
-function useMySchedule(employeeId: string) {
+export function myScheduleRequestKey(
+  employeeId: string,
+  submissionRevision: number,
+): string {
+  return `${employeeId}:${submissionRevision}`;
+}
+
+function useMySchedule(employeeId: string, submissionRevision: number) {
   const [data, setData] = useState<MyScheduleData | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const requestKey = myScheduleRequestKey(employeeId, submissionRevision);
   useEffect(() => {
     let active = true;
+    setError(null);
     loadMyScheduleData(employeeId)
       .then((next) => active && setData(next))
       .catch((reason) => {
@@ -54,7 +63,7 @@ function useMySchedule(employeeId: string) {
     return () => {
       active = false;
     };
-  }, [employeeId]);
+  }, [employeeId, requestKey]);
   return { data, error };
 }
 
@@ -168,12 +177,14 @@ export function SubmittedAvailability({
 
 export function MySchedulePage({
   employeeId,
+  submissionRevision,
   onRegister,
 }: {
   employeeId: string;
+  submissionRevision: number;
   onRegister: () => void;
 }) {
-  const { data, error } = useMySchedule(employeeId);
+  const { data, error } = useMySchedule(employeeId, submissionRevision);
   if (error) return <AppState title="Không tải được lịch" message={error} />;
   if (data === undefined)
     return <AppState title="Một chút thôi…" message="Đang tải lịch của bạn." />;

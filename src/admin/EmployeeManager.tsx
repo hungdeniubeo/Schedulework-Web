@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CustomSelect } from "../components/CustomSelect";
+import { ModalBackdrop } from "../components/ModalBackdrop";
 import type { TemporaryCredentials } from "../lib/serverApi";
 import {
   addPosition,
@@ -9,6 +10,7 @@ import {
   patchEmployee,
   patchPosition,
   removePosition,
+  softDeleteEmployee,
   swapPositionOrder,
 } from "../scheduling/api";
 import type { CloudEmployee, Group, Position } from "../scheduling/types";
@@ -175,6 +177,162 @@ function PositionManager({
   );
 }
 
+type EmployeeCardProps = {
+  employee: CloudEmployee;
+  groupName: string;
+  groups: Group[];
+  positions: Position[];
+  disabled: boolean;
+  onUpdate: (
+    employee: CloudEmployee,
+    changes: Partial<Omit<CloudEmployee, "id" | "positionName">>,
+  ) => void;
+  onMove: (employee: CloudEmployee, delta: number) => void;
+  onResetPassword: (employeeId: string) => void;
+  onDeleteRequest: (employee: CloudEmployee) => void;
+};
+
+export function EmployeeCard({
+  employee,
+  groupName,
+  groups,
+  positions,
+  disabled,
+  onUpdate,
+  onMove,
+  onResetPassword,
+  onDeleteRequest,
+}: EmployeeCardProps) {
+  return (
+    <details className="employee-row">
+      <summary className="employee-summary">
+        <div className="employee-identity">
+          <strong>{employee.name}</strong>
+          {employee.positionName && (
+            <span className="position-badge">{employee.positionName}</span>
+          )}
+          <span className="employee-group-label">{groupName}</span>
+        </div>
+        <span className="employee-summary-meta">
+          <span className={`status-dot-label ${employee.active ? "active" : "inactive"}`}>
+            {employee.active ? "Đang hoạt động" : "Đã tắt"}
+          </span>
+          <span className="employee-expand-icon" aria-hidden="true">⌄</span>
+        </span>
+      </summary>
+      <div className="employee-settings">
+        <label>
+          Tên nhân viên
+          <input
+            defaultValue={employee.name}
+            maxLength={120}
+            disabled={disabled}
+            onBlur={(event) => {
+              const next = event.currentTarget.value.trim();
+              if (!next) event.currentTarget.value = employee.name;
+              else if (next !== employee.name) onUpdate(employee, { name: next });
+            }}
+          />
+        </label>
+        <div className="field">
+          <span>Nhóm</span>
+          <CustomSelect
+            ariaLabel={`Nhóm của ${employee.name}`}
+            value={employee.groupId ?? ""}
+            disabled={disabled}
+            options={[
+              { value: "", label: "Chưa có nhóm" },
+              ...groups.map((group) => ({ value: group.id, label: group.name })),
+            ]}
+            onChange={(value) => onUpdate(employee, {
+              groupId: value || null,
+              sortOrder: 0,
+            })}
+          />
+        </div>
+        <div className="field">
+          <span>Vị trí</span>
+          <CustomSelect
+            ariaLabel={`Vị trí của ${employee.name}`}
+            value={employee.positionId ?? ""}
+            disabled={disabled}
+            options={[
+              { value: "", label: "Không có vị trí" },
+              ...positions.map((position) => ({
+                value: position.id,
+                label: position.name,
+              })),
+            ]}
+            onChange={(value) => onUpdate(employee, { positionId: value || null })}
+          />
+        </div>
+        <div className="employee-flags">
+          <label>
+            <input
+              type="checkbox"
+              checked={employee.isNew}
+              disabled={disabled}
+              onChange={(event) => onUpdate(employee, { isNew: event.target.checked })}
+            />
+            Nhân viên mới
+          </label>
+        </div>
+        <div className="employee-actions">
+          <div className="employee-order-actions">
+            <span>Thứ tự trong nhóm</span>
+            <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} lên trong nhóm`} disabled={disabled} onClick={() => onMove(employee, -1)}>↑</button>
+            <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} xuống trong nhóm`} disabled={disabled} onClick={() => onMove(employee, 1)}>↓</button>
+          </div>
+          <button className="button ghost" type="button" disabled={disabled} onClick={() => onResetPassword(employee.id)}>
+            Reset mật khẩu
+          </button>
+          <button className="button ghost danger" type="button" disabled={disabled} onClick={() => onDeleteRequest(employee)}>
+            Xóa
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+export function DeleteEmployeeDialog({
+  employee,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  employee: CloudEmployee;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const titleId = `delete-employee-${employee.id}`;
+  return (
+    <ModalBackdrop onClose={() => !deleting && onCancel()}>
+      <section
+        className="confirm-dialog employee-delete-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId}>Xóa nhân viên {employee.name}?</h2>
+        <p>
+          Nhân viên sẽ không còn xuất hiện trong danh sách và không thể đăng nhập.
+          Dữ liệu lịch sử vẫn được giữ lại.
+        </p>
+        <div className="confirm-dialog-actions">
+          <button className="button secondary" type="button" autoFocus disabled={deleting} onClick={onCancel}>
+            Hủy
+          </button>
+          <button className="button danger" type="button" disabled={deleting} onClick={onConfirm}>
+            {deleting ? "Đang xóa..." : "Xóa nhân viên"}
+          </button>
+        </div>
+      </section>
+    </ModalBackdrop>
+  );
+}
+
 export function EmployeeManager({ onAdd, onResetPassword }: Props) {
   const [employees, setEmployees] = useState<CloudEmployee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -187,6 +345,7 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CloudEmployee | null>(null);
 
   useEffect(() => {
     Promise.all([listSchedulerEmployees(), listGroups(), listPositions()])
@@ -303,6 +462,21 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
     }
   }
 
+  async function deleteEmployee(employee: CloudEmployee) {
+    if (busyId !== null || positionBusy) return;
+    setBusyId(employee.id);
+    setError(null);
+    try {
+      await softDeleteEmployee(employee.id);
+      setEmployees((current) => current.filter((item) => item.id !== employee.id));
+      setDeleteTarget(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không xóa được nhân viên.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function createPosition(positionName: string) {
     setError(null);
     try {
@@ -370,7 +544,7 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
       <div className="panel-heading">
         <div>
           <h2>Nhân viên</h2>
-          <p>Tạo tài khoản, phân nhóm và quản lý thiết lập xếp lịch.</p>
+          <p>Thêm nhân viên, phân nhóm và quản lý thiết lập xếp lịch.</p>
         </div>
       </div>
       <form className="employee-create-form" onSubmit={(event) => void add(event)}>
@@ -396,7 +570,7 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
           className="button primary"
           disabled={adding || initialLoading || busyId !== null || positionBusy}
         >
-          {adding ? "Đang thêm..." : "Tạo tài khoản"}
+          {adding ? "Đang thêm..." : "Thêm nhân viên"}
         </button>
       </form>
       <PositionManager
@@ -418,98 +592,18 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
           const groupName = groups.find((group) => group.id === employee.groupId)?.name
             ?? "Chưa có nhóm";
           return (
-            <article className="employee-row" key={employee.id}>
-              <div className="employee-summary">
-                <div className="employee-identity">
-                  <strong>{employee.name}</strong>
-                  {employee.positionName && (
-                    <span className="position-badge">{employee.positionName}</span>
-                  )}
-                </div>
-                <span className={`status-dot-label ${employee.active ? "active" : "inactive"}`}>
-                  {employee.active ? "Đang hoạt động" : "Đã tắt"}
-                </span>
-              </div>
-              <details className="employee-advanced">
-                <summary>
-                  <span>{groupName}</span>
-                  <span>Chỉnh sửa</span>
-                </summary>
-                <div className="employee-settings">
-                  <label>
-                    Tên nhân viên
-                    <input
-                      defaultValue={employee.name}
-                      maxLength={120}
-                      disabled={busyId !== null || positionBusy}
-                      onBlur={(event) => {
-                        const next = event.currentTarget.value.trim();
-                        if (!next) event.currentTarget.value = employee.name;
-                        else if (next !== employee.name) void update(employee, { name: next });
-                      }}
-                    />
-                  </label>
-                  <div className="field">
-                    <span>Nhóm</span>
-                    <CustomSelect
-                      ariaLabel={`Nhóm của ${employee.name}`}
-                      value={employee.groupId ?? ""}
-                      disabled={busyId !== null || positionBusy}
-                      options={[
-                        { value: "", label: "Chưa có nhóm" },
-                        ...groups.map((group) => ({ value: group.id, label: group.name })),
-                      ]}
-                      onChange={(value) => void update(employee, {
-                        groupId: value || null,
-                        sortOrder: 0,
-                      })}
-                    />
-                  </div>
-                  <div className="field">
-                    <span>Vị trí</span>
-                    <CustomSelect
-                      ariaLabel={`Vị trí của ${employee.name}`}
-                      value={employee.positionId ?? ""}
-                      disabled={busyId !== null || positionBusy}
-                      options={[
-                        { value: "", label: "Không có vị trí" },
-                        ...positions.map((position) => ({
-                          value: position.id,
-                          label: position.name,
-                        })),
-                      ]}
-                      onChange={(value) => void update(employee, {
-                        positionId: value || null,
-                      })}
-                    />
-                  </div>
-                  <div className="employee-flags">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={employee.isNew}
-                        disabled={busyId !== null || positionBusy}
-                        onChange={(event) => void update(employee, { isNew: event.target.checked })}
-                      />
-                      Nhân viên mới
-                    </label>
-                  </div>
-                  <div className="employee-actions">
-                    <div className="employee-order-actions">
-                      <span>Thứ tự trong nhóm</span>
-                      <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} lên trong nhóm`} disabled={busyId !== null || positionBusy} onClick={() => void move(employee, -1)}>↑</button>
-                      <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} xuống trong nhóm`} disabled={busyId !== null || positionBusy} onClick={() => void move(employee, 1)}>↓</button>
-                    </div>
-                    <button className="button ghost" type="button" disabled={busyId !== null || positionBusy} onClick={() => void resetPassword(employee.id)}>
-                      Reset mật khẩu
-                    </button>
-                    <button className="button ghost danger" type="button" disabled={busyId !== null || positionBusy} onClick={() => void update(employee, { active: !employee.active })}>
-                      {employee.active ? "Deactivate" : "Reactivate"}
-                    </button>
-                  </div>
-                </div>
-              </details>
-            </article>
+            <EmployeeCard
+              key={employee.id}
+              employee={employee}
+              groupName={groupName}
+              groups={groups}
+              positions={positions}
+              disabled={busyId !== null || positionBusy}
+              onUpdate={(item, changes) => void update(item, changes)}
+              onMove={(item, delta) => void move(item, delta)}
+              onResetPassword={(employeeId) => void resetPassword(employeeId)}
+              onDeleteRequest={setDeleteTarget}
+            />
           );
         })}
         {initialLoading && (
@@ -517,10 +611,18 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
         )}
         {employees.length === 0 && (
           <div className="list-state" hidden={initialLoading}>
-            Chưa có nhân viên. Tạo tài khoản để bắt đầu.
+            Chưa có nhân viên. Thêm nhân viên để bắt đầu.
           </div>
         )}
       </div>
+      {deleteTarget && (
+        <DeleteEmployeeDialog
+          employee={deleteTarget}
+          deleting={busyId === deleteTarget.id}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void deleteEmployee(deleteTarget)}
+        />
+      )}
     </section>
   );
 }

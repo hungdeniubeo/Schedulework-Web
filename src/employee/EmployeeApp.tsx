@@ -33,6 +33,56 @@ type Props = {
   navigate: (path: string) => void;
 };
 
+export function EmployeeHeader({
+  section,
+  navigate,
+  onLogout,
+}: {
+  section: Props["section"];
+  navigate: Props["navigate"];
+  onLogout: () => void;
+}) {
+  const tabs: Array<{ section: Props["section"]; label: string; path: string }> = [
+    { section: "availability", label: "Đăng ký lịch", path: "/app/availability" },
+    { section: "my-schedule", label: "Lịch của tôi", path: "/app/my-schedule" },
+    { section: "team-schedule", label: "Lịch tổng", path: "/app/team-schedule" },
+  ];
+  return (
+    <header className="employee-header">
+      <div className="employee-header-top">
+        <div className="employee-brand">
+          <span aria-hidden="true">SW</span>
+          <div>
+            <strong>ScheduleWork</strong>
+            <small>Cổng nhân viên</small>
+          </div>
+        </div>
+        <div className="employee-account-actions">
+          <button type="button" onClick={() => navigate("/change-password")}>
+            Đổi mật khẩu
+          </button>
+          <button type="button" onClick={onLogout}>
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+      <nav className="employee-tabs" aria-label="Điều hướng nhân viên">
+        {tabs.map((tab) => (
+          <button
+            key={tab.section}
+            type="button"
+            className={section === tab.section ? "active" : ""}
+            aria-current={section === tab.section ? "page" : undefined}
+            onClick={() => navigate(tab.path)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+    </header>
+  );
+}
+
 export function EmployeeApp({ loginRoute, section, navigate }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -42,6 +92,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
     active: boolean;
   } | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [submissionRevision, setSubmissionRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(configurationError);
 
@@ -138,51 +189,22 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
     );
   return (
     <div className="employee-app">
-      <nav className="employee-nav">
-        <strong>ScheduleWork</strong>
-        <div>
-          <button
-            type="button"
-            className={section === "availability" ? "active" : ""}
-            aria-current={section === "availability" ? "page" : undefined}
-            onClick={() => navigate("/app/availability")}
-          >
-            Đăng ký lịch
-          </button>
-          <button
-            type="button"
-            className={section === "my-schedule" ? "active" : ""}
-            aria-current={section === "my-schedule" ? "page" : undefined}
-            onClick={() => navigate("/app/my-schedule")}
-          >
-            Lịch của tôi
-          </button>
-          <button
-            type="button"
-            className={section === "team-schedule" ? "active" : ""}
-            aria-current={section === "team-schedule" ? "page" : undefined}
-            onClick={() => navigate("/app/team-schedule")}
-          >
-            Lịch tổng
-          </button>
-        </div>
-        <button
-          type="button"
-          className="employee-password"
-          onClick={() => navigate("/change-password")}
-        >
-          Đổi mật khẩu
-        </button>
-        <button type="button" className="employee-logout" onClick={() => void logout()}>
-          Đăng xuất
-        </button>
-      </nav>
+      <EmployeeHeader
+        section={section}
+        navigate={navigate}
+        onLogout={() => void logout()}
+      />
       <Suspense fallback={sectionFallback}>
         {section === "availability" ? (
-          <EmployeeRegistrationPage onLogout={logout} employee={employee!} />
+          <EmployeeRegistrationPage
+            onLogout={logout}
+            onSubmissionSaved={() => setSubmissionRevision((current) => current + 1)}
+            employee={employee!}
+          />
         ) : section === "my-schedule" ? (
           <MySchedulePage
             employeeId={employee!.id}
+            submissionRevision={submissionRevision}
             onRegister={() => navigate("/app/availability")}
           />
         ) : (

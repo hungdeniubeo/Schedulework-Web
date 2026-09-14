@@ -3,6 +3,7 @@ import {
   formatSubmissionStatus,
   getSaveSuccessMessage,
   legacyGlobalNoteForSave,
+  saveAvailabilityThenNotify,
 } from "./EmployeeRegistrationPage";
 
 describe("employee availability save feedback", () => {
@@ -34,5 +35,34 @@ describe("employee availability save feedback", () => {
       }),
     ).toBe("Ghi chú lịch cũ");
     expect(legacyGlobalNoteForSave(null)).toBe("");
+  });
+
+  it("notifies My Schedule after every successful submit or update", async () => {
+    let revision = 0;
+    const onSaved = () => {
+      revision += 1;
+    };
+
+    await saveAvailabilityThenNotify(async () => "first", onSaved);
+    await saveAvailabilityThenNotify(async () => "updated", onSaved);
+
+    expect(revision).toBe(2);
+  });
+
+  it("does not notify My Schedule when the Supabase save fails", async () => {
+    let revision = 0;
+
+    await expect(
+      saveAvailabilityThenNotify(
+        async () => {
+          throw new Error("save failed");
+        },
+        () => {
+          revision += 1;
+        },
+      ),
+    ).rejects.toThrow("save failed");
+
+    expect(revision).toBe(0);
   });
 });

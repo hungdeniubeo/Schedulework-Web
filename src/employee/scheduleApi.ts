@@ -1,9 +1,9 @@
 import { getSupabase } from "../lib/config";
 import {
   listGroups,
+  listPublishedScheduleEmployees,
   listScheduleEntries,
   listScheduleWeeks,
-  listSchedulerEmployees,
   listShiftTypes,
 } from "../scheduling/api";
 import { selectLatestPublishedWeek } from "../scheduling/publication";
@@ -42,7 +42,7 @@ export function selectSubmittedAvailability(
 ): SubmittedAvailabilityData | null {
   const byWeek = new Map(submissions.map((submission) => [submission.week_id, submission]));
   const available = weeks
-    .filter((week) => byWeek.has(week.id))
+    .filter((week) => week.status !== "archived" && byWeek.has(week.id))
     .sort((first, second) => second.week_start.localeCompare(first.week_start));
   const week =
     available.find((item) => item.week_start === preferredWeekStart) ??
@@ -70,7 +70,7 @@ export async function loadPublishedSchedule(
   if (!week) return null;
   const [entries, employees, groups, shifts] = await Promise.all([
     listScheduleEntries(week.id),
-    listSchedulerEmployees(),
+    listPublishedScheduleEmployees(),
     listGroups(),
     listShiftTypes(),
   ]);

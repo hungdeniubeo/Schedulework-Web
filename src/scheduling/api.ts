@@ -166,9 +166,28 @@ export async function listSchedulerEmployees(): Promise<CloudEmployee[]> {
   const { data, error } = await getSupabase()
     .from("employees")
     .select(employeeColumns)
+    .is("deleted_at", null)
     .order("sort_order");
   fail(error, "Không tải được nhân viên.");
   return (data ?? []).map((row) => employeeFromRow(row));
+}
+
+export async function listPublishedScheduleEmployees(): Promise<CloudEmployee[]> {
+  const { data, error } = await getSupabase()
+    .from("employees")
+    .select(employeeColumns)
+    .order("sort_order");
+  fail(error, "Không tải được nhân viên trong lịch đã công bố.");
+  return (data ?? []).map((row) => employeeFromRow(row));
+}
+
+export async function softDeleteEmployee(id: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("employees")
+    .update({ active: false, deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("deleted_at", null);
+  fail(error, "Không xóa được nhân viên.");
 }
 
 export async function patchEmployee(
@@ -185,7 +204,8 @@ export async function patchEmployee(
   const { error } = await getSupabase()
     .from("employees")
     .update(payload)
-    .eq("id", id);
+    .eq("id", id)
+    .is("deleted_at", null);
   fail(error, "Không cập nhật được nhân viên.");
 }
 

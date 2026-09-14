@@ -9,8 +9,12 @@ vi.mock("../lib/config", () => ({
 import {
   consolidateScheduleEntry,
   employeeFromRow,
+  listPublishedScheduleEmployees,
+  listSchedulerEmployees,
   listScheduleAvailability,
+  patchEmployee,
   removePosition,
+  softDeleteEmployee,
 } from "./api";
 import type { ScheduleEntry } from "./types";
 
@@ -99,6 +103,91 @@ describe("removePosition", () => {
     supabase.client = clientWithPositionDelete(null);
 
     await expect(removePosition("position-1")).resolves.toBeUndefined();
+  });
+});
+
+describe("employee query boundaries", () => {
+  it("excludes soft-deleted employees from operational lists", async () => {
+    const deletedFilter = vi.fn();
+    const query = {
+      select: () => query,
+      is: (column: string, value: null) => {
+        deletedFilter(column, value);
+        return query;
+      },
+      order: async () => ({ data: [], error: null }),
+    };
+    supabase.client = { from: () => query };
+
+    await listSchedulerEmployees();
+
+    expect(deletedFilter).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("keeps the published-history employee loader history-aware", async () => {
+    const deletedFilter = vi.fn();
+    const historical = {
+      id: "employee-deleted",
+      name: "Nhân viên cũ",
+      active: false,
+      group_id: null,
+      position_id: null,
+      positions: null,
+      sort_order: 0,
+      is_new: false,
+    };
+    const query = {
+      select: () => query,
+      is: deletedFilter,
+      order: async () => ({ data: [historical], error: null }),
+    };
+    supabase.client = { from: () => query };
+
+    const result = await listPublishedScheduleEmployees();
+
+    expect(result[0]?.name).toBe("Nhân viên cũ");
+    expect(deletedFilter).not.toHaveBeenCalled();
+  });
+
+  it("soft deletes with one update and never issues a physical delete", async () => {
+    const update = vi.fn();
+    const physicalDelete = vi.fn();
+    const query = {
+      update: (payload: Record<string, unknown>) => {
+        update(payload);
+        return query;
+      },
+      delete: physicalDelete,
+      eq: () => query,
+      is: async () => ({ error: null }),
+    };
+    supabase.client = { from: () => query };
+
+    await softDeleteEmployee("employee-1");
+
+    expect(update).toHaveBeenCalledOnce();
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      active: false,
+      deleted_at: expect.any(String),
+    }));
+    expect(physicalDelete).not.toHaveBeenCalled();
+  });
+
+  it("does not update an employee after it has been soft deleted", async () => {
+    const deletedFilter = vi.fn();
+    const query = {
+      update: () => query,
+      eq: () => query,
+      is: async (column: string, value: null) => {
+        deletedFilter(column, value);
+        return { error: null };
+      },
+    };
+    supabase.client = { from: () => query };
+
+    await patchEmployee("employee-1", { name: "Tên mới" });
+
+    expect(deletedFilter).toHaveBeenCalledWith("deleted_at", null);
   });
 });
 

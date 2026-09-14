@@ -1,6 +1,6 @@
 begin;
 
-select plan(36);
+select plan(45);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -449,6 +449,121 @@ select ok(
   ),
   'anonymous clients cannot invoke schedule consolidation'
 );
+
+select ok(
+  exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'employees'
+      and column_name = 'deleted_at'
+      and is_nullable = 'YES'
+  ),
+  'employees has a nullable soft-delete timestamp'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'public.employees', 'DELETE'),
+  'authenticated users cannot physically delete employees'
+);
+
+select is(
+  (
+    select delete_rule
+    from information_schema.referential_constraints
+    where constraint_schema = 'public'
+      and constraint_name = 'availability_submissions_employee_id_fkey'
+  ),
+  'RESTRICT'::text,
+  'employee availability history cannot cascade-delete'
+);
+
+insert into auth.users (id) values
+  ('5a111111-1111-4111-8111-111111111111'),
+  ('5a222222-2222-4222-8222-222222222222');
+insert into public.profiles (user_id, role, must_change_password) values
+  ('5a111111-1111-4111-8111-111111111111', 'employee', false),
+  ('5a222222-2222-4222-8222-222222222222', 'employee', false);
+insert into public.employees (id, user_id, name, active, deleted_at) values
+  (
+    '5e111111-1111-4111-8111-111111111111',
+    '5a111111-1111-4111-8111-111111111111',
+    'Nhân viên đã xóa',
+    false,
+    now()
+  ),
+  (
+    '5e222222-2222-4222-8222-222222222222',
+    '5a222222-2222-4222-8222-222222222222',
+    'Nhân viên đang làm',
+    true,
+    null
+  );
+insert into public.registration_weeks (id, week_start, lock_at, status) values
+  ('5b111111-1111-4111-8111-111111111111', '2099-02-02', '2099-01-30T15:00:00Z', 'locked');
+insert into public.availability_submissions (id, week_id, employee_id, availability, note) values (
+  '5c111111-1111-4111-8111-111111111111',
+  '5b111111-1111-4111-8111-111111111111',
+  '5e111111-1111-4111-8111-111111111111',
+  '{"version":1,"days":{"1":{"status":"off","periods":[],"start":null,"end":null},"2":{"status":"off","periods":[],"start":null,"end":null},"3":{"status":"off","periods":[],"start":null,"end":null},"4":{"status":"off","periods":[],"start":null,"end":null},"5":{"status":"off","periods":[],"start":null,"end":null},"6":{"status":"off","periods":[],"start":null,"end":null},"7":{"status":"off","periods":[],"start":null,"end":null}}}'::jsonb,
+  'Lịch sử còn giữ'
+);
+insert into public.schedule_weeks (id, week_start, status, published_at) values
+  ('5d111111-1111-4111-8111-111111111111', '2099-02-02', 'published', now());
+insert into public.schedule_entries (
+  id,
+  schedule_week_id,
+  employee_id,
+  day_of_week,
+  shift_type_id
+) values (
+  '5f111111-1111-4111-8111-111111111111',
+  '5d111111-1111-4111-8111-111111111111',
+  '5e111111-1111-4111-8111-111111111111',
+  1,
+  (select id from public.shift_types order by created_at limit 1)
+);
+
+select set_config('request.jwt.claim.sub', '5a111111-1111-4111-8111-111111111111', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+
+select is_empty(
+  $$ select id from public.my_employee() $$,
+  'a deleted employee cannot access the employee portal'
+);
+
+reset role;
+
+select ok(
+  exists (select 1 from public.employees where id = '5e111111-1111-4111-8111-111111111111'),
+  'soft delete preserves the employee row'
+);
+select ok(
+  exists (select 1 from public.profiles where user_id = '5a111111-1111-4111-8111-111111111111')
+  and exists (select 1 from auth.users where id = '5a111111-1111-4111-8111-111111111111'),
+  'soft delete preserves the profile and Auth user'
+);
+select ok(
+  exists (select 1 from public.availability_submissions where employee_id = '5e111111-1111-4111-8111-111111111111'),
+  'soft delete preserves availability history'
+);
+select ok(
+  exists (select 1 from public.schedule_entries where employee_id = '5e111111-1111-4111-8111-111111111111'),
+  'soft delete preserves official schedule history'
+);
+
+select set_config('request.jwt.claim.sub', '5a222222-2222-4222-8222-222222222222', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+
+select results_eq(
+  $$ select name from public.employees where id = '5e111111-1111-4111-8111-111111111111' $$,
+  $$ values ('Nhân viên đã xóa'::text) $$,
+  'published schedules still resolve deleted employee metadata'
+);
+
+reset role;
 
 select * from finish();
 rollback;

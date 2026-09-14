@@ -30,6 +30,7 @@ export async function listEmployees(): Promise<AdminEmployee[]> {
   const { data, error } = await getSupabase()
     .from("employees")
     .select("id,name,active,created_at,updated_at")
+    .is("deleted_at", null)
     .order("name");
   fail(error, "Không tải được danh sách nhân viên.");
   return (data ?? []) as AdminEmployee[];

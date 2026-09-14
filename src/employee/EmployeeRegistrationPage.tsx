@@ -30,10 +30,15 @@ import {
 
 type Props = {
   onLogout: () => Promise<void>;
+  onSubmissionSaved: () => void;
   employee: { id: string; name: string; active: boolean };
 };
 
-export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
+export function EmployeeRegistrationPage({
+  onLogout,
+  onSubmissionSaved,
+  employee,
+}: Props) {
   const [context, setContext] = useState<EmployeePortalData | null>(null);
   const [availability, setAvailability] = useState<Availability>(
     createEmptyAvailability,
@@ -141,12 +146,15 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
     setSuccessMessage(null);
     const updating = context.submission !== null;
     try {
-      const submission = await saveEmployeeAvailability({
-        weekId: context.week.id,
-        employeeId: context.employee.id,
-        availability: availabilityForSave,
-        note: legacyNote,
-      });
+      const submission = await saveAvailabilityThenNotify(
+        () => saveEmployeeAvailability({
+          weekId: context.week.id,
+          employeeId: context.employee.id,
+          availability: availabilityForSave,
+          note: legacyNote,
+        }),
+        onSubmissionSaved,
+      );
       clearAvailabilityDraft(context.employee.id, context.week.id);
       setContext({ ...context, submission });
       setAvailability(normalizeAvailability(submission.availability));
@@ -296,6 +304,15 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
       </div>
     </div>
   );
+}
+
+export async function saveAvailabilityThenNotify<T>(
+  save: () => Promise<T>,
+  onSubmissionSaved: () => void,
+): Promise<T> {
+  const saved = await save();
+  onSubmissionSaved();
+  return saved;
 }
 
 export function getSaveSuccessMessage(updating: boolean): string {

@@ -1,7 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { createEmptyAvailability, createPresetDay } from "../lib/availability";
-import { MyScheduleContent, SubmittedAvailability } from "./ScheduleViews";
+import {
+  MyScheduleContent,
+  myScheduleRequestKey,
+  SubmittedAvailability,
+} from "./ScheduleViews";
 
 describe("submitted availability display", () => {
   it("shows an off reason only on the matching off day", () => {
@@ -40,6 +44,13 @@ describe("submitted availability display", () => {
 });
 
 describe("My Schedule responsibility", () => {
+  it("changes its server request identity after a successful-save revision", () => {
+    expect(myScheduleRequestKey("employee-1", 0)).not.toBe(
+      myScheduleRequestKey("employee-1", 1),
+    );
+    expect(myScheduleRequestKey("employee-1", 1)).toBe("employee-1:1");
+  });
+
   it("renders exactly one submitted availability section", () => {
     const html = renderToStaticMarkup(
       <MyScheduleContent
