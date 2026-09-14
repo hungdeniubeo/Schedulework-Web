@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -178,6 +179,8 @@ export function AdminScheduler() {
   const [availabilityByEmployee, setAvailabilityByEmployee] = useState<
     Record<string, Availability>
   >({});
+  const entriesRequest = useRef(0);
+  const availabilityRequest = useRef(0);
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -210,22 +213,28 @@ export function AdminScheduler() {
     loadBase().catch((reason) => setError(reason.message));
   }, [loadBase]);
   const week = weeks.find((item) => item.id === weekId) ?? null;
-  const loadEntries = useCallback(
-    async () => setEntries(weekId ? await listScheduleEntries(weekId) : []),
-    [weekId],
-  );
+  const weekStart = week?.weekStart ?? "";
+  const loadEntries = useCallback(async () => {
+    const request = ++entriesRequest.current;
+    const nextEntries = weekId ? await listScheduleEntries(weekId) : [];
+    if (request === entriesRequest.current) setEntries(nextEntries);
+  }, [weekId]);
   const loadAvailability = useCallback(async () => {
-    if (!week) return setAvailabilityByEmployee({});
-    const submissions = await listScheduleAvailability(week.weekStart);
-    setAvailabilityByEmployee(
-      Object.fromEntries(
-        submissions.map((submission) => [
-          submission.employee_id,
-          submission.availability,
-        ]),
-      ),
-    );
-  }, [week]);
+    const request = ++availabilityRequest.current;
+    const submissions = weekStart
+      ? await listScheduleAvailability(weekStart)
+      : [];
+    if (request === availabilityRequest.current) {
+      setAvailabilityByEmployee(
+        Object.fromEntries(
+          submissions.map((submission) => [
+            submission.employee_id,
+            submission.availability,
+          ]),
+        ),
+      );
+    }
+  }, [weekStart]);
   useEffect(() => {
     Promise.all([loadEntries(), loadAvailability()]).catch((reason) =>
       setError(reason.message),
