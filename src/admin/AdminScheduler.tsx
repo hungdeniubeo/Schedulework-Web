@@ -367,6 +367,22 @@ export function AdminScheduler() {
     }
   }
 
+  async function clearWeekEntries() {
+    if (!week || busy || !editable) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await clearScheduleWeek(week.id);
+      await loadEntries();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Không xóa được lịch tuần.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createWeek(event: FormEvent) {
     event.preventDefault();
     if (!isMondayDate(newWeekStart))
@@ -497,6 +513,7 @@ export function AdminScheduler() {
       <section className="panel scheduler-filters">
         <select
           value={weekId}
+          disabled={busy || weekDataLoading}
           onChange={(event) => {
             setWeekDataLoading(true);
             setEntries([]);
@@ -560,9 +577,7 @@ export function AdminScheduler() {
             disabled={busy || entries.length === 0}
             onClick={() => {
               if (window.confirm("Xóa toàn bộ ca của tuần này?"))
-                void clearScheduleWeek(weekId)
-                  .then(loadEntries)
-                  .catch((reason) => setError(reason.message));
+                void clearWeekEntries();
             }}
           >
             Xóa lịch tuần
