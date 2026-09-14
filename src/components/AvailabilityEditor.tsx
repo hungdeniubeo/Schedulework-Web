@@ -1,11 +1,12 @@
 import {
   DAY_LABELS,
-  HOUR_OPTIONS,
   PRESET_OPTIONS,
   createPresetDay,
+  formatAvailabilityCell,
   formatHour,
   getIntervals,
   getPreset,
+  hourOptionsForInterval,
   normalizeAvailability,
   normalizeOffDay,
 } from "../lib/availability";
@@ -21,18 +22,18 @@ import {
   MobileOptionPicker,
   type MobileOptionPickerOption,
 } from "./MobileOptionPicker";
+import { semanticShiftColor, shiftStyle } from "../scheduling/shiftStyle";
 
 const PRESET_PICKER_OPTIONS: ReadonlyArray<MobileOptionPickerOption> =
   PRESET_OPTIONS.map((option) => ({
     value: option.value,
     label: option.label,
-    description: option.intervals
-      .map(({ start, end }) => `${formatHour(start)}–${formatHour(end)}`)
-      .join(" / "),
+    description: option.pickerDescription,
   }));
 
-const HOUR_PICKER_OPTIONS: ReadonlyArray<MobileOptionPickerOption> =
-  HOUR_OPTIONS.map((hour) => ({ value: hour, label: formatHour(hour) }));
+function hourPickerOptions(hours: string[]): MobileOptionPickerOption[] {
+  return hours.map((hour) => ({ value: hour, label: formatHour(hour) }));
+}
 
 type Props = {
   value: Availability;
@@ -64,8 +65,22 @@ export function AvailabilityEditor({
         const day = normalized.days[key];
         const preset = getPreset(day) ?? "morning";
         const intervals = getIntervals(day);
+        const reason =
+          day.status === "off" &&
+          "offReason" in day &&
+          typeof day.offReason === "string"
+            ? day.offReason
+            : "";
+        const semanticColor =
+          day.status === "available"
+            ? semanticShiftColor(formatAvailabilityCell(day))
+            : null;
         return (
-          <section className="day-card" key={key}>
+          <section
+            className={`day-card ${day.status === "available" ? "working" : "off"}`}
+            style={semanticColor ? shiftStyle(semanticColor) : undefined}
+            key={key}
+          >
             <div className="day-card-title">
               <strong>{DAY_LABELS[key]}</strong>
               <span>{formatDateShort(addDateOnlyDays(weekStart, index))}</span>
@@ -80,7 +95,8 @@ export function AvailabilityEditor({
                 className={day.status === "available" ? "selected" : ""}
                 disabled={readOnly}
                 onClick={() => {
-                  if (day.status === "off") updateDay(key, createPresetDay(preset));
+                  if (day.status === "off")
+                    updateDay(key, createPresetDay(preset));
                 }}
               >
                 Đi làm
@@ -90,7 +106,12 @@ export function AvailabilityEditor({
                 className={day.status === "off" ? "selected off" : ""}
                 disabled={readOnly}
                 onClick={() =>
-                  updateDay(key, { status: "off", preset: null, intervals: [] })
+                  updateDay(key, {
+                    status: "off",
+                    preset: null,
+                    intervals: [],
+                    offReason: null,
+                  })
                 }
               >
                 Nghỉ
@@ -123,7 +144,14 @@ export function AvailabilityEditor({
                         value={interval.start}
                         disabled={readOnly}
                         layout="grid"
-                        options={HOUR_PICKER_OPTIONS}
+                        options={hourPickerOptions(
+                          hourOptionsForInterval(
+                            preset,
+                            intervalIndex,
+                            "start",
+                            intervals,
+                          ),
+                        )}
                         onChange={(nextStart) =>
                           updateDay(key, {
                             status: "available",
@@ -143,7 +171,14 @@ export function AvailabilityEditor({
                         value={interval.end}
                         disabled={readOnly}
                         layout="grid"
-                        options={HOUR_PICKER_OPTIONS}
+                        options={hourPickerOptions(
+                          hourOptionsForInterval(
+                            preset,
+                            intervalIndex,
+                            "end",
+                            intervals,
+                          ),
+                        )}
                         onChange={(nextEnd) =>
                           updateDay(key, {
                             status: "available",
@@ -160,6 +195,28 @@ export function AvailabilityEditor({
                   ))}
                 </div>
               </div>
+            )}
+            {day.status === "off" && (
+              <label className="off-reason-field">
+                <span>Lý do nghỉ <small>(tuỳ chọn)</small></span>
+                <textarea
+                  rows={1}
+                  maxLength={120}
+                  disabled={readOnly}
+                  aria-label={`Lý do nghỉ ${DAY_LABELS[key]}`}
+                  value={reason}
+                  placeholder="Ví dụ: Em có lịch học"
+                  onChange={(event) =>
+                    updateDay(key, {
+                      status: "off",
+                      preset: null,
+                      intervals: [],
+                      offReason: event.target.value,
+                    })
+                  }
+                />
+                {reason.length > 0 && <small>{reason.length}/120</small>}
+              </label>
             )}
           </section>
         );

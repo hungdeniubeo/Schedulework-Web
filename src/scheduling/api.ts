@@ -355,6 +355,22 @@ export async function patchScheduleEntry(entry: ScheduleEntry): Promise<void> {
   fail(error, "Không cập nhật được ca.");
 }
 
+export async function consolidateScheduleEntry(
+  entry: ScheduleEntry,
+  removeEntryIds: string[],
+): Promise<void> {
+  const { error } = await getSupabase().rpc("consolidate_schedule_entry", {
+    keeper_entry_id: entry.id,
+    target_employee_id: entry.employeeId,
+    target_day_of_week: entry.dayOfWeek,
+    target_shift_type_id: entry.shiftTypeId,
+    target_custom_label: entry.customLabel,
+    target_sort_order: entry.sortOrderInCell,
+    remove_entry_ids: removeEntryIds,
+  });
+  fail(error, "Không gộp được ca trong ô lịch.");
+}
+
 export async function removeScheduleEntry(id: string): Promise<void> {
   const { error } = await getSupabase()
     .from("schedule_entries")

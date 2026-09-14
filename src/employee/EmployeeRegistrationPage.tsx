@@ -4,6 +4,7 @@ import { AppState } from "../components/AppState";
 import {
   createEmptyAvailability,
   normalizeAvailability,
+  prepareAvailabilityForSave,
   validateAvailability,
 } from "../lib/availability";
 import {
@@ -29,7 +30,6 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
   const [availability, setAvailability] = useState<Availability>(
     createEmptyAvailability,
   );
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ title: string; message: string } | null>(
@@ -63,7 +63,6 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
             ? normalizeAvailability(data.submission.availability)
             : createEmptyAvailability(),
         );
-        setNote(data.submission?.note ?? "");
       })
       .catch((reason: unknown) => {
         if (!active) return;
@@ -94,7 +93,9 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
       savingRef.current
     )
       return;
-    const errors = validateAvailability(availability, note);
+    const availabilityForSave = prepareAvailabilityForSave(availability);
+    const legacyNote = legacyGlobalNoteForSave(context.submission);
+    const errors = validateAvailability(availabilityForSave, legacyNote);
     if (errors.length > 0) {
       setFormError(errors[0]);
       return;
@@ -108,8 +109,8 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
       const submission = await saveEmployeeAvailability({
         weekId: context.week.id,
         employeeId: context.employee.id,
-        availability,
-        note: note.trim(),
+        availability: availabilityForSave,
+        note: legacyNote,
       });
       setContext({ ...context, submission });
       setAvailability(normalizeAvailability(submission.availability));
@@ -194,22 +195,12 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
             setFormError(null);
           }}
         />
-        <section className="note-card">
-          <label htmlFor="employee-note">Ghi chú</label>
-          <textarea
-            id="employee-note"
-            rows={4}
-            maxLength={500}
-            disabled={locked}
-            value={note}
-            onChange={(event) => {
-              setNote(event.target.value);
-              setSuccessMessage(null);
-            }}
-            placeholder="Ví dụ: Thứ 4 em học buổi sáng"
-          />
-          <small>{note.length}/500</small>
-        </section>
+        {context.submission?.note?.trim() && (
+          <aside className="legacy-global-note registration-legacy-note">
+            <strong>Ghi chú cũ</strong>
+            <span>{context.submission.note.trim()}</span>
+          </aside>
+        )}
       </main>
 
       {!locked && (
@@ -249,6 +240,12 @@ export function getSaveSuccessMessage(updating: boolean): string {
   return updating
     ? "Cập nhật đăng ký thành công"
     : "Đăng ký lịch thành công";
+}
+
+export function legacyGlobalNoteForSave(
+  submission: EmployeePortalData["submission"],
+): string {
+  return submission?.note?.trim() ?? "";
 }
 
 export function formatSubmissionStatus(

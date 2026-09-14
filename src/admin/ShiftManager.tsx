@@ -10,6 +10,7 @@ import { getEntryIssue } from "../scheduling/overlap";
 import type { ScheduleEntry } from "../scheduling/types";
 import {
   formatShiftLabel,
+  resolvedShiftColor,
   semanticShiftColor,
   shiftStyle,
 } from "../scheduling/shiftStyle";
@@ -134,7 +135,7 @@ export function ShiftManager() {
             <div
               className="shift-manage-row"
               key={shift.id}
-              style={shiftStyle(shift.color)}
+              style={shiftStyle(resolvedShiftColor(shift.label, shift.color))}
             >
               <span className="shift-preview">
                 {formatShiftLabel(shift.label)}

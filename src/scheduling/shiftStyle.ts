@@ -9,9 +9,10 @@ export const SEMANTIC_SHIFT_COLORS = {
   long: "#8064A2",
 } as const;
 
-type ShiftRange = { start: number; end: number };
+export type ShiftRange = { start: number; end: number };
+export type ShiftSemantic = keyof typeof SEMANTIC_SHIFT_COLORS;
 
-function clockToMinutes(value: string): number | null {
+export function clockToMinutes(value: string): number | null {
   const match = /^(\d{1,2})(?:h(\d{2})?|:(\d{2}))?$/.exec(value.trim());
   if (!match) return null;
   const hour = Number(match[1]);
@@ -19,40 +20,75 @@ function clockToMinutes(value: string): number | null {
   return hour <= 23 && minute <= 59 ? hour * 60 + minute : null;
 }
 
-function rangesFromLabel(label: string): ShiftRange[] {
-  return label.split("/").flatMap((part) => {
-    const [startText, endText] = part.split("-");
+export function shiftRangesFromLabel(label: string): ShiftRange[] {
+  const ranges = label.split("/").map((part) => {
+    const [startText, endText, extra] = part.split(/[-–—]/);
+    if (extra !== undefined) return null;
     const start = clockToMinutes(startText ?? "");
     const end = clockToMinutes(endText ?? "");
     return start !== null && end !== null && end > start
-      ? [{ start, end }]
-      : [];
+      ? { start, end }
+      : null;
   });
+  return ranges.every((range): range is ShiftRange => range !== null)
+    ? ranges
+    : [];
 }
 
 function isSingleRange(label: string, start: number, end: number): boolean {
-  const ranges = rangesFromLabel(label);
+  const ranges = shiftRangesFromLabel(label);
   return (
     ranges.length === 1 && ranges[0].start === start && ranges[0].end === end
   );
 }
 
-export function semanticShiftColor(label: string): string {
-  const ranges = rangesFromLabel(label);
+export function semanticShiftKind(label: string): ShiftSemantic | null {
+  const ranges = shiftRangesFromLabel(label);
+  if (ranges.length === 0) return null;
   const covers = (start: number, end: number) =>
     ranges.some((range) => range.start < end && range.end > start);
   const morning = covers(600, 840);
   const afternoon = covers(840, 1020);
   const night = covers(1020, 1440);
-  if (isSingleRange(label, 600, 1380)) return SEMANTIC_SHIFT_COLORS.long;
-  if (isSingleRange(label, 600, 1080))
-    return SEMANTIC_SHIFT_COLORS.morningAfternoon;
-  if (morning && night) return SEMANTIC_SHIFT_COLORS.full;
-  if (afternoon && night) return SEMANTIC_SHIFT_COLORS.afternoonNight;
-  if (morning && afternoon) return SEMANTIC_SHIFT_COLORS.morningAfternoon;
-  if (night) return SEMANTIC_SHIFT_COLORS.night;
-  if (afternoon) return SEMANTIC_SHIFT_COLORS.morningAfternoon;
-  return SEMANTIC_SHIFT_COLORS.morning;
+  if (isSingleRange(label, 600, 1380)) return "long";
+  if (isSingleRange(label, 600, 1080)) return "morningAfternoon";
+  if (morning && night) return "full";
+  if (afternoon && night) return "afternoonNight";
+  if (morning && afternoon) return "morningAfternoon";
+  if (night) return "night";
+  if (afternoon) return "morningAfternoon";
+  return "morning";
+}
+
+export function semanticShiftColor(label: string): string {
+  const semantic = semanticShiftKind(label);
+  return SEMANTIC_SHIFT_COLORS[semantic ?? "morning"];
+}
+
+export function resolvedShiftColor(label: string, fallback: string): string {
+  const semantic = semanticShiftKind(label);
+  return semantic ? SEMANTIC_SHIFT_COLORS[semantic] : fallback;
+}
+
+function clockLabel(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+export function consolidatedShiftLabel(ranges: ShiftRange[]): string {
+  const consolidated: ShiftRange[] = [];
+  for (const range of [...ranges].sort(
+    (first, second) => first.start - second.start || first.end - second.end,
+  )) {
+    const previous = consolidated[consolidated.length - 1];
+    if (previous && range.start === previous.end) {
+      previous.end = range.end;
+    } else {
+      consolidated.push({ ...range });
+    }
+  }
+  return consolidated
+    .map((range) => `${clockLabel(range.start)}-${clockLabel(range.end)}`)
+    .join("/");
 }
 
 export function formatShiftLabel(label: string): string {

@@ -17,6 +17,7 @@ import {
   addScheduleEntry,
   addScheduleWeek,
   clearScheduleWeek,
+  consolidateScheduleEntry,
   listGroups,
   listScheduleEntries,
   listScheduleAvailability,
@@ -29,6 +30,7 @@ import {
 } from "../scheduling/api";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
+import { consolidateCellEntry } from "../scheduling/merge";
 import {
   periodCounts,
   staffingStatusForShiftCount,
@@ -308,9 +310,25 @@ export function AdminScheduler() {
     setBusy(true);
     setError(null);
     try {
-      const { id: _id, ...payload } = candidate;
-      void _id;
-      await addScheduleEntry(payload);
+      const inCell = entries.filter(
+        (entry) =>
+          entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
+      );
+      if (inCell.length > 0) {
+        const keeper = inCell[0];
+        const merged = {
+          ...consolidateCellEntry(candidate, inCell, shifts),
+          id: keeper.id,
+        };
+        await consolidateScheduleEntry(
+          merged,
+          inCell.slice(1).map((entry) => entry.id),
+        );
+      } else {
+        const { id: _id, ...payload } = candidate;
+        void _id;
+        await addScheduleEntry(payload);
+      }
       await loadEntries();
     } catch (reason) {
       setError(
@@ -337,7 +355,21 @@ export function AdminScheduler() {
     if (issue) return setError(issue);
     setBusy(true);
     try {
-      await patchScheduleEntry(candidate);
+      const inTargetCell = entries.filter(
+        (item) =>
+          item.id !== entry.id &&
+          item.employeeId === employeeId &&
+          item.dayOfWeek === dayOfWeek,
+      );
+      if (inTargetCell.length > 0) {
+        const merged = consolidateCellEntry(candidate, inTargetCell, shifts);
+        await consolidateScheduleEntry(
+          merged,
+          inTargetCell.map((item) => item.id),
+        );
+      } else {
+        await patchScheduleEntry(candidate);
+      }
       await loadEntries();
     } catch (reason) {
       setError(

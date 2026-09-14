@@ -89,3 +89,27 @@ Deno.test("rejects v2 minutes and overlapping split intervals", () => {
   };
   if (validateAvailability(overlap)) throw new Error("expected overlap to be invalid");
 });
+
+Deno.test("accepts a short v2 off reason and rejects an oversized one", () => {
+  const valid = completeV2Availability();
+  valid.days["1"] = {
+    status: "off",
+    preset: null,
+    intervals: [],
+    offReason: "Em có lịch học",
+  };
+  if (!validateAvailability(valid)) throw new Error("expected off reason to be valid");
+
+  valid.days["1"].offReason = "x".repeat(121);
+  if (validateAvailability(valid)) throw new Error("expected oversized reason to be invalid");
+});
+
+Deno.test("rejects v2 hours outside the selected preset window", () => {
+  const value = completeV2Availability();
+  value.days["1"] = {
+    status: "available",
+    preset: "morning",
+    intervals: [{ start: "10:00", end: "23:00" }],
+  };
+  if (validateAvailability(value)) throw new Error("expected morning 10-23 to be invalid");
+});

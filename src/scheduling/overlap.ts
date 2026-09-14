@@ -1,30 +1,13 @@
 import type { ScheduleEntry, ShiftType } from "./types";
+import {
+  shiftRangesFromLabel,
+  type ShiftRange,
+} from "./shiftStyle";
 
-export type TimeRange = { start: number; end: number };
+export type TimeRange = ShiftRange;
 export type EntryIssue =
   | { kind: "invalid"; message: string }
   | { kind: "overlap"; other: ScheduleEntry; range: TimeRange };
-
-function parseClock(token: string): number | null {
-  const normalized = token
-    .trim()
-    .toLowerCase()
-    .replace(/h$/, ":00")
-    .replace("h", ":");
-  const match = /^(\d{1,2})(?::(\d{2}))?$/.exec(normalized);
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = match[2] ? Number(match[2]) : 0;
-  return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : null;
-}
-
-function parseRangeToken(token: string): TimeRange | null {
-  const parts = token.split("-");
-  if (parts.length !== 2) return null;
-  const start = parseClock(parts[0]);
-  const end = parseClock(parts[1]);
-  return start !== null && end !== null && end > start ? { start, end } : null;
-}
 
 export function rangesForEntry(
   entry: ScheduleEntry,
@@ -39,10 +22,7 @@ export function rangesForEntry(
     label = `${entry.customStart}-${entry.customEnd}`;
   }
   if (!label) return [];
-  const ranges = label.split("/").map(parseRangeToken);
-  return ranges.every((range): range is TimeRange => range !== null)
-    ? ranges
-    : [];
+  return shiftRangesFromLabel(label);
 }
 
 function intersection(first: TimeRange, second: TimeRange): TimeRange | null {

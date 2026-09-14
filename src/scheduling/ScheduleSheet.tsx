@@ -3,7 +3,7 @@ import { DAY_KEYS } from "../types/domain";
 import { addDateOnlyDays, formatDateShort } from "../lib/week";
 import { entryLabel } from "./overlap";
 import { buildScheduleGroups } from "./scheduleSheetModel";
-import { formatShiftLabel, shiftStyle } from "./shiftStyle";
+import { formatShiftLabel, resolvedShiftColor, shiftStyle } from "./shiftStyle";
 import { periodCounts, type StaffingPeriod } from "./staffing";
 import type { CloudEmployee, Group, ScheduleEntry, ShiftType } from "./types";
 
@@ -17,6 +17,7 @@ type Props = {
   className?: string;
   countOverrides?: Record<string, number>;
   showStaffing?: boolean;
+  highlightEmployeeId?: string;
   renderCell?: (
     employee: CloudEmployee,
     day: number,
@@ -31,16 +32,19 @@ function ReadOnlyCell({
   entries: ScheduleEntry[];
   shifts: ShiftType[];
 }) {
-  if (entries.length === 0) return <span className="schedule-off">Nghỉ</span>;
+  if (entries.length === 0) return null;
   return entries.map((entry) => {
     const shift = shifts.find((item) => item.id === entry.shiftTypeId);
+    const label = entryLabel(entry, shifts);
     return (
       <span
         className="schedule-entry-chip readonly"
-        style={shiftStyle(shift?.color ?? "#A6A6A6")}
+        style={shiftStyle(
+          resolvedShiftColor(label, shift?.color ?? "#A6A6A6"),
+        )}
         key={entry.id}
       >
-        {formatShiftLabel(entryLabel(entry, shifts))}
+        {formatShiftLabel(label)}
       </span>
     );
   });
@@ -56,6 +60,7 @@ export function ScheduleSheet({
   className = "",
   countOverrides = {},
   showStaffing = false,
+  highlightEmployeeId,
   renderCell,
 }: Props) {
   const sections = buildScheduleGroups(groups, employees);
@@ -92,6 +97,7 @@ export function ScheduleSheet({
               employees={groupEmployees}
               entries={entries}
               shifts={shifts}
+              highlightEmployeeId={highlightEmployeeId}
               renderCell={renderCell}
             />
           ))}
@@ -120,12 +126,14 @@ function ScheduleSection({
   employees,
   entries,
   shifts,
+  highlightEmployeeId,
   renderCell,
 }: {
   groupName: string;
   employees: CloudEmployee[];
   entries: ScheduleEntry[];
   shifts: ShiftType[];
+  highlightEmployeeId?: string;
   renderCell?: Props["renderCell"];
 }) {
   return (
@@ -134,10 +142,20 @@ function ScheduleSection({
         <th colSpan={8}>{groupName}</th>
       </tr>
       {employees.map((employee) => (
-        <tr key={employee.id}>
+        <tr
+          className={
+            employee.id === highlightEmployeeId
+              ? "current-employee-row"
+              : undefined
+          }
+          key={employee.id}
+        >
           <th>
             <strong>{employee.name}</strong>
             {employee.positionName && <small>{employee.positionName}</small>}
+            {employee.id === highlightEmployeeId && (
+              <small className="current-employee-badge">Bạn</small>
+            )}
           </th>
           {DAY_KEYS.map((key) => {
             const day = Number(key);

@@ -7,10 +7,12 @@ vi.mock("../lib/config", () => ({
 }));
 
 import {
+  consolidateScheduleEntry,
   employeeFromRow,
   listScheduleAvailability,
   removePosition,
 } from "./api";
+import type { ScheduleEntry } from "./types";
 
 describe("employeeFromRow", () => {
   it("maps an employee position from the joined position row", () => {
@@ -128,5 +130,37 @@ describe("listScheduleAvailability", () => {
     await expect(listScheduleAvailability("2026-09-21")).resolves.toEqual(expected);
     expect(registrationEq).toHaveBeenCalledWith("week_start", "2026-09-21");
     expect(submissionEq).toHaveBeenCalledWith("week_id", "registration-week-1");
+  });
+});
+
+describe("consolidateScheduleEntry", () => {
+  it("uses one transactional database operation for a merged cell", async () => {
+    const rpc = vi.fn(async () => ({ error: null }));
+    supabase.client = { rpc };
+    const entry: ScheduleEntry = {
+      id: "11111111-1111-1111-1111-111111111111",
+      scheduleWeekId: "22222222-2222-2222-2222-222222222222",
+      employeeId: "33333333-3333-3333-3333-333333333333",
+      dayOfWeek: 2,
+      shiftTypeId: "44444444-4444-4444-4444-444444444444",
+      customStart: null,
+      customEnd: null,
+      customLabel: "10:00-14:00/17:00-23:00",
+      sortOrderInCell: 0,
+    };
+
+    await consolidateScheduleEntry(entry, [
+      "55555555-5555-5555-5555-555555555555",
+    ]);
+
+    expect(rpc).toHaveBeenCalledWith("consolidate_schedule_entry", {
+      keeper_entry_id: entry.id,
+      target_employee_id: entry.employeeId,
+      target_day_of_week: entry.dayOfWeek,
+      target_shift_type_id: entry.shiftTypeId,
+      target_custom_label: entry.customLabel,
+      target_sort_order: entry.sortOrderInCell,
+      remove_entry_ids: ["55555555-5555-5555-5555-555555555555"],
+    });
   });
 });

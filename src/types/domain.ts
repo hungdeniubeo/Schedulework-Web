@@ -32,6 +32,7 @@ export type DayAvailability =
       status: AvailabilityStatus;
       preset: AvailabilityPreset | null;
       intervals: AvailabilityInterval[];
+      offReason?: string | null;
     };
 
 export type Availability = {

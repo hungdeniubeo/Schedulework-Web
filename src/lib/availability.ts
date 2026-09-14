@@ -31,19 +31,40 @@ export const PERIOD_LABELS: Record<Period, string> = {
 export const PRESET_OPTIONS: ReadonlyArray<{
   value: AvailabilityPreset;
   label: string;
+  pickerDescription: string;
   intervals: AvailabilityInterval[];
+  windows: AvailabilityInterval[];
 }> = [
-  { value: "morning", label: "Sáng", intervals: [{ start: "10:00", end: "14:00" }] },
+  {
+    value: "morning",
+    label: "Sáng",
+    pickerDescription: "10h–14h",
+    intervals: [{ start: "10:00", end: "14:00" }],
+    windows: [{ start: "10:00", end: "14:00" }],
+  },
   {
     value: "morning_afternoon",
     label: "Sáng + Trưa",
+    pickerDescription: "10h–17h/18h",
     intervals: [{ start: "10:00", end: "17:00" }],
+    windows: [{ start: "10:00", end: "18:00" }],
   },
-  { value: "evening", label: "Tối", intervals: [{ start: "17:00", end: "23:00" }] },
+  {
+    value: "evening",
+    label: "Tối",
+    pickerDescription: "17h/18h–23h",
+    intervals: [{ start: "17:00", end: "23:00" }],
+    windows: [{ start: "17:00", end: "23:00" }],
+  },
   {
     value: "full",
     label: "Full",
+    pickerDescription: "10h–14h / 17h/18h–23h",
     intervals: [
+      { start: "10:00", end: "14:00" },
+      { start: "17:00", end: "23:00" },
+    ],
+    windows: [
       { start: "10:00", end: "14:00" },
       { start: "17:00", end: "23:00" },
     ],
@@ -51,12 +72,14 @@ export const PRESET_OPTIONS: ReadonlyArray<{
   {
     value: "afternoon_evening",
     label: "Trưa + Tối",
+    pickerDescription: "14h–23h",
     intervals: [{ start: "14:00", end: "23:00" }],
+    windows: [{ start: "14:00", end: "23:00" }],
   },
 ];
 
-export const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) =>
-  `${String(hour).padStart(2, "0")}:00`,
+export const HOUR_OPTIONS = Array.from({ length: 14 }, (_, index) =>
+  `${String(index + 10).padStart(2, "0")}:00`,
 );
 
 const LEGACY_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -86,6 +109,7 @@ export function createPresetDay(preset: AvailabilityPreset): DayAvailability {
     status: "available",
     preset,
     intervals: cloneIntervals(option.intervals),
+    offReason: null,
   };
 }
 
@@ -95,7 +119,7 @@ export function createEmptyAvailability(): Availability {
     days: Object.fromEntries(
       DAY_KEYS.map((day) => [
         day,
-        { status: "off", preset: null, intervals: [] },
+        { status: "off", preset: null, intervals: [], offReason: null },
       ]),
     ),
   };
@@ -103,8 +127,51 @@ export function createEmptyAvailability(): Availability {
 
 export function normalizeOffDay(day: DayAvailability): DayAvailability {
   return day.status === "off"
-    ? { status: "off", preset: null, intervals: [] }
+    ? {
+        status: "off",
+        preset: null,
+        intervals: [],
+        offReason: "offReason" in day ? day.offReason ?? null : null,
+      }
     : day;
+}
+
+function presetOption(preset: AvailabilityPreset) {
+  return PRESET_OPTIONS.find((option) => option.value === preset)!;
+}
+
+function intervalsFitPreset(
+  preset: AvailabilityPreset,
+  intervals: AvailabilityInterval[],
+): boolean {
+  const windows = presetOption(preset).windows;
+  return (
+    intervals.length === windows.length &&
+    intervals.every(
+      (interval, index) =>
+        HOUR_TIME_PATTERN.test(interval.start) &&
+        HOUR_TIME_PATTERN.test(interval.end) &&
+        interval.start >= windows[index].start &&
+        interval.end <= windows[index].end &&
+        interval.start < interval.end,
+    )
+  );
+}
+
+export function hourOptionsForInterval(
+  preset: AvailabilityPreset,
+  intervalIndex: number,
+  edge: "start" | "end",
+  intervals: AvailabilityInterval[],
+): string[] {
+  const window = presetOption(preset).windows[intervalIndex];
+  const interval = intervals[intervalIndex];
+  if (!window || !interval) return [];
+  return HOUR_OPTIONS.filter((hour) =>
+    edge === "start"
+      ? hour >= window.start && hour < interval.end
+      : hour > interval.start && hour <= window.end,
+  );
 }
 
 function isLegacyDay(day: DayAvailability): day is LegacyDayAvailability {
@@ -123,13 +190,18 @@ function presetFromLegacy(day: LegacyDayAvailability): AvailabilityPreset | null
 
 export function normalizeDayAvailability(day: DayAvailability): DayAvailability {
   if (day.status === "off") {
-    return { status: "off", preset: null, intervals: [] };
+    return normalizeOffDay(day);
   }
   if (!isLegacyDay(day)) {
+    const preset = day.preset ?? "morning";
+    const intervals = intervalsFitPreset(preset, day.intervals)
+      ? day.intervals
+      : presetOption(preset).intervals;
     return {
       status: "available",
-      preset: day.preset ?? "morning",
-      intervals: cloneIntervals(day.intervals),
+      preset,
+      intervals: cloneIntervals(intervals),
+      offReason: null,
     };
   }
   let preset = presetFromLegacy(day);
@@ -139,11 +211,15 @@ export function normalizeDayAvailability(day: DayAvailability): DayAvailability 
       : "morning_afternoon";
   if (day.start && day.end) {
     if (preset === "full") preset = "morning_afternoon";
-    return {
+    const normalized = {
       status: "available",
       preset,
       intervals: [legacyInterval(day.start, day.end)],
-    };
+      offReason: null,
+    } satisfies DayAvailability;
+    return intervalsFitPreset(preset, normalized.intervals)
+      ? normalized
+      : createPresetDay(preset);
   }
   return createPresetDay(preset);
 }
@@ -181,6 +257,32 @@ export function getIntervals(day: DayAvailability): AvailabilityInterval[] {
   return preset
     ? (createPresetDay(preset) as Exclude<DayAvailability, LegacyDayAvailability>).intervals
     : [];
+}
+
+export function getOffReason(day: DayAvailability): string {
+  return day.status === "off" && !isLegacyDay(day)
+    ? (day.offReason ?? "").trim()
+    : "";
+}
+
+export function prepareAvailabilityForSave(
+  availability: Availability,
+): Availability {
+  const normalized = normalizeAvailability(availability);
+  return {
+    version: 2,
+    days: Object.fromEntries(
+      DAY_KEYS.map((key) => {
+        const day = normalized.days[key];
+        return [
+          key,
+          day.status === "off" && !isLegacyDay(day)
+            ? { ...day, offReason: getOffReason(day) || null }
+            : day,
+        ];
+      }),
+    ),
+  };
 }
 
 export function isFullAvailabilityDay(day: DayAvailability): boolean {
@@ -241,12 +343,22 @@ export function validateAvailability(
     if (day.status === "off") {
       if (day.preset !== null || day.intervals.length > 0)
         errors.push(`${label}: ngày nghỉ không được có ca hoặc giờ cụ thể.`);
+      if (
+        day.offReason !== undefined &&
+        day.offReason !== null &&
+        typeof day.offReason !== "string"
+      )
+        errors.push(`${label}: lý do nghỉ không hợp lệ.`);
+      else if ((day.offReason ?? "").trim().length > 120)
+        errors.push(`${label}: lý do nghỉ không được dài quá 120 ký tự.`);
       continue;
     }
     if (!day.preset || !AVAILABILITY_PRESETS.includes(day.preset)) {
       errors.push(`${label}: ca đăng ký không hợp lệ.`);
       continue;
     }
+    if ((day.offReason ?? "").trim())
+      errors.push(`${label}: ngày đi làm không được có lý do nghỉ.`);
     const expectedLength = day.preset === "full" ? 2 : 1;
     if (day.intervals.length !== expectedLength) {
       errors.push(`${label}: ca đăng ký phải có đủ khoảng giờ.`);
@@ -258,6 +370,8 @@ export function validateAvailability(
       errors.push(`${label}: giờ bắt đầu phải trước giờ kết thúc.`);
     else if (day.intervals.some((interval, index) => index > 0 && day.intervals[index - 1].end >= interval.start))
       errors.push(`${label}: các khoảng giờ không được chồng lấn.`);
+    else if (!intervalsFitPreset(day.preset, day.intervals))
+      errors.push(`${label}: giờ đăng ký không phù hợp với ca ${presetOption(day.preset).label}.`);
   }
   if (note.length > 500) errors.push("Ghi chú không được dài quá 500 ký tự.");
   return errors;
@@ -269,6 +383,12 @@ export function formatAvailabilityCell(day: DayAvailability): string {
   if (!intervals.length && isLegacyDay(day))
     return day.periods.map((period) => PERIOD_LABELS[period]).join(" + ") || "—";
   return intervals.length ? formatAvailabilityIntervals(day) : "—";
+}
+
+export function formatAvailabilityDetail(day: DayAvailability): string {
+  const value = formatAvailabilityCell(day);
+  const reason = getOffReason(day);
+  return reason ? `${value} · ${reason}` : value;
 }
 
 export function formatHour(value: string): string {

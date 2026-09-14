@@ -33,18 +33,7 @@ export type SubmittedAvailabilityData = {
   submission: AvailabilitySubmission;
 };
 
-export type MyScheduleData = {
-  published: PublishedScheduleData | null;
-  submitted: SubmittedAvailabilityData | null;
-};
-
-export function resolveMyScheduleSections(data: MyScheduleData) {
-  return {
-    showOfficial: data.published !== null,
-    showSubmitted: data.submitted !== null,
-    submittedIsPrimary: data.published === null && data.submitted !== null,
-  };
-}
+export type MyScheduleData = SubmittedAvailabilityData | null;
 
 export function selectSubmittedAvailability(
   weeks: RegistrationWeek[],
@@ -97,8 +86,7 @@ export async function loadPublishedSchedule(
 
 export async function loadMyScheduleData(employeeId: string): Promise<MyScheduleData> {
   const supabase = getSupabase();
-  const [published, weeksResult, submissionsResult] = await Promise.all([
-    loadPublishedSchedule(employeeId),
+  const [weeksResult, submissionsResult] = await Promise.all([
     supabase
       .from("registration_weeks")
       .select("*")
@@ -113,12 +101,8 @@ export async function loadMyScheduleData(employeeId: string): Promise<MySchedule
     console.error(weeksResult.error ?? submissionsResult.error);
     throw new Error("Không tải được lịch đã đăng ký.");
   }
-  return {
-    published,
-    submitted: selectSubmittedAvailability(
-      (weeksResult.data ?? []) as RegistrationWeek[],
-      (submissionsResult.data ?? []) as AvailabilitySubmission[],
-      published?.week.weekStart,
-    ),
-  };
+  return selectSubmittedAvailability(
+    (weeksResult.data ?? []) as RegistrationWeek[],
+    (submissionsResult.data ?? []) as AvailabilitySubmission[],
+  );
 }

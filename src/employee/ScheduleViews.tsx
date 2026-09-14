@@ -5,12 +5,15 @@ import {
   DAY_LABELS,
   formatAvailabilityCell,
   formatAvailabilityPreset,
+  getOffReason,
 } from "../lib/availability";
 import { addDateOnlyDays, formatDateShort, formatWeekRange } from "../lib/week";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
-import { entryLabel } from "../scheduling/overlap";
-import { formatShiftLabel, shiftStyle } from "../scheduling/shiftStyle";
+import {
+  semanticShiftColor,
+  shiftStyle,
+} from "../scheduling/shiftStyle";
 import type {
   MyScheduleData,
   PublishedScheduleData,
@@ -55,6 +58,22 @@ function useMySchedule(employeeId: string) {
   return { data, error };
 }
 
+function submittedTimeLabel(data: SubmittedAvailabilityData): string {
+  const updated = data.submission.updated_at !== data.submission.submitted_at;
+  const value = updated
+    ? data.submission.updated_at
+    : data.submission.submitted_at;
+  const formatted = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date(value));
+  return `${updated ? "Đã cập nhật" : "Đã gửi"} ${formatted}`;
+}
+
 function ScheduleState({
   data,
   error,
@@ -82,7 +101,7 @@ function ScheduleState({
   return null;
 }
 
-function SubmittedAvailability({
+export function SubmittedAvailability({
   data,
   compact = false,
 }: {
@@ -103,6 +122,8 @@ function SubmittedAvailability({
         {DAY_KEYS.map((key, index) => {
           const day = data.submission.availability.days[key];
           const preset = formatAvailabilityPreset(day);
+          const offReason = getOffReason(day);
+          const shiftValue = formatAvailabilityCell(day);
           return (
             <article key={key}>
               <div>
@@ -110,15 +131,37 @@ function SubmittedAvailability({
                 <span>{formatDateShort(addDateOnlyDays(data.weekStart, index))}</span>
               </div>
               <div className="submitted-day-value">
-                <strong className={day.status === "off" ? "day-off" : ""}>
-                  {formatAvailabilityCell(day)}
+                <strong
+                  className={
+                    day.status === "off"
+                      ? "day-off"
+                      : "submitted-availability-shift"
+                  }
+                  style={
+                    day.status === "available"
+                      ? shiftStyle(semanticShiftColor(shiftValue))
+                      : undefined
+                  }
+                >
+                  {shiftValue}
                 </strong>
                 {preset && <span>{preset}</span>}
+                {offReason && (
+                  <span className="submitted-off-reason">
+                    Lý do: {offReason}
+                  </span>
+                )}
               </div>
             </article>
           );
         })}
       </div>
+      {data.submission.note?.trim() && (
+        <aside className="legacy-global-note">
+          <strong>Ghi chú cũ</strong>
+          <span>{data.submission.note.trim()}</span>
+        </aside>
+      )}
     </section>
   );
 }
@@ -132,81 +175,37 @@ export function MySchedulePage({
 }) {
   const { data, error } = useMySchedule(employeeId);
   if (error) return <AppState title="Không tải được lịch" message={error} />;
-  if (!data)
+  if (data === undefined)
     return <AppState title="Một chút thôi…" message="Đang tải lịch của bạn." />;
-  if (!data.published && !data.submitted)
+  return <MyScheduleContent data={data} onRegister={onRegister} />;
+}
+
+export function MyScheduleContent({
+  data,
+  onRegister,
+}: {
+  data: MyScheduleData;
+  onRegister: () => void;
+}) {
+  if (data === null)
     return (
       <AppState
-        title="Chưa có lịch"
-        message="Bạn chưa gửi đăng ký và quản lý chưa công bố lịch làm việc mới."
+        title="Chưa có lịch đã đăng ký"
+        message="Bạn chưa gửi đăng ký lịch làm việc."
         action={{ label: "Đăng ký lịch", onClick: onRegister }}
       />
     );
-
-  if (!data.published && data.submitted) {
-    return (
-      <main className="employee-schedule-page">
-        <header>
-          <span className="eyebrow">Lịch đã đăng ký</span>
-          <h1>Lịch của tôi</h1>
-          <p>{formatWeekRange(data.submitted.weekStart)}</p>
-          <div className="submitted-waiting-status">Đã gửi · Chờ quản lý xếp lịch</div>
-        </header>
-        <SubmittedAvailability data={data.submitted} />
-      </main>
-    );
-  }
-
-  const published = data.published!;
-
-  const ownEntries = published.entries.filter(
-    (entry) => entry.employeeId === published.currentEmployeeId,
-  );
   return (
     <main className="employee-schedule-page">
       <header>
-        <span className="eyebrow">Lịch chính thức</span>
+        <span className="eyebrow">Lịch đã đăng ký</span>
         <h1>Lịch của tôi</h1>
-        <p>{formatWeekRange(published.week.weekStart)}</p>
+        <p>{formatWeekRange(data.weekStart)}</p>
+        <div className="submitted-waiting-status">
+          {submittedTimeLabel(data)} · Chờ quản lý xếp lịch
+        </div>
       </header>
-      <div className="my-schedule-list">
-        {DAY_KEYS.map((key, index) => {
-          const entries = ownEntries.filter(
-            (entry) => entry.dayOfWeek === Number(key),
-          );
-          return (
-            <article key={key}>
-              <div>
-                <strong>
-                  {key === "7" ? "Chủ nhật" : `Thứ ${Number(key) + 1}`}
-                </strong>
-                <span>
-                  {formatDateShort(addDateOnlyDays(published.week.weekStart, index))}
-                </span>
-              </div>
-              {entries.length ? (
-                entries.map((entry) => {
-                  const shift = published.shifts.find(
-                    (item) => item.id === entry.shiftTypeId,
-                  );
-                  return (
-                    <span
-                      className="published-shift"
-                      style={shiftStyle(shift?.color ?? "#A6A6A6")}
-                      key={entry.id}
-                    >
-                      {formatShiftLabel(entryLabel(entry, published.shifts))}
-                    </span>
-                  );
-                })
-              ) : (
-                <span className="day-off">Nghỉ</span>
-              )}
-            </article>
-          );
-        })}
-      </div>
-      {data.submitted && <SubmittedAvailability data={data.submitted} compact />}
+      <SubmittedAvailability data={data} />
     </main>
   );
 }
@@ -233,6 +232,7 @@ export function TeamSchedulePage({ employeeId }: { employeeId: string }) {
           weekStart={data.week.weekStart}
           countOverrides={data.week.countOverrides}
           showStaffing
+          highlightEmployeeId={data.currentEmployeeId}
         />
       </div>
     </main>

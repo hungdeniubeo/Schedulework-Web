@@ -9,10 +9,18 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { formatAvailabilityCell } from "../lib/availability";
+import {
+  formatAvailabilityCell,
+  getOffReason,
+} from "../lib/availability";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { entryLabel } from "../scheduling/overlap";
-import { formatShiftLabel, shiftStyle } from "../scheduling/shiftStyle";
+import {
+  formatShiftLabel,
+  resolvedShiftColor,
+  semanticShiftColor,
+  shiftStyle,
+} from "../scheduling/shiftStyle";
 import type {
   CloudEmployee,
   Group,
@@ -37,12 +45,13 @@ function PaletteShift({
     data: { kind: "palette", shiftId: shift.id },
     disabled,
   });
+  const color = resolvedShiftColor(shift.label, shift.color);
   return (
     <button
       ref={drag.setNodeRef}
       type="button"
       style={{
-        ...shiftStyle(shift.color),
+        ...shiftStyle(color),
         transform: CSS.Translate.toString(drag.transform),
       }}
       className={`scheduler-shift ${selected ? "selected" : ""}`}
@@ -69,6 +78,7 @@ function EntryChip({
   onEdit: () => void;
 }) {
   const shift = shifts.find((item) => item.id === entry.shiftTypeId);
+  const label = entryLabel(entry, shifts);
   const drag = useDraggable({
     id: `entry:${entry.id}`,
     data: { kind: "entry", entry },
@@ -80,7 +90,9 @@ function EntryChip({
       type="button"
       className="schedule-entry-chip"
       style={{
-        ...shiftStyle(shift?.color ?? "#A6A6A6"),
+        ...shiftStyle(
+          resolvedShiftColor(label, shift?.color ?? "#A6A6A6"),
+        ),
         transform: CSS.Translate.toString(drag.transform),
       }}
       onClick={(event) => {
@@ -90,7 +102,7 @@ function EntryChip({
       {...drag.listeners}
       {...drag.attributes}
     >
-      {formatShiftLabel(entryLabel(entry, shifts))}
+      {formatShiftLabel(label)}
     </button>
   );
 }
@@ -122,6 +134,10 @@ function ScheduleCell({
     disabled: !editable,
   });
   const assignable = Boolean(selectedShiftId && editable);
+  const availabilityLabel = availability
+    ? formatAvailabilityCell(availability)
+    : "";
+  const offReason = availability ? getOffReason(availability) : "";
   return (
     <td
       ref={drop.setNodeRef}
@@ -144,8 +160,16 @@ function ScheduleCell({
       }}
     >
       {availability && (
-        <small className={`availability-hint ${availability.status}`}>
-          <span>ĐK</span> · {formatAvailabilityCell(availability)}
+        <small
+          className={`availability-hint ${availability.status}`}
+          style={
+            availability.status === "available"
+              ? shiftStyle(semanticShiftColor(availabilityLabel))
+              : undefined
+          }
+        >
+          <span>ĐK</span> · {availabilityLabel}
+          {offReason && <em title={offReason}>{offReason}</em>}
         </small>
       )}
       <div className="official-shifts">

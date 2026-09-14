@@ -67,6 +67,20 @@ describe("Admin scheduler availability guidance", () => {
     expect(render()).not.toContain("availability-hint");
   });
 
+  it("shows a compact off reason without mixing it into official shifts", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = {
+      status: "off",
+      preset: null,
+      intervals: [],
+      offReason: "Em có lịch học ở trung tâm",
+    };
+    const html = render({ [employee.id]: availability });
+    expect(html).toContain("ĐK</span> · Nghỉ");
+    expect(html).toContain("Em có lịch học ở trung tâm");
+    expect(html).toContain("official-shifts");
+  });
+
   it("makes assignable cells keyboard reachable", () => {
     const html = render({}, shift.id);
     expect(html).toContain('tabindex="0"');

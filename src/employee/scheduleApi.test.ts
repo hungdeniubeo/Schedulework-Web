@@ -1,11 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptyAvailability, createPresetDay } from "../lib/availability";
 import type { AvailabilitySubmission, RegistrationWeek } from "../types/domain";
+
+const supabase = vi.hoisted(() => ({ client: null as any }));
+
+vi.mock("../lib/config", () => ({
+  getSupabase: () => supabase.client,
+}));
+
 import {
-  resolveMyScheduleSections,
+  loadMyScheduleData,
   selectSubmittedAvailability,
-  type MyScheduleData,
-  type PublishedScheduleData,
 } from "./scheduleApi";
 
 const week = (id: string, weekStart: string): RegistrationWeek => ({
@@ -27,68 +32,55 @@ const submission = (id: string, weekId: string): AvailabilitySubmission => ({
   updated_at: "2026-09-14T04:30:00Z",
 });
 
-const published = {
-  currentEmployeeId: "employee-1",
-  week: {
-    id: "schedule-1",
-    weekStart: "2026-09-21",
-    status: "published",
-    publishedAt: "2026-09-20T00:00:00Z",
-    countOverrides: {},
-  },
-  entries: [],
-  employees: [],
-  groups: [],
-  shifts: [],
-} satisfies PublishedScheduleData;
-
 describe("my schedule availability selection", () => {
-  it("shows a submitted registration as primary before publication", () => {
-    const data: MyScheduleData = {
-      published: null,
-      submitted: { weekStart: "2026-09-21", submission: submission("s1", "w1") },
-    };
-    expect(resolveMyScheduleSections(data)).toEqual({
-      showOfficial: false,
-      showSubmitted: true,
-      submittedIsPrimary: true,
-    });
-  });
-
-  it("keeps official and submitted schedules distinct after publication", () => {
-    const data: MyScheduleData = {
-      published,
-      submitted: { weekStart: "2026-09-21", submission: submission("s1", "w1") },
-    };
-    expect(resolveMyScheduleSections(data)).toEqual({
-      showOfficial: true,
-      showSubmitted: true,
-      submittedIsPrimary: false,
-    });
-    expect(data.published?.entries).toEqual([]);
-  });
-
-  it("shows official schedule when there is no registration", () => {
-    expect(resolveMyScheduleSections({ published, submitted: null })).toEqual({
-      showOfficial: true,
-      showSubmitted: false,
-      submittedIsPrimary: false,
-    });
-  });
-
-  it("matches a submission to the exact published week and keeps custom hours", () => {
-    const older = submission("older", "w1");
-    const matching = submission("matching", "w2");
+  it("returns the latest matching employee submission", () => {
+    const older = submission("older", "week-old");
+    const matching = submission("matching", "week-current");
     matching.availability.days["2"] = createPresetDay("full");
     const day = matching.availability.days["2"];
     if ("intervals" in day) day.intervals[1].start = "18:00";
 
     const selected = selectSubmittedAvailability(
-      [week("w1", "2026-09-14"), week("w2", "2026-09-21")],
+      [week("week-old", "2026-09-14"), week("week-current", "2026-09-21")],
       [older, matching],
-      "2026-09-21",
     );
+
     expect(selected?.submission.id).toBe("matching");
     expect(selected?.submission.availability.days["2"]).toEqual(day);
+  });
+
+  it("returns null when the employee has no submission", () => {
+    expect(
+      selectSubmittedAvailability([week("week-1", "2026-09-21")], []),
+    ).toBeNull();
+  });
+});
+
+describe("loadMyScheduleData", () => {
+  beforeEach(() => {
+    const weeks = [week("week-1", "2026-09-21")];
+    const submissions = [submission("submission-1", "week-1")];
+    const weekQuery = {
+      select: () => weekQuery,
+      neq: () => weekQuery,
+      order: async () => ({ data: weeks, error: null }),
+    };
+    const submissionQuery = {
+      select: () => submissionQuery,
+      eq: async () => ({ data: submissions, error: null }),
+    };
+    const from = vi.fn((table: string) =>
+      table === "registration_weeks" ? weekQuery : submissionQuery,
+    );
+    supabase.client = { from };
+  });
+
+  it("loads only registration weeks and the employee's own submissions", async () => {
+    const data = await loadMyScheduleData("employee-1");
+
+    expect(data?.submission.id).toBe("submission-1");
+    expect(
+      supabase.client.from.mock.calls.map(([table]: [string]) => table),
+    ).toEqual(["registration_weeks", "availability_submissions"]);
   });
 });

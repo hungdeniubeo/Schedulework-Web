@@ -1,6 +1,6 @@
 begin;
 
-select plan(31);
+select plan(36);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -366,6 +366,88 @@ select ok(
     )
   ),
   'version 2 overlapping split availability fails database validation'
+);
+
+select ok(
+  private.is_valid_availability(
+    jsonb_build_object(
+      'version', 2,
+      'days', (
+        select jsonb_object_agg(
+          day::text,
+          case when day = 1 then
+            jsonb_build_object(
+              'status', 'off',
+              'preset', null,
+              'intervals', '[]'::jsonb,
+              'offReason', 'Em có lịch học'
+            )
+          else '{"status":"off","preset":null,"intervals":[]}'::jsonb end
+        )
+        from generate_series(1, 7) as day
+      )
+    )
+  ),
+  'version 2 accepts an optional per-day off reason'
+);
+
+select ok(
+  not private.is_valid_availability(
+    jsonb_build_object(
+      'version', 2,
+      'days', (
+        select jsonb_object_agg(
+          day::text,
+          case when day = 1 then
+            jsonb_build_object(
+              'status', 'off',
+              'preset', null,
+              'intervals', '[]'::jsonb,
+              'offReason', repeat('x', 121)
+            )
+          else '{"status":"off","preset":null,"intervals":[]}'::jsonb end
+        )
+        from generate_series(1, 7) as day
+      )
+    )
+  ),
+  'version 2 rejects an oversized per-day off reason'
+);
+
+select ok(
+  not private.is_valid_availability(
+    jsonb_build_object(
+      'version', 2,
+      'days', (
+        select jsonb_object_agg(
+          day::text,
+          case when day = 1 then
+            '{"status":"available","preset":"morning","intervals":[{"start":"10:00","end":"23:00"}]}'::jsonb
+          else '{"status":"off","preset":null,"intervals":[]}'::jsonb end
+        )
+        from generate_series(1, 7) as day
+      )
+    )
+  ),
+  'version 2 rejects hours outside the selected preset window'
+);
+
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.consolidate_schedule_entry(uuid,uuid,smallint,uuid,text,integer,uuid[])',
+    'EXECUTE'
+  ),
+  'authenticated admin clients can invoke schedule consolidation'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.consolidate_schedule_entry(uuid,uuid,smallint,uuid,text,integer,uuid[])',
+    'EXECUTE'
+  ),
+  'anonymous clients cannot invoke schedule consolidation'
 );
 
 select * from finish();

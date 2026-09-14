@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   PRESET_OPTIONS,
+  HOUR_OPTIONS,
   availabilityByEmployee,
   createEmptyAvailability,
   createPresetDay,
   formatAvailabilityCell,
+  formatAvailabilityDetail,
   formatAvailabilityPreset,
+  getOffReason,
+  getIntervals,
+  hourOptionsForInterval,
   normalizeAvailability,
+  normalizeDayAvailability,
   normalizeOffDay,
+  prepareAvailabilityForSave,
   validateAvailability,
 } from "./availability";
 import type { Availability, AvailabilityPreset } from "../types/domain";
@@ -41,6 +48,58 @@ describe("availability presets", () => {
     expect(PRESET_OPTIONS.map((option) => option.value)).toEqual(
       expectedPresets.map(([preset]) => preset),
     );
+  });
+
+  it("describes adjustable picker ranges without changing defaults", () => {
+    expect(
+      Object.fromEntries(
+        PRESET_OPTIONS.map((option) => [option.value, option.pickerDescription]),
+      ),
+    ).toEqual({
+      morning: "10h–14h",
+      morning_afternoon: "10h–17h/18h",
+      evening: "17h/18h–23h",
+      full: "10h–14h / 17h/18h–23h",
+      afternoon_evening: "14h–23h",
+    });
+  });
+
+  it("offers only restaurant whole hours", () => {
+    expect(HOUR_OPTIONS).toEqual([
+      "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00",
+      "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
+    ]);
+  });
+
+  it("filters start and end choices by preset and interval", () => {
+    const morning = createPresetDay("morning");
+    expect(hourOptionsForInterval("morning", 0, "start", getIntervals(morning))).toEqual([
+      "10:00", "11:00", "12:00", "13:00",
+    ]);
+    expect(hourOptionsForInterval("morning", 0, "end", getIntervals(morning))).toEqual([
+      "11:00", "12:00", "13:00", "14:00",
+    ]);
+
+    const full = createPresetDay("full");
+    expect(hourOptionsForInterval("full", 0, "end", getIntervals(full))).not.toContain("23:00");
+    expect(hourOptionsForInterval("full", 1, "start", getIntervals(full))).not.toContain("10:00");
+    expect(hourOptionsForInterval("full", 1, "end", getIntervals(full))).toContain("23:00");
+  });
+
+  it("resets stale impossible preset hours and rejects them before saving", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = {
+      status: "available",
+      preset: "morning",
+      intervals: [{ start: "10:00", end: "23:00" }],
+    };
+
+    expect(validateAvailability(availability, "")).toContain(
+      "Thứ 2: giờ đăng ký không phù hợp với ca Sáng.",
+    );
+    expect(normalizeAvailability(availability).days["1"]).toMatchObject({
+      intervals: [{ start: "10:00", end: "14:00" }],
+    });
   });
 });
 
@@ -90,7 +149,12 @@ describe("validateAvailability", () => {
         preset: "morning",
         intervals: [{ start: "10:00", end: "14:00" }],
       }),
-    ).toEqual({ status: "off", preset: null, intervals: [] });
+    ).toEqual({
+      status: "off",
+      preset: null,
+      intervals: [],
+      offReason: null,
+    });
   });
 
   it("rejects minute values and reversed hours", () => {
@@ -130,6 +194,66 @@ describe("validateAvailability", () => {
     );
   });
 
+  it("saves and restores an optional trimmed reason for an off day", () => {
+    const availability = createEmptyAvailability();
+    availability.days["3"] = {
+      status: "off",
+      preset: null,
+      intervals: [],
+      offReason: "  Em có lịch học  ",
+    };
+
+    const saved = prepareAvailabilityForSave(availability);
+    expect(getOffReason(saved.days["3"])).toBe("Em có lịch học");
+    expect(getOffReason(normalizeAvailability(saved).days["3"])).toBe(
+      "Em có lịch học",
+    );
+    expect(formatAvailabilityDetail(saved.days["3"])).toBe(
+      "Nghỉ · Em có lịch học",
+    );
+  });
+
+  it("accepts an off day without a reason", () => {
+    const availability = createEmptyAvailability();
+    expect(validateAvailability(availability, "")).toEqual([]);
+    expect(getOffReason(availability.days["1"])).toBe("");
+  });
+
+  it("clears stale off reasons from working days", () => {
+    const normalized = normalizeDayAvailability({
+      status: "available",
+      preset: "morning",
+      intervals: [{ start: "10:00", end: "14:00" }],
+      offReason: "Không được lưu",
+    });
+    expect(normalized).toMatchObject({ status: "available", offReason: null });
+    expect(formatAvailabilityCell(normalized)).toBe("10h–14h");
+  });
+
+  it("rejects an off reason longer than 120 characters", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = {
+      status: "off",
+      preset: null,
+      intervals: [],
+      offReason: "x".repeat(121),
+    };
+    expect(validateAvailability(availability, "")).toContain(
+      "Thứ 2: lý do nghỉ không được dài quá 120 ký tự.",
+    );
+  });
+
+  it("keeps older v2 days without offReason readable", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = {
+      status: "off",
+      preset: null,
+      intervals: [],
+    };
+    expect(validateAvailability(availability, "")).toEqual([]);
+    expect(getOffReason(availability.days["1"])).toBe("");
+  });
+
   it("keeps valid legacy v1 availability readable and normalizes it to v2", () => {
     const legacy: Availability = {
       version: 1,
@@ -154,6 +278,7 @@ describe("validateAvailability", () => {
       status: "available",
       preset: "morning_afternoon",
       intervals: [{ start: "10:00", end: "18:00" }],
+      offReason: null,
     });
   });
 
@@ -175,7 +300,7 @@ describe("validateAvailability", () => {
     };
     expect(formatAvailabilityCell(legacy.days["1"])).toBe("10:15–14:45");
     expect(normalizeAvailability(legacy).days["1"]).toMatchObject({
-      intervals: [{ start: "10:00", end: "15:00" }],
+      intervals: [{ start: "10:00", end: "14:00" }],
     });
   });
 

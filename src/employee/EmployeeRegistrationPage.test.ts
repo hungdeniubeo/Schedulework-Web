@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatSubmissionStatus,
   getSaveSuccessMessage,
+  legacyGlobalNoteForSave,
 } from "./EmployeeRegistrationPage";
 
 describe("employee availability save feedback", () => {
@@ -21,5 +22,17 @@ describe("employee availability save feedback", () => {
     expect(
       formatSubmissionStatus({ ...base, updatedAt: "2026-09-14T05:45:00Z" }),
     ).toBe("Đã cập nhật lúc 12:45");
+  });
+
+  it("preserves an existing global note without assigning it to a day", () => {
+    expect(
+      legacyGlobalNoteForSave({
+        availability: { version: 2, days: {} },
+        note: "Ghi chú lịch cũ",
+        submittedAt: "2026-09-14T04:30:00Z",
+        updatedAt: "2026-09-14T04:30:00Z",
+      }),
+    ).toBe("Ghi chú lịch cũ");
+    expect(legacyGlobalNoteForSave(null)).toBe("");
   });
 });

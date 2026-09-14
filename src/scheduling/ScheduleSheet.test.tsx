@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ScheduleSheet } from "./ScheduleSheet";
-import type { CloudEmployee } from "./types";
+import type { CloudEmployee, ScheduleEntry, ShiftType } from "./types";
 
 const employee = (positionName: string | null): CloudEmployee => ({
   id: "employee-1",
@@ -37,5 +37,57 @@ describe("ScheduleSheet employee labels", () => {
 
   it("keeps private availability hints out of the published/export sheet", () => {
     expect(renderEmployee("Bếp trưởng")).not.toContain("ĐK");
+  });
+
+  it("keeps unassigned official cells blank instead of labeling them off", () => {
+    const html = renderEmployee("Bếp trưởng");
+    expect(html).not.toContain("Nghỉ");
+    expect(html.match(/<td><\/td>/g)).toHaveLength(7);
+  });
+
+  it("renders an assigned official shift", () => {
+    const shift: ShiftType = {
+      id: "shift-1",
+      label: "10:00-14:00",
+      color: "#000000",
+      isPreset: true,
+    };
+    const entry: ScheduleEntry = {
+      id: "entry-1",
+      scheduleWeekId: "week-1",
+      employeeId: "employee-1",
+      dayOfWeek: 1,
+      shiftTypeId: shift.id,
+      customStart: null,
+      customEnd: null,
+      customLabel: null,
+      sortOrderInCell: 0,
+    };
+    const html = renderToStaticMarkup(
+      <ScheduleSheet
+        groups={[]}
+        employees={[employee(null)]}
+        entries={[entry]}
+        shifts={[shift]}
+        weekStart="2026-09-14"
+      />,
+    );
+    expect(html).toContain("10:00 – 14:00");
+  });
+
+  it("adds the employee-only current-row marker only when requested", () => {
+    const highlighted = renderToStaticMarkup(
+      <ScheduleSheet
+        groups={[]}
+        employees={[employee(null)]}
+        entries={[]}
+        shifts={[]}
+        weekStart="2026-09-14"
+        highlightEmployeeId="employee-1"
+      />,
+    );
+    expect(highlighted).toContain("current-employee-row");
+    expect(highlighted).toContain(">Bạn<");
+    expect(renderEmployee(null)).not.toContain(">Bạn<");
   });
 });
