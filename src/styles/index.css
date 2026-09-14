@@ -709,15 +709,36 @@ textarea:disabled {
   gap: 10px;
 }
 .employee-row {
-  padding: 15px;
+  padding: 11px 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
 }
-.employee-row > div:first-child {
+.employee-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.employee-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.employee-identity strong {
+  overflow-wrap: anywhere;
+}
+.position-badge {
+  display: inline-flex;
+  padding: 2px 7px;
+  border: 1px solid #cfe0db;
+  border-radius: 999px;
+  color: #35675c;
+  background: #f1f7f5;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
 }
 .status-dot-label {
   font-size: 0.78rem;
@@ -873,26 +894,80 @@ textarea:disabled {
   grid-template-columns: 1fr 1fr auto;
   gap: 10px;
 }
-.employee-name-input {
-  border: 0;
-  padding: 0;
-  min-height: 34px;
+.position-manager {
+  margin: 12px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfdfc;
+}
+.position-manager > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--primary);
   font-weight: 750;
 }
+.position-manager > summary small {
+  color: var(--muted);
+  font-weight: 650;
+}
+.position-create-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+.position-list {
+  display: grid;
+  gap: 7px;
+  padding: 0 12px 12px;
+}
+.position-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.position-row > input {
+  min-width: 0;
+  min-height: 36px;
+}
+.position-actions,
+.employee-order-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.position-actions .button,
+.employee-order-actions .button {
+  min-height: 34px;
+  padding: 6px 9px;
+}
+.position-empty {
+  color: var(--muted);
+}
 .employee-settings {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 12px;
 }
 .employee-advanced {
-  margin-top: 10px;
-  border-top: 1px solid #edf2f0;
-  padding-top: 9px;
+  margin-top: 7px;
 }
 .employee-advanced summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
   color: var(--primary);
   font-size: 0.82rem;
   font-weight: 750;
+}
+.employee-advanced summary > span:first-child {
+  color: var(--muted);
+  font-weight: 600;
 }
 .employee-flags {
   grid-column: 1 / -1;
@@ -901,6 +976,21 @@ textarea:disabled {
   gap: 12px;
   color: var(--muted);
   font-size: 0.8rem;
+}
+.employee-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+  border-top: 1px solid #edf2f0;
+}
+.employee-order-actions {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 .scheduler-page {
   display: grid;
@@ -1310,9 +1400,23 @@ textarea:disabled {
   .inline-form,
   .deadline-edit,
   .employee-create-form,
+  .position-create-form,
   .employee-settings,
   .scheduler-filters {
     grid-template-columns: 1fr;
+  }
+  .position-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .position-actions {
+    justify-content: flex-end;
+  }
+  .employee-summary {
+    align-items: flex-start;
+  }
+  .status-dot-label {
+    flex: 0 0 auto;
   }
   .employee-nav > strong {
     display: none;

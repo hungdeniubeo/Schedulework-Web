@@ -4,18 +4,22 @@ export type Group = {
   sortOrder: number;
 };
 
+export type Position = {
+  id: string;
+  name: string;
+  sortOrder: number;
+};
+
 export type CloudEmployee = {
   id: string;
   name: string;
   active: boolean;
   groupId: string | null;
+  positionId: string | null;
+  positionName: string | null;
   sortOrder: number;
-  isHeadChef: boolean;
-  isExecutiveChef: boolean;
-  isManager: boolean;
   isFullTime: boolean;
   isNew: boolean;
-  roleLabel: string | null;
 };
 
 export type ShiftType = {

@@ -137,7 +137,7 @@ function ScheduleSection({
         <tr key={employee.id}>
           <th>
             <strong>{employee.name}</strong>
-            {employee.roleLabel && <small>{employee.roleLabel}</small>}
+            {employee.positionName && <small>{employee.positionName}</small>}
           </th>
           {DAY_KEYS.map((key) => {
             const day = Number(key);
