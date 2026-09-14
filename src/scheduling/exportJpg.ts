@@ -1,5 +1,3 @@
-import html2canvas from "html2canvas";
-
 export async function exportScheduleJpg(
   elementId: string,
   weekStart: string,
@@ -15,6 +13,7 @@ export async function exportScheduleJpg(
   );
   if (!Number.isFinite(scale) || scale <= 0)
     throw new Error("Kích thước lịch không hợp lệ.");
+  const { default: html2canvas } = await import("html2canvas");
   const canvas = await html2canvas(element, {
     backgroundColor: "#ffffff",
     scale,
@@ -28,7 +27,7 @@ export async function exportScheduleJpg(
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `ScheduleWork-${weekStart}.jpg`;
+  anchor.download = `schedule-${weekStart}.jpg`;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }

@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
 import { configurationError, getSupabase } from "../lib/config";
-import { AdminDashboard } from "./AdminDashboard";
 import { isAdmin } from "./api";
+
+const AdminDashboard = lazy(() =>
+  import("./AdminDashboard").then(({ AdminDashboard }) => ({
+    default: AdminDashboard,
+  })),
+);
+
+const dashboardFallback = (
+  <AppState title="Một chút thôi…" message="Đang tải dashboard." />
+);
 
 type Props = {
   loginRoute: boolean;
@@ -101,11 +110,13 @@ export function AdminApp({ loginRoute, section, navigate }: Props) {
       />
     );
   return (
-    <AdminDashboard
-      session={session}
-      section={section}
-      navigate={navigate}
-      onLogout={logout}
-    />
+    <Suspense fallback={dashboardFallback}>
+      <AdminDashboard
+        session={session}
+        section={section}
+        navigate={navigate}
+        onLogout={logout}
+      />
+    </Suspense>
   );
 }

@@ -1,12 +1,30 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
 import { employeeDestination } from "../auth/access";
 import { configurationError, getSupabase } from "../lib/config";
-import { EmployeeRegistrationPage } from "./EmployeeRegistrationPage";
-import { MySchedulePage, TeamSchedulePage } from "./ScheduleViews";
 import { getEmployeeAccess } from "./api";
+
+const EmployeeRegistrationPage = lazy(() =>
+  import("./EmployeeRegistrationPage").then(({ EmployeeRegistrationPage }) => ({
+    default: EmployeeRegistrationPage,
+  })),
+);
+const MySchedulePage = lazy(() =>
+  import("./ScheduleViews").then(({ MySchedulePage }) => ({
+    default: MySchedulePage,
+  })),
+);
+const TeamSchedulePage = lazy(() =>
+  import("./ScheduleViews").then(({ TeamSchedulePage }) => ({
+    default: TeamSchedulePage,
+  })),
+);
+
+const sectionFallback = (
+  <AppState title="Một chút thôi…" message="Đang tải nội dung." />
+);
 
 type Props = {
   loginRoute: boolean;
@@ -143,13 +161,15 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
           Đăng xuất
         </button>
       </nav>
-      {section === "availability" ? (
-        <EmployeeRegistrationPage onLogout={logout} />
-      ) : section === "my-schedule" ? (
-        <MySchedulePage />
-      ) : (
-        <TeamSchedulePage />
-      )}
+      <Suspense fallback={sectionFallback}>
+        {section === "availability" ? (
+          <EmployeeRegistrationPage onLogout={logout} />
+        ) : section === "my-schedule" ? (
+          <MySchedulePage />
+        ) : (
+          <TeamSchedulePage />
+        )}
+      </Suspense>
     </div>
   );
 }

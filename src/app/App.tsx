@@ -1,10 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
-import { AdminApp } from "../admin/AdminApp";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { AppState } from "../components/AppState";
-import { EmployeeApp } from "../employee/EmployeeApp";
-import { ChangePasswordPage } from "../employee/ChangePasswordPage";
 import { configurationError } from "../lib/config";
 import { matchRoute } from "./router";
+
+const AdminApp = lazy(() =>
+  import("../admin/AdminApp").then(({ AdminApp }) => ({ default: AdminApp })),
+);
+const EmployeeApp = lazy(() =>
+  import("../employee/EmployeeApp").then(({ EmployeeApp }) => ({
+    default: EmployeeApp,
+  })),
+);
+const ChangePasswordPage = lazy(() =>
+  import("../employee/ChangePasswordPage").then(({ ChangePasswordPage }) => ({
+    default: ChangePasswordPage,
+  })),
+);
+
+const routeFallback = (
+  <AppState
+    title="Một chút thôi…"
+    message="Đang chuẩn bị trang."
+  />
+);
 
 export default function App() {
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -23,22 +41,30 @@ export default function App() {
     return <AppState title="Thiếu cấu hình" message={configurationError} />;
   if (route.name === "employee" || route.name === "employee-login") {
     return (
-      <EmployeeApp
-        loginRoute={route.name === "employee-login"}
-        section={route.name === "employee" ? route.section : "availability"}
-        navigate={navigate}
-      />
+      <Suspense fallback={routeFallback}>
+        <EmployeeApp
+          loginRoute={route.name === "employee-login"}
+          section={route.name === "employee" ? route.section : "availability"}
+          navigate={navigate}
+        />
+      </Suspense>
     );
   }
   if (route.name === "change-password")
-    return <ChangePasswordPage navigate={navigate} />;
+    return (
+      <Suspense fallback={routeFallback}>
+        <ChangePasswordPage navigate={navigate} />
+      </Suspense>
+    );
   if (route.name === "admin" || route.name === "admin-login")
     return (
-      <AdminApp
-        loginRoute={route.name === "admin-login"}
-        section={route.name === "admin" ? route.section : "dashboard"}
-        navigate={navigate}
-      />
+      <Suspense fallback={routeFallback}>
+        <AdminApp
+          loginRoute={route.name === "admin-login"}
+          section={route.name === "admin" ? route.section : "dashboard"}
+          navigate={navigate}
+        />
+      </Suspense>
     );
   return (
     <AppState

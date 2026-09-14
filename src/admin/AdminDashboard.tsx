@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { AppState } from "../components/AppState";
 import {
   createEmployeeAccount,
   resetEmployeePassword,
@@ -12,13 +13,6 @@ import type {
   AvailabilitySubmission,
   RegistrationWeekStatus,
 } from "../types/domain";
-import { AdminMatrix } from "./AdminMatrix";
-import { EmployeeManager } from "./EmployeeManager";
-import { SubmissionDialog } from "./SubmissionDialog";
-import { WeekManager } from "./WeekManager";
-import { AdminScheduler } from "./AdminScheduler";
-import { GroupManager } from "./GroupManager";
-import { ShiftManager } from "./ShiftManager";
 import {
   createWeek,
   listEmployees,
@@ -27,6 +21,38 @@ import {
   saveAdminSubmission,
   updateWeek,
 } from "./api";
+
+const AdminMatrix = lazy(() =>
+  import("./AdminMatrix").then(({ AdminMatrix }) => ({ default: AdminMatrix })),
+);
+const EmployeeManager = lazy(() =>
+  import("./EmployeeManager").then(({ EmployeeManager }) => ({
+    default: EmployeeManager,
+  })),
+);
+const SubmissionDialog = lazy(() =>
+  import("./SubmissionDialog").then(({ SubmissionDialog }) => ({
+    default: SubmissionDialog,
+  })),
+);
+const WeekManager = lazy(() =>
+  import("./WeekManager").then(({ WeekManager }) => ({ default: WeekManager })),
+);
+const AdminScheduler = lazy(() =>
+  import("./AdminScheduler").then(({ AdminScheduler }) => ({
+    default: AdminScheduler,
+  })),
+);
+const GroupManager = lazy(() =>
+  import("./GroupManager").then(({ GroupManager }) => ({ default: GroupManager })),
+);
+const ShiftManager = lazy(() =>
+  import("./ShiftManager").then(({ ShiftManager }) => ({ default: ShiftManager })),
+);
+
+const sectionFallback = (
+  <AppState title="Một chút thôi…" message="Đang tải nội dung." />
+);
 
 type Props = {
   session: Session;
@@ -236,17 +262,25 @@ export function AdminDashboard({
             </button>
           </div>
         ) : section === "employees" ? (
-          <EmployeeManager
-            onAdd={addEmployee}
-            onResetPassword={resetPassword}
-            onChanged={refreshBase}
-          />
+          <Suspense fallback={sectionFallback}>
+            <EmployeeManager
+              onAdd={addEmployee}
+              onResetPassword={resetPassword}
+              onChanged={refreshBase}
+            />
+          </Suspense>
         ) : section === "groups" ? (
-          <GroupManager />
+          <Suspense fallback={sectionFallback}>
+            <GroupManager />
+          </Suspense>
         ) : section === "shifts" ? (
-          <ShiftManager />
+          <Suspense fallback={sectionFallback}>
+            <ShiftManager />
+          </Suspense>
         ) : section === "schedule" ? (
-          <AdminScheduler />
+          <Suspense fallback={sectionFallback}>
+            <AdminScheduler />
+          </Suspense>
         ) : section === "dashboard" ? (
           <div className="admin-home-grid">
             <button
@@ -278,59 +312,63 @@ export function AdminDashboard({
           </div>
         ) : (
           <>
-            <div className="dashboard-grid">
-              <WeekManager
-                weeks={weeks}
-                selectedId={selectedWeekId}
-                busy={weekBusy}
-                onSelect={setSelectedWeekId}
-                onCreate={addWeek}
-                onUpdate={patchWeek}
-              />
-              <section className="panel summary-panel">
-                <span className="eyebrow">Tiến độ đăng ký</span>
-                <strong>
-                  {submittedActive} / {activeEmployees.length}
-                </strong>
-                <p>nhân viên đã đăng ký</p>
-                {selectedWeek && (
-                  <span
-                    className={`status-badge ${selectedWeek.status === "archived" ? "archived" : selectedWeekLocked ? "locked" : "open"}`}
-                  >
-                    {selectedWeek.status === "archived"
-                      ? "Đã lưu trữ"
-                      : selectedWeekLocked
-                        ? "Đã khóa"
-                        : "Đang mở"}
-                  </span>
-                )}
-              </section>
-            </div>
-            {selectedWeek ? (
-              <AdminMatrix
-                employees={employees}
-                submissions={submissions}
-                onSelect={(employee, submission) =>
-                  setSelectedSubmission({ employee, submission })
-                }
-              />
-            ) : (
-              <div className="panel empty-panel">
-                Hãy tạo một tuần đăng ký để bắt đầu.
+            <Suspense fallback={sectionFallback}>
+              <div className="dashboard-grid">
+                <WeekManager
+                  weeks={weeks}
+                  selectedId={selectedWeekId}
+                  busy={weekBusy}
+                  onSelect={setSelectedWeekId}
+                  onCreate={addWeek}
+                  onUpdate={patchWeek}
+                />
+                <section className="panel summary-panel">
+                  <span className="eyebrow">Tiến độ đăng ký</span>
+                  <strong>
+                    {submittedActive} / {activeEmployees.length}
+                  </strong>
+                  <p>nhân viên đã đăng ký</p>
+                  {selectedWeek && (
+                    <span
+                      className={`status-badge ${selectedWeek.status === "archived" ? "archived" : selectedWeekLocked ? "locked" : "open"}`}
+                    >
+                      {selectedWeek.status === "archived"
+                        ? "Đã lưu trữ"
+                        : selectedWeekLocked
+                          ? "Đã khóa"
+                          : "Đang mở"}
+                    </span>
+                  )}
+                </section>
               </div>
-            )}
+              {selectedWeek ? (
+                <AdminMatrix
+                  employees={employees}
+                  submissions={submissions}
+                  onSelect={(employee, submission) =>
+                    setSelectedSubmission({ employee, submission })
+                  }
+                />
+              ) : (
+                <div className="panel empty-panel">
+                  Hãy tạo một tuần đăng ký để bắt đầu.
+                </div>
+              )}
+            </Suspense>
           </>
         )}
       </main>
       {selectedSubmission && selectedWeek && (
-        <SubmissionDialog
-          employee={selectedSubmission.employee}
-          submission={selectedSubmission.submission}
-          weekStart={selectedWeek.week_start}
-          saving={savingSubmission}
-          onClose={() => setSelectedSubmission(null)}
-          onSave={saveDetail}
-        />
+        <Suspense fallback={sectionFallback}>
+          <SubmissionDialog
+            employee={selectedSubmission.employee}
+            submission={selectedSubmission.submission}
+            weekStart={selectedWeek.week_start}
+            saving={savingSubmission}
+            onClose={() => setSelectedSubmission(null)}
+            onSave={saveDetail}
+          />
+        </Suspense>
       )}
     </div>
   );
