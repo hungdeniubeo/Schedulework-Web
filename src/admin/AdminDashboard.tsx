@@ -1,4 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import {
@@ -87,6 +95,7 @@ export function AdminDashboard({
   const [selectedSubmission, setSelectedSubmission] =
     useState<SelectedSubmission | null>(null);
   const [savingSubmission, setSavingSubmission] = useState(false);
+  const submissionsRequest = useRef(0);
 
   const refreshBase = useCallback(async () => {
     const [nextEmployees, nextWeeks] = await Promise.all([
@@ -124,19 +133,27 @@ export function AdminDashboard({
   }, [refreshBase, section]);
 
   const refreshSubmissions = useCallback(async () => {
-    if (!selectedWeekId) return setSubmissions([]);
+    const request = ++submissionsRequest.current;
+    if (!selectedWeekId) {
+      setSubmissions([]);
+      return;
+    }
     try {
-      setSubmissions(await listSubmissions(selectedWeekId));
+      const nextSubmissions = await listSubmissions(selectedWeekId);
+      if (request === submissionsRequest.current)
+        setSubmissions(nextSubmissions);
     } catch (reason) {
       console.error(reason);
-      setError(
-        reason instanceof Error ? reason.message : "Không tải được đăng ký.",
-      );
+      if (request === submissionsRequest.current)
+        setError(
+          reason instanceof Error ? reason.message : "Không tải được đăng ký.",
+        );
     }
   }, [selectedWeekId]);
 
   useEffect(() => {
-    if (section === "availability") void refreshSubmissions();
+    if (section === "availability" || section === "dashboard")
+      void refreshSubmissions();
   }, [refreshSubmissions, section]);
 
   const selectedWeek = weeks.find((week) => week.id === selectedWeekId) ?? null;

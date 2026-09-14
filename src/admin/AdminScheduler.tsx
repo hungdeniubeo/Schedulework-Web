@@ -179,6 +179,7 @@ export function AdminScheduler() {
   const [availabilityByEmployee, setAvailabilityByEmployee] = useState<
     Record<string, Availability>
   >({});
+  const [weekDataLoading, setWeekDataLoading] = useState(false);
   const entriesRequest = useRef(0);
   const availabilityRequest = useRef(0);
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
@@ -236,12 +237,21 @@ export function AdminScheduler() {
     }
   }, [weekStart]);
   useEffect(() => {
-    Promise.all([loadEntries(), loadAvailability()]).catch((reason) =>
-      setError(reason.message),
-    );
+    let active = true;
+    setEntries([]);
+    setAvailabilityByEmployee({});
+    setWeekDataLoading(Boolean(weekId));
+    Promise.all([loadEntries(), loadAvailability()])
+      .catch((reason) => active && setError(reason.message))
+      .finally(() => active && setWeekDataLoading(false));
+    return () => {
+      active = false;
+      entriesRequest.current += 1;
+      availabilityRequest.current += 1;
+    };
   }, [loadAvailability, loadEntries]);
 
-  const editable = week?.status === "draft";
+  const editable = week?.status === "draft" && !weekDataLoading;
   const filteredEmployees = useMemo(
     () =>
       employees.filter(
@@ -444,7 +454,7 @@ export function AdminScheduler() {
               {week.status === "published" && (
                 <button
                   className="button secondary"
-                  disabled={busy}
+                  disabled={busy || weekDataLoading}
                   onClick={() => void setStatus("draft")}
                 >
                   Bắt đầu chỉnh sửa
@@ -453,7 +463,7 @@ export function AdminScheduler() {
               {week.status === "draft" && (
                 <button
                   className="button primary"
-                  disabled={busy || entries.length === 0}
+                  disabled={busy || weekDataLoading || entries.length === 0}
                   onClick={() => void setStatus("published")}
                 >
                   Công bố lịch
@@ -461,7 +471,7 @@ export function AdminScheduler() {
               )}
               <button
                 className="button secondary"
-                disabled={busy}
+                disabled={busy || weekDataLoading}
                 onClick={() =>
                   void exportScheduleJpg(
                     "cloud-schedule-export",
@@ -474,7 +484,7 @@ export function AdminScheduler() {
               {week.status !== "archived" && (
                 <button
                   className="button ghost"
-                  disabled={busy}
+                  disabled={busy || weekDataLoading}
                   onClick={() => void setStatus("archived")}
                 >
                   Archive
@@ -485,7 +495,15 @@ export function AdminScheduler() {
         </div>
       </section>
       <section className="panel scheduler-filters">
-        <select value={weekId} onChange={(e) => setWeekId(e.target.value)}>
+        <select
+          value={weekId}
+          onChange={(event) => {
+            setWeekDataLoading(true);
+            setEntries([]);
+            setAvailabilityByEmployee({});
+            setWeekId(event.target.value);
+          }}
+        >
           <option value="">Chọn tuần</option>
           {weeks.map((item) => (
             <option key={item.id} value={item.id}>
@@ -512,12 +530,13 @@ export function AdminScheduler() {
         <button
           type="button"
           className="button secondary"
-          disabled={busy}
-          onClick={() =>
-            void Promise.all([loadBase(), loadEntries(), loadAvailability()]).catch(
-              (reason) => setError(reason.message),
-            )
-          }
+          disabled={busy || weekDataLoading}
+          onClick={() => {
+            setWeekDataLoading(true);
+            void Promise.all([loadBase(), loadEntries(), loadAvailability()])
+              .catch((reason) => setError(reason.message))
+              .finally(() => setWeekDataLoading(false));
+          }}
         >
           Làm mới
         </button>
