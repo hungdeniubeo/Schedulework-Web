@@ -2,6 +2,9 @@ node_modules/
 dist/
 coverage/
 .wrangler/
+.serena/
+supabase/.temp/
+docs/superpowers/
 *.tsbuildinfo
 *.log
 .env

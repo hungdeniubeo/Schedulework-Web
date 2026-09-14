@@ -18,9 +18,12 @@ import {
   saveEmployeeAvailability,
 } from "./api";
 
-type Props = { onLogout: () => Promise<void> };
+type Props = {
+  onLogout: () => Promise<void>;
+  employee: { id: string; name: string; active: boolean };
+};
 
-export function EmployeeRegistrationPage({ onLogout }: Props) {
+export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
   const [context, setContext] = useState<EmployeePortalData | null>(null);
   const [availability, setAvailability] = useState<Availability>(
     createEmptyAvailability,
@@ -44,7 +47,7 @@ export function EmployeeRegistrationPage({ onLogout }: Props) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    loadEmployeePortal()
+    loadEmployeePortal(employee)
       .then((data) => {
         if (!active) return;
         setContext(data);
@@ -73,7 +76,7 @@ export function EmployeeRegistrationPage({ onLogout }: Props) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [employee]);
 
   async function submit() {
     if (

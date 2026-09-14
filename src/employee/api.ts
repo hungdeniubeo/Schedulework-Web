@@ -39,23 +39,31 @@ export async function getOwnProfile(user: User): Promise<Profile | null> {
 export async function getEmployeeAccess(user: User): Promise<{
   allowed: boolean;
   mustChangePassword: boolean;
+  employee: { id: string; name: string; active: boolean } | null;
 }> {
-  const profile = await getOwnProfile(user);
+  const [profile, employeeResult] = await Promise.all([
+    getOwnProfile(user),
+    getSupabase().rpc("my_employee").maybeSingle(),
+  ]);
   if (profile?.role !== "employee") {
-    return { allowed: false, mustChangePassword: false };
+    return { allowed: false, mustChangePassword: false, employee: null };
   }
 
-  const { data, error } = await getSupabase().rpc("my_employee").maybeSingle();
-  if (error) {
-    console.error(error);
+  if (employeeResult.error) {
+    console.error(employeeResult.error);
     throw new EmployeePortalError(
       "Không kiểm tra được trạng thái nhân viên.",
       "EMPLOYEE_ERROR",
     );
   }
   return {
-    allowed: hasEmployeeAccess(profile, data !== null),
+    allowed: hasEmployeeAccess(profile, employeeResult.data !== null),
     mustChangePassword: profile.must_change_password,
+    employee: employeeResult.data as {
+      id: string;
+      name: string;
+      active: boolean;
+    } | null,
   };
 }
 
@@ -75,27 +83,32 @@ function chooseWeek(weeks: RegistrationWeek[]): RegistrationWeek | null {
   );
 }
 
-export async function loadEmployeePortal(): Promise<EmployeePortalData> {
+export async function loadEmployeePortal(
+  knownEmployee?: { id: string; name: string; active: boolean },
+): Promise<EmployeePortalData> {
   const supabase = getSupabase();
-  const employeeResult = await supabase.rpc("my_employee").maybeSingle();
-  if (employeeResult.error) {
-    console.error(employeeResult.error);
-    throw new EmployeePortalError(
-      "Không tải được thông tin nhân viên.",
-      "EMPLOYEE_ERROR",
-    );
+  let employee = knownEmployee;
+  if (!employee) {
+    const employeeResult = await supabase.rpc("my_employee").maybeSingle();
+    if (employeeResult.error) {
+      console.error(employeeResult.error);
+      throw new EmployeePortalError(
+        "Không tải được thông tin nhân viên.",
+        "EMPLOYEE_ERROR",
+      );
+    }
+    if (!employeeResult.data) {
+      throw new EmployeePortalError(
+        "Tài khoản nhân viên chưa được kích hoạt hoặc đã ngừng hoạt động.",
+        "EMPLOYEE_INACTIVE",
+      );
+    }
+    employee = employeeResult.data as {
+      id: string;
+      name: string;
+      active: boolean;
+    };
   }
-  if (!employeeResult.data) {
-    throw new EmployeePortalError(
-      "Tài khoản nhân viên chưa được kích hoạt hoặc đã ngừng hoạt động.",
-      "EMPLOYEE_INACTIVE",
-    );
-  }
-  const employee = employeeResult.data as {
-    id: string;
-    name: string;
-    active: boolean;
-  };
 
   const weeksResult = await supabase
     .from("registration_weeks")

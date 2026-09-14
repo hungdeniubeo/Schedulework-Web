@@ -16,6 +16,7 @@ import {
   clearScheduleWeek,
   listGroups,
   listScheduleEntries,
+  listScheduleAvailability,
   listScheduleWeeks,
   listSchedulerEmployees,
   listShiftTypes,
@@ -36,6 +37,9 @@ import type {
   ShiftType,
 } from "../scheduling/types";
 import { ScheduleGrid } from "./ScheduleGrid";
+import { ScheduleSheet } from "../scheduling/ScheduleSheet";
+import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
+import type { Availability } from "../types/domain";
 
 type EntryEditorProps = {
   entry: ScheduleEntry;
@@ -171,6 +175,9 @@ export function AdminScheduler() {
   const [weeks, setWeeks] = useState<ScheduleWeek[]>([]);
   const [weekId, setWeekId] = useState("");
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+  const [availabilityByEmployee, setAvailabilityByEmployee] = useState<
+    Record<string, Availability>
+  >({});
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
@@ -202,15 +209,29 @@ export function AdminScheduler() {
   useEffect(() => {
     loadBase().catch((reason) => setError(reason.message));
   }, [loadBase]);
+  const week = weeks.find((item) => item.id === weekId) ?? null;
   const loadEntries = useCallback(
     async () => setEntries(weekId ? await listScheduleEntries(weekId) : []),
     [weekId],
   );
+  const loadAvailability = useCallback(async () => {
+    if (!week) return setAvailabilityByEmployee({});
+    const submissions = await listScheduleAvailability(week.weekStart);
+    setAvailabilityByEmployee(
+      Object.fromEntries(
+        submissions.map((submission) => [
+          submission.employee_id,
+          submission.availability,
+        ]),
+      ),
+    );
+  }, [week]);
   useEffect(() => {
-    loadEntries().catch((reason) => setError(reason.message));
-  }, [loadEntries]);
+    Promise.all([loadEntries(), loadAvailability()]).catch((reason) =>
+      setError(reason.message),
+    );
+  }, [loadAvailability, loadEntries]);
 
-  const week = weeks.find((item) => item.id === weekId) ?? null;
   const editable = week?.status === "draft";
   const filteredEmployees = useMemo(
     () =>
@@ -223,6 +244,10 @@ export function AdminScheduler() {
             .includes(search.trim().toLocaleLowerCase("vi")),
       ),
     [employees, groupFilter, search],
+  );
+  const scheduleEmployees = useMemo(
+    () => employeesForSchedule(employees, entries),
+    [employees, entries],
   );
   const counts = periodCounts(entries, shifts);
 
@@ -430,7 +455,7 @@ export function AdminScheduler() {
                 disabled={busy}
                 onClick={() =>
                   void exportScheduleJpg(
-                    "cloud-schedule-sheet",
+                    "cloud-schedule-export",
                     week.weekStart,
                   ).catch((reason) => setError(reason.message))
                 }
@@ -475,6 +500,18 @@ export function AdminScheduler() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={busy}
+          onClick={() =>
+            void Promise.all([loadBase(), loadEntries(), loadAvailability()]).catch(
+              (reason) => setError(reason.message),
+            )
+          }
+        >
+          Làm mới
+        </button>
         <form
           className="new-schedule-week"
           onSubmit={(event) => void createWeek(event)}
@@ -528,7 +565,20 @@ export function AdminScheduler() {
               void move(entry, employeeId, day)
             }
             onEdit={(entry) => editable && setEditing(entry)}
+            availabilityByEmployee={availabilityByEmployee}
           />
+          <div className="schedule-export-stage" aria-hidden="true">
+            <ScheduleSheet
+              id="cloud-schedule-export"
+              groups={groups}
+              employees={scheduleEmployees}
+              entries={entries}
+              shifts={shifts}
+              weekStart={week.weekStart}
+              countOverrides={week.countOverrides}
+              showStaffing
+            />
+          </div>
           <section className="staffing-summary">
             {counts.map((automatic, index) => {
               const total = entries.filter(

@@ -1,6 +1,6 @@
 begin;
 
-select plan(13);
+select plan(14);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -37,6 +37,12 @@ select is(
   (select count(*) from pg_policies where schemaname = 'public' and tablename = 'schedule_entries' and policyname = 'schedule_entries_select_published_employee'),
   1::bigint,
   'employees only receive the published schedule policy'
+);
+
+select is(
+  (select count(*) from pg_policies where schemaname = 'public' and tablename = 'employees' and policyname = 'employees_select_published_history'),
+  1::bigint,
+  'inactive employee metadata remains visible only for published history'
 );
 
 select is(

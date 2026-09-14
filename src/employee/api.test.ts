@@ -49,6 +49,40 @@ describe("saveEmployeeAvailability", () => {
     vi.restoreAllMocks();
   });
 
+  it("upserts and returns the latest values when editing an existing submission", async () => {
+    const upsert = vi.fn();
+    const query = {
+      upsert: (payload: unknown, options: unknown) => {
+        upsert(payload, options);
+        return query;
+      },
+      select: () => query,
+      single: async () => ({
+        data: {
+          availability,
+          note: "Đã sửa",
+          submitted_at: "2026-09-14T00:00:00Z",
+          updated_at: "2026-09-15T00:00:00Z",
+        },
+        error: null,
+      }),
+    };
+    supabase.client = { from: () => query };
+
+    await expect(
+      saveEmployeeAvailability({
+        weekId: "week-id",
+        employeeId: "employee-id",
+        availability,
+        note: "Đã sửa",
+      }),
+    ).resolves.toMatchObject({ note: "Đã sửa" });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ week_id: "week-id", employee_id: "employee-id" }),
+      { onConflict: "week_id,employee_id" },
+    );
+  });
+
   it("reports a generic save error when a denied save is rechecked against an open week", async () => {
     supabase.client = supabaseWithDeniedSave({
       status: "open",

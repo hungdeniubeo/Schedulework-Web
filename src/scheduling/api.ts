@@ -7,6 +7,7 @@ import type {
   ScheduleWeekStatus,
   ShiftType,
 } from "./types";
+import type { AvailabilitySubmission } from "../types/domain";
 
 function fail(error: { message: string } | null, message: string): void {
   if (error) {
@@ -232,6 +233,25 @@ export async function listScheduleEntries(
     .order("sort_order_in_cell");
   fail(error, "Không tải được lịch đã xếp.");
   return (data ?? []).map((row) => entryFromRow(row));
+}
+
+export async function listScheduleAvailability(
+  weekStart: string,
+): Promise<AvailabilitySubmission[]> {
+  const weekResult = await getSupabase()
+    .from("registration_weeks")
+    .select("id")
+    .eq("week_start", weekStart)
+    .maybeSingle();
+  fail(weekResult.error, "Không tải được tuần đăng ký tương ứng.");
+  if (!weekResult.data) return [];
+
+  const { data, error } = await getSupabase()
+    .from("availability_submissions")
+    .select("*")
+    .eq("week_id", weekResult.data.id);
+  fail(error, "Không tải được nguyện vọng đăng ký.");
+  return (data ?? []) as AvailabilitySubmission[];
 }
 
 export async function listAllScheduleEntries(): Promise<ScheduleEntry[]> {

@@ -9,6 +9,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { formatAvailabilityCell } from "../lib/availability";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { entryLabel } from "../scheduling/overlap";
 import { formatShiftLabel, shiftStyle } from "../scheduling/shiftStyle";
@@ -18,6 +19,7 @@ import type {
   ScheduleEntry,
   ShiftType,
 } from "../scheduling/types";
+import type { Availability } from "../types/domain";
 
 function PaletteShift({
   shift,
@@ -102,6 +104,7 @@ function ScheduleCell({
   selectedShiftId,
   onAssign,
   onEdit,
+  availability,
 }: {
   employee: CloudEmployee;
   day: number;
@@ -111,6 +114,7 @@ function ScheduleCell({
   selectedShiftId: string | null;
   onAssign: (employeeId: string, day: number) => void;
   onEdit: (entry: ScheduleEntry) => void;
+  availability?: Availability["days"][string];
 }) {
   const drop = useDroppable({
     id: `cell:${employee.id}:${day}`,
@@ -134,6 +138,11 @@ function ScheduleCell({
           onEdit={() => onEdit(entry)}
         />
       ))}
+      {availability && (
+        <small className={`availability-hint ${availability.status}`}>
+          ĐK: {formatAvailabilityCell(availability)}
+        </small>
+      )}
     </td>
   );
 }
@@ -150,6 +159,7 @@ type Props = {
   onAssign: (employeeId: string, day: number, shiftId?: string) => void;
   onMove: (entry: ScheduleEntry, employeeId: string, day: number) => void;
   onEdit: (entry: ScheduleEntry) => void;
+  availabilityByEmployee?: Record<string, Availability>;
 };
 
 export function ScheduleGrid(props: Props) {
@@ -213,6 +223,9 @@ export function ScheduleGrid(props: Props) {
                   props.onAssign(employeeId, nextDay)
                 }
                 onEdit={props.onEdit}
+                availability={
+                  props.availabilityByEmployee?.[employee.id]?.days[String(day)]
+                }
               />
             )}
           />

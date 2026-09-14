@@ -35,6 +35,11 @@ type Props = {
 export function EmployeeApp({ loginRoute, section, navigate }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [employee, setEmployee] = useState<{
+    id: string;
+    name: string;
+    active: boolean;
+  } | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(configurationError);
@@ -54,6 +59,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
       (_event, next) => {
         setSession(next);
         setAllowed(null);
+        setEmployee(null);
       },
     );
     return () => listener.subscription.unsubscribe();
@@ -69,6 +75,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
       .then((access) => {
         setAllowed(access.allowed);
         setMustChangePassword(access.mustChangePassword);
+        setEmployee(access.employee);
       })
       .catch((reason) => {
         console.error(reason);
@@ -163,11 +170,11 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
       </nav>
       <Suspense fallback={sectionFallback}>
         {section === "availability" ? (
-          <EmployeeRegistrationPage onLogout={logout} />
+          <EmployeeRegistrationPage onLogout={logout} employee={employee!} />
         ) : section === "my-schedule" ? (
-          <MySchedulePage />
+          <MySchedulePage employeeId={employee!.id} />
         ) : (
-          <TeamSchedulePage />
+          <TeamSchedulePage employeeId={employee!.id} />
         )}
       </Suspense>
     </div>

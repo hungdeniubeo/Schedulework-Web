@@ -3,18 +3,19 @@ import { AppState } from "../components/AppState";
 import { DAY_KEYS } from "../types/domain";
 import { addDateOnlyDays, formatDateShort, formatWeekRange } from "../lib/week";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
+import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import { entryLabel } from "../scheduling/overlap";
 import { formatShiftLabel, shiftStyle } from "../scheduling/shiftStyle";
 import type { PublishedScheduleData } from "./scheduleApi";
 import { loadPublishedSchedule } from "./scheduleApi";
 
-function usePublishedSchedule() {
+function usePublishedSchedule(employeeId: string) {
   const [data, setData] = useState<PublishedScheduleData | null | undefined>(
     undefined,
   );
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    loadPublishedSchedule()
+    loadPublishedSchedule(employeeId)
       .then(setData)
       .catch((reason) => {
         console.error(reason);
@@ -22,7 +23,7 @@ function usePublishedSchedule() {
           reason instanceof Error ? reason.message : "Không tải được lịch.",
         );
       });
-  }, []);
+  }, [employeeId]);
   return { data, error };
 }
 
@@ -53,8 +54,8 @@ function ScheduleState({
   return null;
 }
 
-export function MySchedulePage() {
-  const { data, error } = usePublishedSchedule();
+export function MySchedulePage({ employeeId }: { employeeId: string }) {
+  const { data, error } = usePublishedSchedule(employeeId);
   const state = <ScheduleState data={data} error={error} />;
   if (!data) return state;
 
@@ -109,8 +110,8 @@ export function MySchedulePage() {
   );
 }
 
-export function TeamSchedulePage() {
-  const { data, error } = usePublishedSchedule();
+export function TeamSchedulePage({ employeeId }: { employeeId: string }) {
+  const { data, error } = usePublishedSchedule(employeeId);
   const state = <ScheduleState data={data} error={error} team />;
   if (!data) return state;
 
@@ -125,7 +126,7 @@ export function TeamSchedulePage() {
         <ScheduleSheet
           className="published-schedule-sheet"
           groups={data.groups}
-          employees={data.employees.filter((employee) => employee.active)}
+          employees={employeesForSchedule(data.employees, data.entries)}
           entries={data.entries}
           shifts={data.shifts}
           weekStart={data.week.weekStart}

@@ -105,6 +105,10 @@ export function AdminDashboard({
   }, []);
 
   useEffect(() => {
+    if (section !== "dashboard" && section !== "availability") {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     refreshBase()
@@ -117,7 +121,7 @@ export function AdminDashboard({
         );
       })
       .finally(() => setLoading(false));
-  }, [refreshBase]);
+  }, [refreshBase, section]);
 
   const refreshSubmissions = useCallback(async () => {
     if (!selectedWeekId) return setSubmissions([]);
@@ -132,8 +136,8 @@ export function AdminDashboard({
   }, [selectedWeekId]);
 
   useEffect(() => {
-    void refreshSubmissions();
-  }, [refreshSubmissions]);
+    if (section === "availability") void refreshSubmissions();
+  }, [refreshSubmissions, section]);
 
   const selectedWeek = weeks.find((week) => week.id === selectedWeekId) ?? null;
   const selectedWeekLocked = selectedWeek
@@ -161,7 +165,6 @@ export function AdminDashboard({
       email,
       accessToken: session.access_token,
     });
-    await refreshBase();
     return credentials;
   }
 
@@ -266,7 +269,6 @@ export function AdminDashboard({
             <EmployeeManager
               onAdd={addEmployee}
               onResetPassword={resetPassword}
-              onChanged={refreshBase}
             />
           </Suspense>
         ) : section === "groups" ? (

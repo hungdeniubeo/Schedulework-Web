@@ -10,7 +10,6 @@ import type { CloudEmployee, Group } from "../scheduling/types";
 type Props = {
   onAdd: (name: string, email: string) => Promise<TemporaryCredentials>;
   onResetPassword: (employeeId: string) => Promise<TemporaryCredentials>;
-  onChanged: () => Promise<void>;
 };
 
 function CredentialsCard({
@@ -62,7 +61,7 @@ function CredentialsCard({
   );
 }
 
-export function EmployeeManager({ onAdd, onResetPassword, onChanged }: Props) {
+export function EmployeeManager({ onAdd, onResetPassword }: Props) {
   const [employees, setEmployees] = useState<CloudEmployee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [name, setName] = useState("");
@@ -117,7 +116,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onChanged }: Props) {
     setError(null);
     try {
       await patchEmployee(employee.id, changes);
-      await Promise.all([load(), onChanged()]);
+      await load();
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -237,7 +236,11 @@ export function EmployeeManager({ onAdd, onResetPassword, onChanged }: Props) {
                 {employee.active ? "Đang hoạt động" : "Đã tắt"}
               </span>
             </div>
-            <div className="employee-settings">
+            <details className="employee-advanced">
+              <summary>
+                Chỉnh sửa · {groups.find((group) => group.id === employee.groupId)?.name ?? "Chưa có nhóm"}
+              </summary>
+              <div className="employee-settings">
               <label>
                 Nhóm
                 <select
@@ -291,7 +294,8 @@ export function EmployeeManager({ onAdd, onResetPassword, onChanged }: Props) {
                   </label>
                 ))}
               </div>
-            </div>
+              </div>
+            </details>
             <div className="row-actions">
               <button
                 className="button ghost"

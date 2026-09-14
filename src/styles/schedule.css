@@ -98,15 +98,3 @@
 .published-schedule-sheet .cloud-schedule-table tfoot th:first-child {
   background: #f4f8f7;
 }
-
-@media (max-width: 520px) {
-  .employee-nav {
-    overflow-x: auto;
-  }
-
-  .employee-nav .employee-password,
-  .employee-nav .employee-logout {
-    display: block;
-    flex: 0 0 auto;
-  }
-}

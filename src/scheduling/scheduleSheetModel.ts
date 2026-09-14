@@ -1,4 +1,4 @@
-import type { CloudEmployee, Group } from "./types";
+import type { CloudEmployee, Group, ScheduleEntry } from "./types";
 
 export type ScheduleGroup = {
   group: Group;
@@ -35,4 +35,14 @@ export function buildScheduleGroups(
   }));
 
   return sections.filter((section) => section.employees.length > 0);
+}
+
+export function employeesForSchedule(
+  employees: CloudEmployee[],
+  entries: ScheduleEntry[],
+): CloudEmployee[] {
+  const scheduled = new Set(entries.map((entry) => entry.employeeId));
+  return employees.filter(
+    (employee) => employee.active || scheduled.has(employee.id),
+  );
 }
