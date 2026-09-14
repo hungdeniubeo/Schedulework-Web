@@ -129,6 +129,12 @@ function ScheduleCell({
         if (editable && selectedShiftId) onAssign(employee.id, day);
       }}
     >
+      {availability && (
+        <small className={`availability-hint ${availability.status}`}>
+          <span>ĐK</span> · {formatAvailabilityCell(availability)}
+        </small>
+      )}
+      <div className="official-shifts">
       {entries.map((entry) => (
         <EntryChip
           key={entry.id}
@@ -138,11 +144,7 @@ function ScheduleCell({
           onEdit={() => onEdit(entry)}
         />
       ))}
-      {availability && (
-        <small className={`availability-hint ${availability.status}`}>
-          ĐK: {formatAvailabilityCell(availability)}
-        </small>
-      )}
+      </div>
     </td>
   );
 }

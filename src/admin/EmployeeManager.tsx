@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { CustomSelect } from "../components/CustomSelect";
 import type { TemporaryCredentials } from "../lib/serverApi";
 import {
   addPosition,
@@ -450,34 +451,37 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
                   </label>
                   <label>
                     Nhóm
-                    <select
+                    <CustomSelect
+                      ariaLabel={`Nhóm của ${employee.name}`}
                       value={employee.groupId ?? ""}
                       disabled={busyId !== null || positionBusy}
-                      onChange={(event) => void update(employee, {
-                        groupId: event.target.value || null,
+                      options={[
+                        { value: "", label: "Chưa có nhóm" },
+                        ...groups.map((group) => ({ value: group.id, label: group.name })),
+                      ]}
+                      onChange={(value) => void update(employee, {
+                        groupId: value || null,
                         sortOrder: 0,
                       })}
-                    >
-                      <option value="">Chưa có nhóm</option>
-                      {groups.map((group) => (
-                        <option value={group.id} key={group.id}>{group.name}</option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   <label>
                     Vị trí
-                    <select
+                    <CustomSelect
+                      ariaLabel={`Vị trí của ${employee.name}`}
                       value={employee.positionId ?? ""}
                       disabled={busyId !== null || positionBusy}
-                      onChange={(event) => void update(employee, {
-                        positionId: event.target.value || null,
+                      options={[
+                        { value: "", label: "Không có vị trí" },
+                        ...positions.map((position) => ({
+                          value: position.id,
+                          label: position.name,
+                        })),
+                      ]}
+                      onChange={(value) => void update(employee, {
+                        positionId: value || null,
                       })}
-                    >
-                      <option value="">Không có vị trí</option>
-                      {positions.map((position) => (
-                        <option value={position.id} key={position.id}>{position.name}</option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   <div className="employee-flags">
                     <label>

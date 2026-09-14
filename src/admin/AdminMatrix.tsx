@@ -1,4 +1,8 @@
-import { formatAvailabilityCell } from "../lib/availability";
+import {
+  formatAvailabilityCell,
+  formatAvailabilityPreset,
+  isFullAvailabilityDay,
+} from "../lib/availability";
 import { DAY_KEYS } from "../types/domain";
 import { buildMatrixRows } from "./matrix";
 import type { AdminEmployee, AvailabilitySubmission } from "../types/domain";
@@ -44,17 +48,19 @@ export function AdminMatrix({ employees, submissions, onSelect }: Props) {
                 </th>
                 {DAY_KEYS.map((key) => {
                   const day = row.submission?.availability.days[key];
+                  const preset = day ? formatAvailabilityPreset(day) : "";
                   const kind = !day
                     ? "missing"
                     : day.status === "off"
                       ? "off"
-                      : day.periods.length === 3 && !day.start
+                      : isFullAvailabilityDay(day)
                         ? "available"
                         : "partial";
                   return (
                     <td key={key}>
                       <span className={`matrix-cell ${kind}`}>
                         {day ? formatAvailabilityCell(day) : "—"}
+                        {preset && <small>{preset}</small>}
                       </span>
                     </td>
                   );

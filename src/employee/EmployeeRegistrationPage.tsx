@@ -3,6 +3,7 @@ import { AvailabilityEditor } from "../components/AvailabilityEditor";
 import { AppState } from "../components/AppState";
 import {
   createEmptyAvailability,
+  normalizeAvailability,
   validateAvailability,
 } from "../lib/availability";
 import {
@@ -35,7 +36,7 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const savingRef = useRef(false);
 
@@ -45,6 +46,12 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!successMessage) return;
+    const timer = window.setTimeout(() => setSuccessMessage(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [successMessage]);
+
+  useEffect(() => {
     let active = true;
     setLoading(true);
     loadEmployeePortal(employee)
@@ -52,7 +59,9 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         if (!active) return;
         setContext(data);
         setAvailability(
-          data.submission?.availability ?? createEmptyAvailability(),
+          data.submission
+            ? normalizeAvailability(data.submission.availability)
+            : createEmptyAvailability(),
         );
         setNote(data.submission?.note ?? "");
       })
@@ -93,7 +102,8 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
     savingRef.current = true;
     setSaving(true);
     setFormError(null);
-    setSaved(false);
+    setSuccessMessage(null);
+    const updating = context.submission !== null;
     try {
       const submission = await saveEmployeeAvailability({
         weekId: context.week.id,
@@ -102,7 +112,8 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         note: note.trim(),
       });
       setContext({ ...context, submission });
-      setSaved(true);
+      setAvailability(normalizeAvailability(submission.availability));
+      setSuccessMessage(getSaveSuccessMessage(updating));
     } catch (reason) {
       console.error(reason);
       if (
@@ -179,7 +190,7 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
           readOnly={locked}
           onChange={(next) => {
             setAvailability(next);
-            setSaved(false);
+            setSuccessMessage(null);
             setFormError(null);
           }}
         />
@@ -193,7 +204,7 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
             value={note}
             onChange={(event) => {
               setNote(event.target.value);
-              setSaved(false);
+              setSuccessMessage(null);
             }}
             placeholder="Ví dụ: Thứ 4 em học buổi sáng"
           />
@@ -205,7 +216,11 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
         <footer className="sticky-submit">
           <div aria-live="polite">
             {formError && <span className="form-error">{formError}</span>}
-            {saved && <span className="success-message">Đã gửi đăng ký</span>}
+            {context.submission && (
+              <span className="submission-status">
+                {formatSubmissionStatus(context.submission)}
+              </span>
+            )}
           </div>
           <button
             className="button primary large"
@@ -221,6 +236,31 @@ export function EmployeeRegistrationPage({ onLogout, employee }: Props) {
           </button>
         </footer>
       )}
+      <div className="save-toast-region" aria-live="polite" aria-atomic="true">
+        {successMessage && (
+          <div className="save-toast" role="status">{successMessage}</div>
+        )}
+      </div>
     </div>
   );
+}
+
+export function getSaveSuccessMessage(updating: boolean): string {
+  return updating
+    ? "Cập nhật đăng ký thành công"
+    : "Đăng ký lịch thành công";
+}
+
+export function formatSubmissionStatus(
+  submission: NonNullable<EmployeePortalData["submission"]>,
+): string {
+  const updated = submission.updatedAt !== submission.submittedAt;
+  const timestamp = updated ? submission.updatedAt : submission.submittedAt;
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date(timestamp));
+  return `${updated ? "Đã cập nhật" : "Đã gửi"} lúc ${time}`;
 }

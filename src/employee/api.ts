@@ -168,7 +168,7 @@ export async function saveEmployeeAvailability(input: {
   employeeId: string;
   availability: Availability;
   note: string;
-}): Promise<EmployeePortalData["submission"]> {
+}): Promise<NonNullable<EmployeePortalData["submission"]>> {
   const { data, error } = await getSupabase()
     .from("availability_submissions")
     .upsert(

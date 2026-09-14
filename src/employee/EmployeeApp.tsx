@@ -172,7 +172,10 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         {section === "availability" ? (
           <EmployeeRegistrationPage onLogout={logout} employee={employee!} />
         ) : section === "my-schedule" ? (
-          <MySchedulePage employeeId={employee!.id} />
+          <MySchedulePage
+            employeeId={employee!.id}
+            onRegister={() => navigate("/app/availability")}
+          />
         ) : (
           <TeamSchedulePage employeeId={employee!.id} />
         )}

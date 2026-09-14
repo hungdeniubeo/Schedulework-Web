@@ -41,6 +41,7 @@ import { ScheduleGrid } from "./ScheduleGrid";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import type { Availability } from "../types/domain";
+import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
 
 type EntryEditorProps = {
   entry: ScheduleEntry;
@@ -226,14 +227,7 @@ export function AdminScheduler() {
       ? await listScheduleAvailability(weekStart)
       : [];
     if (request === availabilityRequest.current) {
-      setAvailabilityByEmployee(
-        Object.fromEntries(
-          submissions.map((submission) => [
-            submission.employee_id,
-            submission.availability,
-          ]),
-        ),
-      );
+      setAvailabilityByEmployee(mapAvailabilityByEmployee(submissions));
     }
   }, [weekStart]);
   useEffect(() => {

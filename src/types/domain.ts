@@ -5,15 +5,37 @@ export const PERIODS = ["morning", "afternoon", "evening"] as const;
 export type Period = (typeof PERIODS)[number];
 export type AvailabilityStatus = "available" | "off";
 
-export type DayAvailability = {
+export const AVAILABILITY_PRESETS = [
+  "morning",
+  "morning_afternoon",
+  "evening",
+  "full",
+  "afternoon_evening",
+] as const;
+export type AvailabilityPreset = (typeof AVAILABILITY_PRESETS)[number];
+
+export type AvailabilityInterval = {
+  start: string;
+  end: string;
+};
+
+export type LegacyDayAvailability = {
   status: AvailabilityStatus;
   periods: Period[];
   start: string | null;
   end: string | null;
 };
 
+export type DayAvailability =
+  | LegacyDayAvailability
+  | {
+      status: AvailabilityStatus;
+      preset: AvailabilityPreset | null;
+      intervals: AvailabilityInterval[];
+    };
+
 export type Availability = {
-  version: 1;
+  version: 1 | 2;
   days: Record<string, DayAvailability>;
 };
 

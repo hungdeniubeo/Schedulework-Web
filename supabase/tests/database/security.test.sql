@@ -1,6 +1,6 @@
 begin;
 
-select plan(29);
+select plan(31);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -330,6 +330,42 @@ select is(
   (select count(*) from public.positions),
   1::bigint,
   'deleting an unused position removes only that position'
+);
+
+select ok(
+  private.is_valid_availability(
+    jsonb_build_object(
+      'version', 2,
+      'days', (
+        select jsonb_object_agg(
+          day::text,
+          case when day = 1 then
+            '{"status":"available","preset":"full","intervals":[{"start":"10:00","end":"14:00"},{"start":"18:00","end":"23:00"}]}'::jsonb
+          else '{"status":"off","preset":null,"intervals":[]}'::jsonb end
+        )
+        from generate_series(1, 7) as day
+      )
+    )
+  ),
+  'version 2 split availability passes database validation'
+);
+
+select ok(
+  not private.is_valid_availability(
+    jsonb_build_object(
+      'version', 2,
+      'days', (
+        select jsonb_object_agg(
+          day::text,
+          case when day = 1 then
+            '{"status":"available","preset":"full","intervals":[{"start":"10:00","end":"18:00"},{"start":"17:00","end":"23:00"}]}'::jsonb
+          else '{"status":"off","preset":null,"intervals":[]}'::jsonb end
+        )
+        from generate_series(1, 7) as day
+      )
+    )
+  ),
+  'version 2 overlapping split availability fails database validation'
 );
 
 select * from finish();

@@ -34,4 +34,8 @@ describe("ScheduleSheet employee labels", () => {
   it("does not render a placeholder when the employee has no position", () => {
     expect(renderEmployee(null)).not.toContain("Không có vị trí");
   });
+
+  it("keeps private availability hints out of the published/export sheet", () => {
+    expect(renderEmployee("Bếp trưởng")).not.toContain("ĐK");
+  });
 });

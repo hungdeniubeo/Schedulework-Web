@@ -6,7 +6,11 @@ vi.mock("../lib/config", () => ({
   getSupabase: () => supabase.client,
 }));
 
-import { employeeFromRow, removePosition } from "./api";
+import {
+  employeeFromRow,
+  listScheduleAvailability,
+  removePosition,
+} from "./api";
 
 describe("employeeFromRow", () => {
   it("maps an employee position from the joined position row", () => {
@@ -93,5 +97,36 @@ describe("removePosition", () => {
     supabase.client = clientWithPositionDelete(null);
 
     await expect(removePosition("position-1")).resolves.toBeUndefined();
+  });
+});
+
+describe("listScheduleAvailability", () => {
+  it("loads submissions only from the registration week matching week_start", async () => {
+    const registrationEq = vi.fn();
+    const submissionEq = vi.fn();
+    const expected = [{ id: "submission-1", employee_id: "employee-1" }];
+    const registrationQuery = {
+      select: () => registrationQuery,
+      eq: (column: string, value: string) => {
+        registrationEq(column, value);
+        return registrationQuery;
+      },
+      maybeSingle: async () => ({ data: { id: "registration-week-1" }, error: null }),
+    };
+    const submissionQuery = {
+      select: () => submissionQuery,
+      eq: async (column: string, value: string) => {
+        submissionEq(column, value);
+        return { data: expected, error: null };
+      },
+    };
+    supabase.client = {
+      from: (table: string) =>
+        table === "registration_weeks" ? registrationQuery : submissionQuery,
+    };
+
+    await expect(listScheduleAvailability("2026-09-21")).resolves.toEqual(expected);
+    expect(registrationEq).toHaveBeenCalledWith("week_start", "2026-09-21");
+    expect(submissionEq).toHaveBeenCalledWith("week_id", "registration-week-1");
   });
 });

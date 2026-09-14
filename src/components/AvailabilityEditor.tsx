@@ -1,13 +1,19 @@
 import {
   DAY_LABELS,
-  PERIOD_LABELS,
+  HOUR_OPTIONS,
+  PRESET_OPTIONS,
+  createPresetDay,
+  formatHour,
+  getIntervals,
+  getPreset,
+  normalizeAvailability,
   normalizeOffDay,
 } from "../lib/availability";
 import { addDateOnlyDays, formatDateShort } from "../lib/week";
 import {
   DAY_KEYS,
-  PERIODS,
   type Availability,
+  type AvailabilityPreset,
   type DayAvailability,
   type DayKey,
 } from "../types/domain";
@@ -27,17 +33,21 @@ export function AvailabilityEditor({
   compact = false,
   onChange,
 }: Props) {
+  const normalized = normalizeAvailability(value);
+
   function updateDay(key: DayKey, nextDay: DayAvailability) {
     onChange({
-      ...value,
-      days: { ...value.days, [key]: normalizeOffDay(nextDay) },
+      ...normalized,
+      days: { ...normalized.days, [key]: normalizeOffDay(nextDay) },
     });
   }
 
   return (
     <div className={`availability-grid ${compact ? "compact" : ""}`}>
       {DAY_KEYS.map((key, index) => {
-        const day = value.days[key];
+        const day = normalized.days[key];
+        const preset = getPreset(day) ?? "morning";
+        const intervals = getIntervals(day);
         return (
           <section className="day-card" key={key}>
             <div className="day-card-title">
@@ -53,96 +63,93 @@ export function AvailabilityEditor({
                 type="button"
                 className={day.status === "available" ? "selected" : ""}
                 disabled={readOnly}
-                onClick={() =>
-                  updateDay(key, {
-                    status: "available",
-                    periods: day.status === "off" ? [...PERIODS] : day.periods,
-                    start: day.status === "off" ? null : day.start,
-                    end: day.status === "off" ? null : day.end,
-                  })
-                }
+                onClick={() => {
+                  if (day.status === "off") updateDay(key, createPresetDay(preset));
+                }}
               >
-                Đi làm được
+                Đi làm
               </button>
               <button
                 type="button"
                 className={day.status === "off" ? "selected off" : ""}
                 disabled={readOnly}
                 onClick={() =>
-                  updateDay(key, {
-                    status: "off",
-                    periods: [],
-                    start: null,
-                    end: null,
-                  })
+                  updateDay(key, { status: "off", preset: null, intervals: [] })
                 }
               >
                 Nghỉ
               </button>
             </div>
             {day.status === "available" && (
-              <>
-                <div
-                  className="periods"
-                  role="group"
-                  aria-label={`Ca ${DAY_LABELS[key]}`}
-                >
-                  {PERIODS.map((period) => {
-                    const selected = day.periods.includes(period);
-                    return (
-                      <button
-                        type="button"
-                        className={selected ? "selected" : ""}
-                        aria-pressed={selected}
+              <div className="availability-shift-editor">
+                <label className="shift-preset-field">
+                  <span>Ca</span>
+                  <select
+                    aria-label={`Ca ${DAY_LABELS[key]}`}
+                    value={preset}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      updateDay(
+                        key,
+                        createPresetDay(event.target.value as AvailabilityPreset),
+                      )
+                    }
+                  >
+                    {PRESET_OPTIONS.map((option) => (
+                      <option value={option.value} key={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="hour-intervals">
+                  {intervals.map((interval, intervalIndex) => (
+                    <div className="hour-row" key={intervalIndex}>
+                      <select
+                        aria-label={`Giờ bắt đầu ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
+                        value={interval.start}
                         disabled={readOnly}
-                        key={period}
-                        onClick={() =>
+                        onChange={(event) =>
                           updateDay(key, {
-                            ...day,
-                            periods: selected
-                              ? day.periods.filter((item) => item !== period)
-                              : [...day.periods, period],
+                            status: "available",
+                            preset,
+                            intervals: intervals.map((item, itemIndex) =>
+                              itemIndex === intervalIndex
+                                ? { ...item, start: event.target.value }
+                                : item,
+                            ),
                           })
                         }
                       >
-                        {PERIOD_LABELS[period]}
-                      </button>
-                    );
-                  })}
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option value={hour} key={hour}>{formatHour(hour)}</option>
+                        ))}
+                      </select>
+                      <span aria-hidden="true">→</span>
+                      <select
+                        aria-label={`Giờ kết thúc ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}
+                        value={interval.end}
+                        disabled={readOnly}
+                        onChange={(event) =>
+                          updateDay(key, {
+                            status: "available",
+                            preset,
+                            intervals: intervals.map((item, itemIndex) =>
+                              itemIndex === intervalIndex
+                                ? { ...item, end: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      >
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option value={hour} key={hour}>{formatHour(hour)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
-                <div className="custom-time">
-                  <span>
-                    Giờ cụ thể <small>(tuỳ chọn)</small>
-                  </span>
-                  <div>
-                    <input
-                      aria-label={`Giờ bắt đầu ${DAY_LABELS[key]}`}
-                      type="time"
-                      value={day.start ?? ""}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateDay(key, {
-                          ...day,
-                          start: event.target.value || null,
-                        })
-                      }
-                    />
-                    <span>đến</span>
-                    <input
-                      aria-label={`Giờ kết thúc ${DAY_LABELS[key]}`}
-                      type="time"
-                      value={day.end ?? ""}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateDay(key, {
-                          ...day,
-                          end: event.target.value || null,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </>
+              </div>
             )}
           </section>
         );
