@@ -324,8 +324,12 @@ function EmployeeDragHeader({
         <span aria-hidden="true">⠿</span>
       </button>
       <span className="schedule-employee-copy">
-        <strong>{employee.name}</strong>
-        {employee.positionName && <small>{employee.positionName}</small>}
+        <strong className="schedule-employee-name">{employee.name}</strong>
+        {employee.positionName && (
+          <small className="schedule-employee-position">
+            {employee.positionName}
+          </small>
+        )}
         {employee.isNew && <small className="schedule-new-badge">NEW</small>}
       </span>
     </div>
