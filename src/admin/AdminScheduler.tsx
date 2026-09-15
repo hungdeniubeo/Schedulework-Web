@@ -7,11 +7,18 @@ import {
   type FormEvent,
 } from "react";
 import { CustomSelect } from "../components/CustomSelect";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  CloseIcon,
+  PlusIcon,
+} from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
+import { DateTimePicker } from "../components/DateTimePicker";
 import {
   isMondayDate,
   defaultRegistrationWindow,
-  formatWeekRange,
+  formatWeekDisplay,
 } from "../lib/week";
 import {
   addScheduleEntry,
@@ -106,7 +113,7 @@ export function EntryEditor({
             autoFocus
             onClick={onClose}
           >
-            ×
+            <CloseIcon />
           </button>
         </header>
         <div className="dialog-content">
@@ -126,7 +133,11 @@ export function EntryEditor({
             <label>
               Giờ bắt đầu
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                maxLength={5}
+                placeholder="HH:mm"
                 value={draft.customStart ?? ""}
                 onChange={(e) =>
                   setDraft({ ...draft, customStart: e.target.value || null })
@@ -136,7 +147,11 @@ export function EntryEditor({
             <label>
               Giờ kết thúc
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                maxLength={5}
+                placeholder="HH:mm"
                 value={draft.customEnd ?? ""}
                 onChange={(e) =>
                   setDraft({ ...draft, customEnd: e.target.value || null })
@@ -183,7 +198,32 @@ export function EntryEditor({
   );
 }
 
-export function AdminScheduler() {
+type AdminSchedulerProps = {
+  preferredWeekStart?: string;
+  registrationWeekStarts?: string[];
+  onWeekStartChange?: (weekStart: string) => void;
+  onOpenAvailability?: () => void;
+};
+
+export function selectScheduleWeekId(
+  weeks: ScheduleWeek[],
+  currentId: string,
+  preferredWeekStart = "",
+): string {
+  if (preferredWeekStart) {
+    return weeks.find((week) => week.weekStart === preferredWeekStart)?.id ?? "";
+  }
+  return weeks.some((week) => week.id === currentId)
+    ? currentId
+    : (weeks[0]?.id ?? "");
+}
+
+export function AdminScheduler({
+  preferredWeekStart = "",
+  registrationWeekStarts = [],
+  onWeekStartChange,
+  onOpenAvailability,
+}: AdminSchedulerProps = {}) {
   const [groups, setGroups] = useState<Awaited<ReturnType<typeof listGroups>>>(
     [],
   );
@@ -224,16 +264,22 @@ export function AdminScheduler() {
     setShifts(nextShifts);
     setWeeks(nextWeeks);
     setWeekId((current) =>
-      current && nextWeeks.some((week) => week.id === current)
-        ? current
-        : (nextWeeks[0]?.id ?? ""),
+      selectScheduleWeekId(nextWeeks, current, preferredWeekStart),
     );
-  }, []);
+  }, [preferredWeekStart]);
   useEffect(() => {
     loadBase().catch((reason) => setError(reason.message));
   }, [loadBase]);
   const week = weeks.find((item) => item.id === weekId) ?? null;
   const weekStart = week?.weekStart ?? "";
+
+  useEffect(() => {
+    if (preferredWeekStart) setNewWeekStart(preferredWeekStart);
+  }, [preferredWeekStart]);
+
+  useEffect(() => {
+    if (weekStart) onWeekStartChange?.(weekStart);
+  }, [onWeekStartChange, weekStart]);
   const loadEntries = useCallback(async () => {
     const request = ++entriesRequest.current;
     const nextEntries = weekId ? await listScheduleEntries(weekId) : [];
@@ -280,6 +326,17 @@ export function AdminScheduler() {
     () => employeesForSchedule(employees, entries),
     [employees, entries],
   );
+  const activeEmployeeIds = useMemo(
+    () => new Set(
+      employees.filter((employee) => employee.active).map((employee) => employee.id),
+    ),
+    [employees],
+  );
+  const availabilityCount = Object.keys(availabilityByEmployee)
+    .filter((employeeId) => activeEmployeeIds.has(employeeId)).length;
+  const hasRegistrationWeek = week
+    ? registrationWeekStarts.includes(week.weekStart)
+    : false;
   const counts = periodCounts(entries, shifts);
 
   function issueMessage(candidate: ScheduleEntry): string | null {
@@ -495,7 +552,7 @@ export function AdminScheduler() {
           <span className="eyebrow">Xếp lịch chính thức</span>
           <h2>
             {week
-              ? `Tuần ${formatWeekRange(week.weekStart)}`
+              ? formatWeekDisplay(week.weekStart)
               : "Chưa có tuần xếp lịch"}
           </h2>
         </div>
@@ -559,7 +616,7 @@ export function AdminScheduler() {
             { value: "", label: "Chọn tuần" },
             ...weeks.map((item) => ({
               value: item.id,
-              label: `Tuần ${formatWeekRange(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}`,
+              label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
             })),
           ]}
           onChange={(nextWeekId) => {
@@ -606,16 +663,19 @@ export function AdminScheduler() {
         >
           <label>
             <span>Tuần bắt đầu từ Thứ Hai</span>
-            <input
-              aria-label="Tuần bắt đầu từ Thứ Hai"
-              type="date"
-              required
-              value={newWeekStart}
-              onChange={(e) => setNewWeekStart(e.target.value)}
-            />
-          </label>
+              <DateTimePicker
+                ariaLabel="Tuần bắt đầu từ Thứ Hai"
+                dateOnly
+                requiredWeekday={1}
+                value={newWeekStart}
+                onChange={setNewWeekStart}
+              />
+              {isMondayDate(newWeekStart) && (
+                <small>{formatWeekDisplay(newWeekStart)}</small>
+              )}
+            </label>
           <button className="button secondary" disabled={busy}>
-            Tạo lịch tuần
+            <PlusIcon /> Tạo lịch tuần
           </button>
         </form>
         {editable && (
@@ -629,6 +689,40 @@ export function AdminScheduler() {
           </button>
         )}
       </section>
+      {week ? (
+        <section className={`schedule-sync-bar ${hasRegistrationWeek ? "synced" : "missing"}`}>
+          <span className="schedule-sync-icon" aria-hidden="true">
+            {hasRegistrationWeek ? <CheckIcon /> : <AlertTriangleIcon />}
+          </span>
+          <div>
+            <strong>
+              {hasRegistrationWeek
+                ? "Đang đối chiếu đúng tuần đăng ký"
+                : "Tuần này chưa có đợt đăng ký tương ứng"}
+            </strong>
+            <p>
+              {hasRegistrationWeek
+                ? `${availabilityCount}/${activeEmployeeIds.size} nhân viên đã gửi đăng ký lịch · ${formatWeekDisplay(week.weekStart)}`
+                : `${formatWeekDisplay(week.weekStart)} · Các ô ĐK sẽ chưa có dữ liệu.`}
+            </p>
+          </div>
+          {onOpenAvailability && (
+            <button type="button" className="button secondary" onClick={onOpenAvailability}>
+              Xem lịch đăng ký
+            </button>
+          )}
+        </section>
+      ) : preferredWeekStart ? (
+        <section className="schedule-sync-bar missing">
+          <span className="schedule-sync-icon" aria-hidden="true">
+            <AlertTriangleIcon />
+          </span>
+          <div>
+            <strong>Chưa có lịch chính thức cho tuần đang chọn</strong>
+            <p>{formatWeekDisplay(preferredWeekStart)} · Tạo lịch tuần để bắt đầu xếp ca.</p>
+          </div>
+        </section>
+      ) : null}
       {error && (
         <div className="inline-error scheduler-error" role="alert">
           {error}
@@ -637,7 +731,7 @@ export function AdminScheduler() {
             aria-label="Đóng thông báo lỗi"
             onClick={() => setError(null)}
           >
-            ×
+            <CloseIcon />
           </button>
         </div>
       )}
@@ -708,7 +802,11 @@ export function AdminScheduler() {
           </section>
         </>
       ) : (
-        <div className="panel empty-panel">Tạo tuần xếp lịch để bắt đầu.</div>
+        <div className="panel empty-panel">
+          {preferredWeekStart
+            ? "Tạo lịch chính thức cho đúng tuần đăng ký để bắt đầu xếp ca."
+            : "Tạo tuần xếp lịch để bắt đầu."}
+        </div>
       )}
       {editing && (
         <EntryEditor

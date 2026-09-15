@@ -1,6 +1,6 @@
 begin;
 
-select plan(45);
+select plan(46);
 
 select is(
   (select count(*) from pg_class as relation join pg_namespace as namespace on namespace.oid = relation.relnamespace where namespace.nspname = 'public' and relation.relname in ('profiles', 'groups', 'employees', 'shift_types', 'registration_weeks', 'availability_submissions', 'schedule_weeks', 'schedule_entries') and relation.relrowsecurity),
@@ -476,6 +476,17 @@ select is(
   ),
   'RESTRICT'::text,
   'employee availability history cannot cascade-delete'
+);
+
+select is(
+  (
+    select delete_rule
+    from information_schema.referential_constraints
+    where constraint_schema = 'public'
+      and constraint_name = 'availability_submissions_week_id_fkey'
+  ),
+  'CASCADE'::text,
+  'deleting a registration week also deletes its availability submissions'
 );
 
 insert into auth.users (id) values

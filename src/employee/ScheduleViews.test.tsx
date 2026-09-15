@@ -19,6 +19,7 @@ describe("submitted availability display", () => {
     availability.days["2"] = createPresetDay("morning");
     const html = renderToStaticMarkup(
       <SubmittedAvailability
+        compact
         data={{
           weekStart: "2026-09-14",
           submission: {
@@ -38,6 +39,7 @@ describe("submitted availability display", () => {
     expect(html).toContain("Nghỉ");
     expect(html.match(/Lý do:/g)).toHaveLength(1);
     expect(html).toContain("10h–14h");
+    expect(html).toContain("Tuần 3 tháng 9 · 14/09 – 20/09");
     expect(html).toContain("Ghi chú cũ");
     expect(html).toContain("Ghi chú từ phiên bản cũ");
   });
@@ -72,6 +74,7 @@ describe("My Schedule responsibility", () => {
 
     expect(html.match(/submitted-schedule-section/g)).toHaveLength(1);
     expect(html).toContain("Lịch đã đăng ký");
+    expect(html).toContain("Tuần 3 tháng 9 · 14/09 – 20/09");
     expect(html).not.toContain("Lịch chính thức");
   });
 

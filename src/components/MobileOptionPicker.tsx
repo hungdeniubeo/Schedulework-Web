@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { CheckIcon, ChevronDownIcon, CloseIcon } from "./Icons";
 
 export type MobileOptionPickerOption = {
   value: string;
@@ -187,7 +188,7 @@ export function MobileOptionPicker({
             aria-label={`Đóng ${title.toLocaleLowerCase("vi-VN")}`}
             onClick={closePicker}
           >
-            ×
+            <CloseIcon />
           </button>
         </header>
         <div
@@ -212,7 +213,7 @@ export function MobileOptionPicker({
               onClick={() => choose(index)}
             >
               <span className="mobile-option-picker-check" aria-hidden="true">
-                {option.value === value ? "✓" : ""}
+                {option.value === value && <CheckIcon />}
               </span>
               <span className="mobile-option-picker-option-copy">
                 <strong>{option.label}</strong>
@@ -243,7 +244,7 @@ export function MobileOptionPicker({
       >
         <span>{selected?.label ?? ""}</span>
         <span className="mobile-option-picker-chevron" aria-hidden="true">
-          ⌄
+          <ChevronDownIcon />
         </span>
       </button>
       {sheet && createPortal(sheet, document.body)}

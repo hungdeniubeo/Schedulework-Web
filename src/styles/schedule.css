@@ -15,9 +15,9 @@
   gap: 10px;
   margin: 14px 0;
   padding: 16px;
-  border: 1px solid #b9ddd7;
+  border: 1px solid #d5dad7;
   border-radius: 14px;
-  background: #eef9f7;
+  background: #f3f5f4;
 }
 
 .credentials-card > div {
@@ -36,9 +36,9 @@
 .credentials-card code {
   overflow-wrap: anywhere;
   padding: 8px 10px;
-  border: 1px solid #d2e7e3;
+  border: 1px solid #d9dddb;
   border-radius: 8px;
-  color: #173e39;
+  color: var(--text);
   background: white;
   font-size: 0.9rem;
 }
@@ -48,7 +48,7 @@
 }
 .credentials-card p {
   margin: 0;
-  color: #53645f;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   line-height: 1.45;
 }
@@ -59,7 +59,7 @@
 .schedule-off {
   display: block;
   padding: 7px 4px;
-  color: #87938f;
+  color: #858b88;
   text-align: center;
   font-size: 0.75rem;
 }
@@ -70,8 +70,8 @@
   padding: 4px 7px;
   vertical-align: middle;
   text-align: center;
-  color: #50605c;
-  background: #f4f8f7;
+  color: var(--text-secondary);
+  background: #f4f5f4;
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -87,14 +87,14 @@
   left: 0;
   z-index: 2;
   background: #fff;
-  box-shadow: 1px 0 0 #dfe8e5;
+  box-shadow: 1px 0 0 #dfe3e1;
 }
 
 .published-schedule-sheet .cloud-schedule-table thead th:first-child {
   z-index: 3;
-  background: #f4f8f7;
+  background: #f4f5f4;
 }
 
 .published-schedule-sheet .cloud-schedule-table tfoot th:first-child {
-  background: #f4f8f7;
+  background: #f4f5f4;
 }

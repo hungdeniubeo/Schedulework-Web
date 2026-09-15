@@ -101,4 +101,48 @@ describe("loadMyScheduleData", () => {
       supabase.client.from.mock.calls.map(([table]: [string]) => table),
     ).toEqual(["registration_weeks", "availability_submissions"]);
   });
+
+  it("uses the same nearest open week as the availability page", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-14T00:00:00+07:00"));
+    const currentWeek = {
+      ...week("week-current", "2026-09-21"),
+      status: "open" as const,
+      lock_at: "2026-09-18T15:00:00.000Z",
+    };
+    const laterWeek = {
+      ...week("week-later", "2026-09-28"),
+      status: "open" as const,
+      lock_at: "2026-09-25T15:00:00.000Z",
+    };
+    const latestSaved = submission("latest-saved", currentWeek.id);
+    latestSaved.availability.days["2"] = createPresetDay("full");
+    const olderOtherWeek = submission("older-other-week", laterWeek.id);
+    const weekQuery = {
+      select: () => weekQuery,
+      neq: () => weekQuery,
+      order: async () => ({ data: [laterWeek, currentWeek], error: null }),
+    };
+    const submissionQuery = {
+      select: () => submissionQuery,
+      eq: async () => ({
+        data: [olderOtherWeek, latestSaved],
+        error: null,
+      }),
+    };
+    supabase.client = {
+      from: vi.fn((table: string) =>
+        table === "registration_weeks" ? weekQuery : submissionQuery,
+      ),
+    };
+
+    try {
+      const data = await loadMyScheduleData("employee-1");
+
+      expect(data?.weekStart).toBe("2026-09-21");
+      expect(data?.submission.id).toBe("latest-saved");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -9,12 +9,18 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
+import { BrandLogo } from "../components/BrandLogo";
+import { CowMascot } from "../components/CowMascot";
 import {
   createEmployeeAccount,
   resetEmployeePassword,
   type TemporaryCredentials,
 } from "../lib/serverApi";
-import { isRegistrationLocked } from "../lib/week";
+import {
+  formatAdminDeadline,
+  formatWeekDisplay,
+  isRegistrationLocked,
+} from "../lib/week";
 import type {
   AdminEmployee,
   Availability,
@@ -23,6 +29,7 @@ import type {
 } from "../types/domain";
 import {
   createWeek,
+  deleteWeek,
   listEmployees,
   listSubmissions,
   listWeeks,
@@ -114,7 +121,11 @@ export function AdminDashboard({
   }, []);
 
   useEffect(() => {
-    if (section !== "dashboard" && section !== "availability") {
+    if (
+      section !== "dashboard"
+      && section !== "availability"
+      && section !== "schedule"
+    ) {
       setLoading(false);
       return;
     }
@@ -194,8 +205,10 @@ export function AdminDashboard({
   async function addWeek(weekStart: string, lockAt: string) {
     setWeekBusy(true);
     try {
-      await createWeek(weekStart, lockAt);
+      const created = await createWeek(weekStart, lockAt);
       await refreshBase();
+      setSelectedWeekId(created.id);
+      return created;
     } finally {
       setWeekBusy(false);
     }
@@ -208,6 +221,20 @@ export function AdminDashboard({
     setWeekBusy(true);
     try {
       await updateWeek(id, changes);
+      await refreshBase();
+    } finally {
+      setWeekBusy(false);
+    }
+  }
+
+  async function removeWeek(id: string) {
+    setWeekBusy(true);
+    try {
+      await deleteWeek(id);
+      if (selectedWeekId === id) {
+        setSelectedWeekId("");
+        setSubmissions([]);
+      }
       await refreshBase();
     } finally {
       setWeekBusy(false);
@@ -236,7 +263,7 @@ export function AdminDashboard({
     <div className="admin-shell">
       <header className="admin-header">
         <div className="brand-lockup">
-          <span>SW</span>
+          <BrandLogo />
           <div>
             <strong>ScheduleWork</strong>
             <small>Đăng ký lịch nhân viên</small>
@@ -252,7 +279,7 @@ export function AdminDashboard({
       </header>
       <nav className="admin-tabs">
         {[
-          ["dashboard", "/admin", "Dashboard"],
+          ["dashboard", "/admin", "Trang chủ"],
           ["availability", "/admin/availability", "Đăng ký nhân viên"],
           ["schedule", "/admin/schedule", "Xếp lịch"],
           ["employees", "/admin/employees", "Nhân viên"],
@@ -300,10 +327,37 @@ export function AdminDashboard({
           </Suspense>
         ) : section === "schedule" ? (
           <Suspense fallback={sectionFallback}>
-            <AdminScheduler />
+            <AdminScheduler
+              preferredWeekStart={selectedWeek?.week_start}
+              registrationWeekStarts={weeks.map((week) => week.week_start)}
+              onWeekStartChange={(weekStart) => {
+                const matching = weeks.find((week) => week.week_start === weekStart);
+                setSelectedWeekId(matching?.id ?? "");
+              }}
+              onOpenAvailability={() => navigate("/admin/availability")}
+            />
           </Suspense>
         ) : section === "dashboard" ? (
-          <div className="admin-home-grid">
+          <div className="admin-home-page">
+            <section className="admin-home-welcome">
+              <div className="admin-home-welcome-copy">
+                <span className="eyebrow">ScheduleWork · Gyu-Kaku</span>
+                <h1>Sẵn sàng cho một tuần làm việc thật nhịp nhàng.</h1>
+                <p>
+                  Theo dõi đăng ký của đội ngũ, xếp ca và công bố lịch từ một
+                  nơi duy nhất.
+                </p>
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => navigate("/admin/availability")}
+                >
+                  Xem đăng ký tuần này
+                </button>
+              </div>
+              <CowMascot />
+            </section>
+            <div className="admin-home-grid">
             <button
               type="button"
               className="panel"
@@ -334,8 +388,30 @@ export function AdminDashboard({
               <p>nhân viên đang hoạt động</p>
             </button>
           </div>
+          </div>
         ) : (
-          <>
+          <div className="availability-admin-page">
+            <section className="panel availability-admin-hero">
+              <div>
+                <span className="eyebrow">Đăng ký lịch làm việc</span>
+                <h1>
+                  {selectedWeek
+                    ? formatWeekDisplay(selectedWeek.week_start)
+                    : "Lịch đăng ký nhân viên"}
+                </h1>
+                <p>
+                  Theo dõi đăng ký, xử lý trường hợp còn thiếu và chuyển sang
+                  xếp lịch đúng tuần.
+                </p>
+              </div>
+              <div className="availability-progress-card">
+                <span>Tiến độ tuần</span>
+                <strong>
+                  {submittedActive}<small>/{activeEmployees.length}</small>
+                </strong>
+                <p>nhân viên đã gửi</p>
+              </div>
+            </section>
             <Suspense fallback={sectionFallback}>
               <div className="dashboard-grid">
                 <WeekManager
@@ -345,23 +421,35 @@ export function AdminDashboard({
                   onSelect={setSelectedWeekId}
                   onCreate={addWeek}
                   onUpdate={patchWeek}
+                  onDelete={removeWeek}
                 />
-                <section className="panel summary-panel">
-                  <span className="eyebrow">Tiến độ đăng ký</span>
-                  <strong>
-                    {submittedActive} / {activeEmployees.length}
-                  </strong>
-                  <p>nhân viên đã đăng ký</p>
+                <section className="panel availability-week-summary">
+                  <span className="eyebrow">Tổng quan tuần</span>
                   {selectedWeek && (
-                    <span
-                      className={`status-badge ${selectedWeek.status === "archived" ? "archived" : selectedWeekLocked ? "locked" : "open"}`}
-                    >
-                      {selectedWeek.status === "archived"
-                        ? "Đã lưu trữ"
-                        : selectedWeekLocked
-                          ? "Đã khóa"
-                          : "Đang mở"}
-                    </span>
+                    <>
+                      <div className="availability-summary-row">
+                        <span>Trạng thái</span>
+                        <span
+                          className={`status-badge ${selectedWeek.status === "archived" ? "archived" : selectedWeekLocked ? "locked" : "open"}`}
+                        >
+                          {selectedWeek.status === "archived"
+                            ? "Đã lưu trữ"
+                            : selectedWeekLocked
+                              ? "Đã khóa"
+                              : "Đang mở"}
+                        </span>
+                      </div>
+                      <div className="availability-summary-row">
+                        <span>Hạn đăng ký</span>
+                        <strong>{formatAdminDeadline(selectedWeek.lock_at)}</strong>
+                      </div>
+                      <div className="availability-summary-row">
+                        <span>Chưa đăng ký</span>
+                        <strong>
+                          {Math.max(0, activeEmployees.length - submittedActive)} nhân viên
+                        </strong>
+                      </div>
+                    </>
                   )}
                 </section>
               </div>
@@ -369,6 +457,8 @@ export function AdminDashboard({
                 <AdminMatrix
                   employees={employees}
                   submissions={submissions}
+                  weekStart={selectedWeek.week_start}
+                  onOpenScheduler={() => navigate("/admin/schedule")}
                   onSelect={(employee, submission) =>
                     setSelectedSubmission({ employee, submission })
                   }
@@ -379,7 +469,7 @@ export function AdminDashboard({
                 </div>
               )}
             </Suspense>
-          </>
+          </div>
         )}
       </main>
       {selectedSubmission && selectedWeek && (

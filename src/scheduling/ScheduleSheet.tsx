@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { DAY_KEYS } from "../types/domain";
-import { addDateOnlyDays, formatDateShort } from "../lib/week";
+import {
+  addDateOnlyDays,
+  formatDateShort,
+  formatWeekOfMonth,
+} from "../lib/week";
 import { entryLabel } from "./overlap";
 import { buildScheduleGroups } from "./scheduleSheetModel";
 import { formatShiftLabel, resolvedShiftColor, shiftStyle } from "./shiftStyle";
@@ -75,7 +79,7 @@ export function ScheduleSheet({
       <div className="cloud-sheet-title">
         <strong>LỊCH LÀM VIỆC</strong>
         <span>
-          {formatDateShort(weekStart)} –{" "}
+          {formatWeekOfMonth(weekStart)} · {formatDateShort(weekStart)} –{" "}
           {formatDateShort(addDateOnlyDays(weekStart, 6))}
         </span>
       </div>

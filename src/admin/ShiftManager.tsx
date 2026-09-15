@@ -15,6 +15,7 @@ import {
   shiftStyle,
 } from "../scheduling/shiftStyle";
 import type { ShiftType } from "../scheduling/types";
+import { ClockIcon, PlusIcon } from "../components/Icons";
 
 type Form = {
   id?: string;
@@ -135,13 +136,27 @@ export function ShiftManager() {
   }
 
   return (
-    <div className="management-grid">
-      <section className="panel manage-page">
+    <div className="shift-manager-page">
+      <section className="panel management-hero shift-manager-hero">
+        <div>
+          <span className="eyebrow">Khung giờ dùng chung</span>
+          <h2>Ca làm</h2>
+          <p>Tạo ca một lần để admin chọn nhanh và giữ màu sắc nhất quán khi xếp lịch.</p>
+        </div>
+        <div className="management-hero-stat">
+          <strong>{shifts.length}</strong>
+          <span>ca đang sử dụng</span>
+        </div>
+      </section>
+
+      <div className="management-grid shift-management-grid">
+      <section className="panel manage-page shift-list-card">
         <div className="panel-heading">
           <div>
-            <h2>Ca làm</h2>
-            <p>Ca đơn và ca gãy dùng chung cú pháp với desktop.</p>
+            <h3>Danh sách ca</h3>
+            <p>Màu và khung giờ này xuất hiện trên toàn bộ lịch.</p>
           </div>
+          <span className="management-count">{shifts.length} ca</span>
         </div>
         <div className="shift-manage-list">
           {shifts.map((shift) => (
@@ -186,14 +201,24 @@ export function ShiftManager() {
           )}
         </div>
       </section>
-      <section className="panel">
-        <h2>{form.id ? "Chỉnh sửa ca" : "Thêm ca"}</h2>
+      <section className="panel shift-editor-card">
+        <div className="employee-tool-heading">
+          <div className="employee-tool-icon"><ClockIcon /></div>
+          <div>
+            <h3>{form.id ? "Chỉnh sửa ca" : "Thêm ca mới"}</h3>
+            <p>{form.id ? "Cập nhật khung giờ đang chọn." : "Thiết lập khung giờ để bắt đầu xếp lịch."}</p>
+          </div>
+        </div>
         <form className="shift-editor" onSubmit={(event) => void save(event)}>
           <div className="time-pair">
             <label>
               Bắt đầu
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                maxLength={5}
+                placeholder="HH:mm"
                 required
                 value={form.start}
                 onChange={(e) => updateTime({ start: e.target.value })}
@@ -202,7 +227,11 @@ export function ShiftManager() {
             <label>
               Kết thúc
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                maxLength={5}
+                placeholder="HH:mm"
                 required
                 value={form.end}
                 onChange={(e) => updateTime({ end: e.target.value })}
@@ -226,7 +255,11 @@ export function ShiftManager() {
               <label>
                 Bắt đầu 2
                 <input
-                  type="time"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                  maxLength={5}
+                  placeholder="HH:mm"
                   required
                   value={form.start2}
                   onChange={(e) => updateTime({ start2: e.target.value })}
@@ -235,7 +268,11 @@ export function ShiftManager() {
               <label>
                 Kết thúc 2
                 <input
-                  type="time"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+                  maxLength={5}
+                  placeholder="HH:mm"
                   required
                   value={form.end2}
                   onChange={(e) => updateTime({ end2: e.target.value })}
@@ -267,10 +304,12 @@ export function ShiftManager() {
           </div>
           {error && <div className="inline-error">{error}</div>}
           <button className="button primary" disabled={busy}>
+            {!form.id && <PlusIcon />}
             {busy ? "Đang lưu..." : "Lưu ca"}
           </button>
         </form>
       </section>
+      </div>
     </div>
   );
 }

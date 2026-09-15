@@ -34,9 +34,9 @@ export function formatWeekRange(weekStart: string): string {
   return `${formatDateShort(weekStart)} – ${formatDateShort(addDateOnlyDays(weekStart, 6))}`;
 }
 
-export function formatRegistrationWeekLabel(weekStart: string): string {
+export function formatWeekOfMonth(weekStart: string): string {
   const date = parseDateOnly(weekStart);
-  if (!date) return "Đăng ký lịch tuần";
+  if (!date) return "Tuần";
   const firstDay = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
   );
@@ -44,7 +44,18 @@ export function formatRegistrationWeekLabel(weekStart: string): string {
   const weekOfMonth = Math.floor(
     (date.getUTCDate() - 1 + firstDayOffset) / 7,
   ) + 1;
-  return `Đăng ký lịch tuần ${weekOfMonth} tháng ${date.getUTCMonth() + 1}`;
+  return `Tuần ${weekOfMonth} tháng ${date.getUTCMonth() + 1}`;
+}
+
+export function formatWeekDisplay(weekStart: string): string {
+  return `${formatWeekOfMonth(weekStart)} · ${formatWeekRange(weekStart)}`;
+}
+
+export function formatRegistrationWeekLabel(weekStart: string): string {
+  const label = formatWeekOfMonth(weekStart);
+  return label === "Tuần"
+    ? "Đăng ký lịch tuần"
+    : `Đăng ký lịch ${label.toLocaleLowerCase("vi")}`;
 }
 
 export function formatDeadline(lockAt: string): string {
@@ -86,7 +97,12 @@ export function formatAdminDeadline(lockAt: string): string {
   }).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("hour")}:${part("minute")} · ${part("weekday")}, ${part("day")}/${part("month")}/${part("year")}`;
+  return `${part("weekday")}, ${part("day")}/${part("month")}/${part("year")} · ${part("hour")}:${part("minute")}`;
+}
+
+export function defaultRegistrationLockAtInput(weekStart: string): string {
+  if (!isMondayDate(weekStart)) return "";
+  return `${addDateOnlyDays(weekStart, -3)}T22:00`;
 }
 
 export function vietnamDateTimeToIso(value: string): string {
@@ -156,12 +172,10 @@ export function defaultRegistrationWindow(now = new Date()): {
   const daysUntilMonday = (8 - today.getUTCDay()) % 7;
   today.setUTCDate(today.getUTCDate() + daysUntilMonday);
   let weekStart = today.toISOString().slice(0, 10);
-  let deadlineDate = addDateOnlyDays(weekStart, -3);
-  let lockAtInput = `${deadlineDate}T22:00`;
+  let lockAtInput = defaultRegistrationLockAtInput(weekStart);
   if (new Date(vietnamDateTimeToIso(lockAtInput)).getTime() <= now.getTime()) {
     weekStart = addDateOnlyDays(weekStart, 7);
-    deadlineDate = addDateOnlyDays(weekStart, -3);
-    lockAtInput = `${deadlineDate}T22:00`;
+    lockAtInput = defaultRegistrationLockAtInput(weekStart);
   }
   return { weekStart, lockAtInput };
 }

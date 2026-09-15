@@ -18,6 +18,7 @@ import type {
   AvailabilitySubmission,
   RegistrationWeek,
 } from "../types/domain";
+import { selectEmployeeRegistrationWeek } from "./registrationWeekSelection";
 
 export type PublishedScheduleData = {
   currentEmployeeId: string;
@@ -101,8 +102,11 @@ export async function loadMyScheduleData(employeeId: string): Promise<MySchedule
     console.error(weeksResult.error ?? submissionsResult.error);
     throw new Error("Không tải được lịch đã đăng ký.");
   }
+  const weeks = (weeksResult.data ?? []) as RegistrationWeek[];
+  const selectedWeek = selectEmployeeRegistrationWeek(weeks);
   return selectSubmittedAvailability(
-    (weeksResult.data ?? []) as RegistrationWeek[],
+    weeks,
     (submissionsResult.data ?? []) as AvailabilitySubmission[],
+    selectedWeek?.week_start,
   );
 }

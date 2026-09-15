@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
+import { BrandLogo } from "../components/BrandLogo";
 import { employeeDestination } from "../auth/access";
 import { configurationError, getSupabase } from "../lib/config";
 import { clearEmployeeAvailabilityDrafts } from "../lib/draftStorage";
@@ -51,7 +52,7 @@ export function EmployeeHeader({
     <header className="employee-header">
       <div className="employee-header-top">
         <div className="employee-brand">
-          <span aria-hidden="true">SW</span>
+          <BrandLogo />
           <div>
             <strong>ScheduleWork</strong>
             <small>Cổng nhân viên</small>

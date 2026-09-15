@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
+import { BrandLogo } from "../components/BrandLogo";
 import { getSupabase } from "../lib/config";
 import { changeEmployeePassword } from "../lib/serverApi";
 
@@ -67,7 +68,7 @@ export function ChangePasswordPage({ navigate }: Props) {
     <main className="login-page">
       <form className="login-card" onSubmit={(event) => void save(event)}>
         <div className="brand-lockup">
-          <span>SW</span>
+          <BrandLogo />
           <strong>ScheduleWork</strong>
         </div>
         <h1>Đổi mật khẩu</h1>
@@ -99,6 +100,13 @@ export function ChangePasswordPage({ navigate }: Props) {
         {error && <div className="inline-error">{error}</div>}
         <button className="button primary large" disabled={saving}>
           {saving ? "Đang lưu..." : "Đổi mật khẩu"}
+        </button>
+        <button
+          type="button"
+          className="button secondary large"
+          onClick={() => navigate("/app/availability")}
+        >
+          Quay lại
         </button>
       </form>
     </main>

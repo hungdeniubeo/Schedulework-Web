@@ -48,16 +48,21 @@ export async function listWeeks(): Promise<RegistrationWeek[]> {
 export async function createWeek(
   weekStart: string,
   lockAt: string,
-): Promise<void> {
-  const { error } = await getSupabase().from("registration_weeks").insert({
-    week_start: weekStart,
-    lock_at: lockAt,
-    status: "open",
-  });
+): Promise<RegistrationWeek> {
+  const { data, error } = await getSupabase()
+    .from("registration_weeks")
+    .insert({
+      week_start: weekStart,
+      lock_at: lockAt,
+      status: "open",
+    })
+    .select("*")
+    .single();
   fail(
     error,
     "Không tạo được tuần đăng ký. Hãy kiểm tra ngày Thứ 2 và tuần trùng lặp.",
   );
+  return data as RegistrationWeek;
 }
 
 export async function updateWeek(
@@ -69,6 +74,14 @@ export async function updateWeek(
     .update(changes)
     .eq("id", id);
   fail(error, "Không cập nhật được tuần đăng ký.");
+}
+
+export async function deleteWeek(id: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("registration_weeks")
+    .delete()
+    .eq("id", id);
+  fail(error, "Không xóa được tuần đăng ký.");
 }
 
 export async function listSubmissions(

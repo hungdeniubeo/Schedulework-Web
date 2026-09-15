@@ -7,8 +7,13 @@ import {
   formatAvailabilityPreset,
   getOffReason,
 } from "../lib/availability";
-import { addDateOnlyDays, formatDateShort, formatWeekRange } from "../lib/week";
+import {
+  addDateOnlyDays,
+  formatDateShort,
+  formatWeekDisplay,
+} from "../lib/week";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
+import { ArrowLeftRightIcon } from "../components/Icons";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import {
   semanticShiftColor,
@@ -123,7 +128,7 @@ export function SubmittedAvailability({
         <header className="submitted-heading">
           <div>
             <span className="eyebrow">Đăng ký đã gửi</span>
-            <strong>{formatWeekRange(data.weekStart)}</strong>
+            <strong>{formatWeekDisplay(data.weekStart)}</strong>
           </div>
         </header>
       )}
@@ -211,7 +216,7 @@ export function MyScheduleContent({
       <header>
         <span className="eyebrow">Lịch đã đăng ký</span>
         <h1>Lịch của tôi</h1>
-        <p>{formatWeekRange(data.weekStart)}</p>
+        <p>{formatWeekDisplay(data.weekStart)}</p>
         <div className="submitted-waiting-status">
           {submittedTimeLabel(data)} · Chờ quản lý xếp lịch
         </div>
@@ -231,10 +236,10 @@ export function TeamSchedulePage({ employeeId }: { employeeId: string }) {
       <header>
         <span className="eyebrow">Lịch chính thức</span>
         <h1>Lịch tổng</h1>
-        <p>{formatWeekRange(data.week.weekStart)}</p>
+        <p>{formatWeekDisplay(data.week.weekStart)}</p>
       </header>
       <div className="team-scroll-guide" aria-hidden="true">
-        <span>↔</span>
+        <span><ArrowLeftRightIcon /></span>
         Vuốt ngang để xem đủ 7 ngày
       </div>
       <div className="team-schedule-scroll schedule-table-scroll">

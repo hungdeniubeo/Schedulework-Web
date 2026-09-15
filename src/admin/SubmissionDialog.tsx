@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
 import { ModalBackdrop } from "../components/ModalBackdrop";
+import { CloseIcon } from "../components/Icons";
 import {
   createEmptyAvailability,
   validateAvailability,
@@ -74,7 +75,7 @@ export function SubmissionDialog({
             onClick={onClose}
             aria-label="Đóng"
           >
-            ×
+            <CloseIcon />
           </button>
         </header>
         <div className="dialog-content">

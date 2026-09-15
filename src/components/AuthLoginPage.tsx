@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { getSupabase } from "../lib/config";
+import { BrandLogo } from "./BrandLogo";
 
 type Props = {
   title: string;
@@ -32,7 +33,7 @@ export function AuthLoginPage({ title, description }: Props) {
     <main className="login-page">
       <form className="login-card" onSubmit={(event) => void login(event)}>
         <div className="brand-lockup">
-          <span>SW</span>
+          <BrandLogo />
           <strong>ScheduleWork</strong>
         </div>
         <h1>{title}</h1>

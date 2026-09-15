@@ -1,3 +1,5 @@
+import { BrandLogo } from "./BrandLogo";
+
 type Props = {
   title: string;
   message: string;
@@ -7,8 +9,8 @@ type Props = {
 export function AppState({ title, message, action }: Props) {
   return (
     <main className="center-state">
-      <div className="state-mark" aria-hidden="true">
-        SW
+      <div className="state-mark">
+        <BrandLogo />
       </div>
       <h1>{title}</h1>
       <p>{message}</p>

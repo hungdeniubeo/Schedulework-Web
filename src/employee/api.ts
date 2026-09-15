@@ -7,8 +7,8 @@ import type {
   AvailabilitySubmission,
   EmployeePortalData,
   Profile,
-  RegistrationWeek,
 } from "../types/domain";
+import { selectEmployeeRegistrationWeek } from "./registrationWeekSelection";
 
 export class EmployeePortalError extends Error {
   constructor(
@@ -67,22 +67,6 @@ export async function getEmployeeAccess(user: User): Promise<{
   };
 }
 
-function chooseWeek(weeks: RegistrationWeek[]): RegistrationWeek | null {
-  const now = Date.now();
-  return (
-    weeks
-      .filter(
-        (week) =>
-          week.status === "open" && new Date(week.lock_at).getTime() > now,
-      )
-      .sort((a, b) => a.week_start.localeCompare(b.week_start))[0] ??
-    [...weeks]
-      .filter((week) => week.status !== "archived")
-      .sort((a, b) => b.week_start.localeCompare(a.week_start))[0] ??
-    null
-  );
-}
-
 export async function loadEmployeePortal(
   knownEmployee?: { id: string; name: string; active: boolean },
 ): Promise<EmployeePortalData> {
@@ -119,7 +103,7 @@ export async function loadEmployeePortal(
     console.error(weeksResult.error);
     throw new EmployeePortalError("Không tải được tuần đăng ký.", "WEEK_ERROR");
   }
-  const week = chooseWeek((weeksResult.data ?? []) as RegistrationWeek[]);
+  const week = selectEmployeeRegistrationWeek(weeksResult.data ?? []);
   if (!week) {
     throw new EmployeePortalError(
       "Hiện chưa có tuần đăng ký lịch. Vui lòng quay lại sau hoặc liên hệ quản lý.",

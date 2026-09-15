@@ -24,6 +24,7 @@ import {
   type MobileOptionPickerOption,
 } from "./MobileOptionPicker";
 import { semanticShiftColor, shiftStyle } from "../scheduling/shiftStyle";
+import { ArrowRightIcon } from "./Icons";
 
 const PRESET_PICKER_OPTIONS: ReadonlyArray<MobileOptionPickerOption> =
   PRESET_OPTIONS.map((option) => ({
@@ -165,7 +166,7 @@ export function AvailabilityEditor({
                           )
                         }
                       />
-                      <span aria-hidden="true">→</span>
+              <span aria-hidden="true"><ArrowRightIcon /></span>
                       <MobileOptionPicker
                         title="Chọn giờ kết thúc"
                         ariaLabel={`Giờ kết thúc ${DAY_LABELS[key]} khoảng ${intervalIndex + 1}`}

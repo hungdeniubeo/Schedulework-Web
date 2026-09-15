@@ -6,6 +6,7 @@ import {
   removeGroup,
 } from "../scheduling/api";
 import type { Group } from "../scheduling/types";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "../components/Icons";
 
 export function GroupManager() {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -66,82 +67,115 @@ export function GroupManager() {
   }
 
   return (
-    <section className="panel manage-page">
-      <div className="panel-heading">
+    <div className="group-manager-page">
+      <section className="panel management-hero group-manager-hero">
         <div>
-          <h2>Nhóm</h2>
-          <p>Tạo, đổi tên và sắp xếp nhóm nhân viên.</p>
+          <span className="eyebrow">Cấu trúc đội ngũ</span>
+          <h2>Nhóm làm việc</h2>
+          <p>Tổ chức nhân viên theo khu vực để bảng xếp lịch rõ ràng, đúng thứ tự.</p>
         </div>
-      </div>
-      <form className="inline-form" onSubmit={(event) => void create(event)}>
-        <input
-          aria-label="Tên nhóm mới"
-          value={name}
-          maxLength={80}
-          required
-          placeholder="Tên nhóm"
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button className="button primary" disabled={busy}>
-          Thêm nhóm
-        </button>
-      </form>
-      {error && <div className="inline-error">{error}</div>}
-      <div className="manage-list">
-        {groups.map((group, index) => (
-          <div className="manage-row" key={group.id}>
-            <input
-              aria-label={`Tên nhóm ${group.name}`}
-              defaultValue={group.name}
-              onBlur={(e) => {
-                const next = e.target.value.trim();
-                if (next && next !== group.name)
-                  void patchGroup(group.id, { name: next })
-                    .then(load)
-                    .catch((reason) => setError(reason.message));
-              }}
-            />
-            <div className="row-actions">
-              <button
-                className="button ghost"
-                type="button"
-                aria-label={`Đưa ${group.name} lên`}
-                disabled={busy || index === 0}
-                onClick={() => void move(index, -1)}
-              >
-                ↑
-              </button>
-              <button
-                className="button ghost"
-                type="button"
-                aria-label={`Đưa ${group.name} xuống`}
-                disabled={busy || index === groups.length - 1}
-                onClick={() => void move(index, 1)}
-              >
-                ↓
-              </button>
-              <button
-                className="button ghost danger"
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  void removeGroup(group.id)
-                    .then(load)
-                    .catch((reason) => setError(reason.message))
-                }
-              >
-                Xóa
-              </button>
+        <div className="management-hero-stat">
+          <strong>{groups.length}</strong>
+          <span>nhóm đang sử dụng</span>
+        </div>
+      </section>
+
+      <div className="group-manager-grid">
+        <section className="panel management-create-card">
+          <div className="employee-tool-heading">
+            <div className="employee-tool-icon"><PlusIcon /></div>
+            <div>
+              <h3>Thêm nhóm mới</h3>
+              <p>Ví dụ: Bếp, Phục vụ, Quầy bar.</p>
             </div>
           </div>
-        ))}
-        {loading && <div className="list-state loading">Đang tải danh sách nhóm…</div>}
-        {groups.length === 0 && (
-          <div className="list-state" hidden={loading}>
-            Chưa có nhóm. Thêm nhóm để sắp xếp nhân viên.
+          <form className="group-create-form" onSubmit={(event) => void create(event)}>
+            <label className="field">
+              <span>Tên nhóm</span>
+              <input
+                aria-label="Tên nhóm mới"
+                value={name}
+                maxLength={80}
+                required
+                placeholder="Nhập tên nhóm"
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <button className="button primary" disabled={busy}>
+              <PlusIcon /> Thêm nhóm
+            </button>
+          </form>
+        </section>
+
+        <section className="panel manage-page group-list-card">
+          <div className="panel-heading management-list-heading">
+            <div>
+              <h3>Danh sách nhóm</h3>
+              <p>Đổi tên trực tiếp hoặc sắp xếp thứ tự hiển thị.</p>
+            </div>
+            <span>{groups.length} nhóm</span>
           </div>
-        )}
+          {error && <div className="inline-error">{error}</div>}
+          <div className="manage-list">
+            {groups.map((group, index) => (
+              <div className="manage-row" key={group.id}>
+                <span className="manage-row-index" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <input
+                  aria-label={`Tên nhóm ${group.name}`}
+                  defaultValue={group.name}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next && next !== group.name)
+                      void patchGroup(group.id, { name: next })
+                        .then(load)
+                        .catch((reason) => setError(reason.message));
+                  }}
+                />
+                <div className="row-actions">
+                  <button
+                    className="button ghost icon-only"
+                    type="button"
+                    aria-label={`Đưa ${group.name} lên`}
+                    disabled={busy || index === 0}
+                    onClick={() => void move(index, -1)}
+                  >
+                    <ArrowUpIcon />
+                  </button>
+                  <button
+                    className="button ghost icon-only"
+                    type="button"
+                    aria-label={`Đưa ${group.name} xuống`}
+                    disabled={busy || index === groups.length - 1}
+                    onClick={() => void move(index, 1)}
+                  >
+                    <ArrowDownIcon />
+                  </button>
+                  <button
+                    className="button ghost danger"
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void removeGroup(group.id)
+                        .then(load)
+                        .catch((reason) => setError(reason.message))
+                    }
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+            {loading && <div className="list-state loading">Đang tải danh sách nhóm…</div>}
+            {groups.length === 0 && (
+              <div className="list-state" hidden={loading}>
+                Chưa có nhóm. Thêm nhóm để sắp xếp nhân viên.
+              </div>
+            )}
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }

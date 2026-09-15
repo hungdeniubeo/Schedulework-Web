@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CustomSelect } from "../components/CustomSelect";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChevronDownIcon,
+  CloseIcon,
+  PlusIcon,
+} from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
 import type { TemporaryCredentials } from "../lib/serverApi";
 import {
@@ -45,7 +52,9 @@ function CredentialsCard({ credentials, onClose }: {
     <div className="credentials-card" role="status">
       <div>
         <strong>Tài khoản đã sẵn sàng</strong>
-        <button className="icon-button" type="button" onClick={onClose}>×</button>
+        <button className="icon-button" type="button" aria-label="Đóng" onClick={onClose}>
+          <CloseIcon />
+        </button>
       </div>
       <label>Email<code>{credentials.email}</code></label>
       <label>Mật khẩu tạm<code>{credentials.temporaryPassword}</code></label>
@@ -110,8 +119,11 @@ function PositionManager({
   return (
     <details className="position-manager">
       <summary>
-        <span>Quản lý vị trí</span>
-        <small>{positions.length} vị trí</small>
+        <span className="position-manager-summary-copy">
+          <strong>Quản lý vị trí</strong>
+          <small>{positions.length} vị trí</small>
+        </span>
+        <ChevronDownIcon className="position-manager-chevron" />
       </summary>
       <form className="position-create-form" onSubmit={(event) => void create(event)}>
         <input
@@ -122,7 +134,9 @@ function PositionManager({
           disabled={disabled || busy}
           onChange={(event) => setName(event.target.value)}
         />
-        <button className="button secondary" disabled={disabled || busy}>+ Thêm vị trí</button>
+        <button className="button secondary" disabled={disabled || busy}>
+          <PlusIcon /> Thêm vị trí
+        </button>
       </form>
       <div className="position-list">
         {positions.map((position, index) => {
@@ -147,19 +161,19 @@ function PositionManager({
               />
               <div className="position-actions">
                 <button
-                  className="button ghost"
+                  className="button ghost icon-only"
                   type="button"
                   aria-label={`Đưa ${position.name} lên`}
                   disabled={disabled || busy || index === 0}
                   onClick={() => void run(() => onMove(index, -1))}
-                >↑</button>
+                ><ArrowUpIcon /></button>
                 <button
-                  className="button ghost"
+                  className="button ghost icon-only"
                   type="button"
                   aria-label={`Đưa ${position.name} xuống`}
                   disabled={disabled || busy || index === positions.length - 1}
                   onClick={() => void run(() => onMove(index, 1))}
-                >↓</button>
+                ><ArrowDownIcon /></button>
                 <button
                   className="button ghost danger"
                   type="button"
@@ -203,21 +217,34 @@ export function EmployeeCard({
   onResetPassword,
   onDeleteRequest,
 }: EmployeeCardProps) {
+  const initials = employee.name
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toLocaleUpperCase("vi-VN");
+
   return (
     <details className="employee-row">
       <summary className="employee-summary">
+        <span className="employee-avatar" aria-hidden="true">{initials}</span>
         <div className="employee-identity">
-          <strong>{employee.name}</strong>
-          {employee.positionName && (
-            <span className="position-badge">{employee.positionName}</span>
-          )}
+          <span className="employee-name-line">
+            <strong>{employee.name}</strong>
+            {employee.positionName && (
+              <span className="position-badge">{employee.positionName}</span>
+            )}
+          </span>
           <span className="employee-group-label">{groupName}</span>
         </div>
         <span className="employee-summary-meta">
           <span className={`status-dot-label ${employee.active ? "active" : "inactive"}`}>
             {employee.active ? "Đang hoạt động" : "Đã tắt"}
           </span>
-          <span className="employee-expand-icon" aria-hidden="true">⌄</span>
+          <span className="employee-expand-icon" aria-hidden="true">
+            <ChevronDownIcon />
+          </span>
         </span>
       </summary>
       <div className="employee-settings">
@@ -280,8 +307,8 @@ export function EmployeeCard({
         <div className="employee-actions">
           <div className="employee-order-actions">
             <span>Thứ tự trong nhóm</span>
-            <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} lên trong nhóm`} disabled={disabled} onClick={() => onMove(employee, -1)}>↑</button>
-            <button className="button ghost" type="button" aria-label={`Đưa ${employee.name} xuống trong nhóm`} disabled={disabled} onClick={() => onMove(employee, 1)}>↓</button>
+            <button className="button ghost icon-only" type="button" aria-label={`Đưa ${employee.name} lên trong nhóm`} disabled={disabled} onClick={() => onMove(employee, -1)}><ArrowUpIcon /></button>
+            <button className="button ghost icon-only" type="button" aria-label={`Đưa ${employee.name} xuống trong nhóm`} disabled={disabled} onClick={() => onMove(employee, 1)}><ArrowDownIcon /></button>
           </div>
           <button className="button ghost" type="button" disabled={disabled} onClick={() => onResetPassword(employee.id)}>
             Reset mật khẩu
@@ -538,55 +565,86 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
   const assignedPositionIds = new Set(
     employees.flatMap((employee) => employee.positionId ? [employee.positionId] : []),
   );
+  const activeEmployeeCount = employees.filter((employee) => employee.active).length;
 
   return (
-    <section className="panel employee-manager">
-      <div className="panel-heading">
+    <section className="employee-manager employee-manager-page">
+      <div className="panel employee-manager-hero">
         <div>
+          <span className="eyebrow">Đội ngũ</span>
           <h2>Nhân viên</h2>
-          <p>Thêm nhân viên, phân nhóm và quản lý thiết lập xếp lịch.</p>
+          <p>Quản lý đội ngũ, nhóm làm việc và thứ tự hiển thị khi xếp lịch.</p>
+        </div>
+        <div className="employee-manager-stats" aria-label="Thống kê nhân viên">
+          <span><strong>{activeEmployeeCount}</strong> đang hoạt động</span>
+          <span><strong>{groups.length}</strong> nhóm</span>
+          <span><strong>{positions.length}</strong> vị trí</span>
         </div>
       </div>
-      <form className="employee-create-form" onSubmit={(event) => void add(event)}>
-        <input
-          aria-label="Tên nhân viên"
-          maxLength={120}
-          required
-          placeholder="Tên nhân viên"
-          value={name}
-          disabled={adding || initialLoading || busyId !== null || positionBusy}
-          onChange={(event) => setName(event.target.value)}
+      <div className="employee-manager-tools">
+        <section className="panel employee-create-card">
+          <div className="employee-tool-heading">
+            <div className="employee-tool-icon"><PlusIcon /></div>
+            <div>
+              <h3>Thêm nhân viên mới</h3>
+              <p>Tài khoản tạm sẽ được tạo và chỉ hiển thị một lần.</p>
+            </div>
+          </div>
+          <form className="employee-create-form" onSubmit={(event) => void add(event)}>
+            <label className="field">
+              <span>Họ và tên</span>
+              <input
+                aria-label="Tên nhân viên"
+                maxLength={120}
+                required
+                placeholder="Ví dụ: Nguyễn Văn An"
+                value={name}
+                disabled={adding || initialLoading || busyId !== null || positionBusy}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>Email đăng nhập</span>
+              <input
+                aria-label="Email nhân viên"
+                type="email"
+                required
+                placeholder="nhanvien@example.com"
+                value={email}
+                disabled={adding || initialLoading || busyId !== null || positionBusy}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <button
+              className="button primary"
+              disabled={adding || initialLoading || busyId !== null || positionBusy}
+            >
+              <PlusIcon /> {adding ? "Đang thêm..." : "Thêm nhân viên"}
+            </button>
+          </form>
+        </section>
+        <PositionManager
+          positions={positions}
+          assignedPositionIds={assignedPositionIds}
+          onCreate={createPosition}
+          onRename={renamePosition}
+          onMove={movePosition}
+          onDelete={deletePosition}
+          disabled={initialLoading || adding || busyId !== null}
+          onBusyChange={setPositionBusy}
         />
-        <input
-          aria-label="Email nhân viên"
-          type="email"
-          required
-          placeholder="Email nhân viên"
-          value={email}
-          disabled={adding || initialLoading || busyId !== null || positionBusy}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <button
-          className="button primary"
-          disabled={adding || initialLoading || busyId !== null || positionBusy}
-        >
-          {adding ? "Đang thêm..." : "Thêm nhân viên"}
-        </button>
-      </form>
-      <PositionManager
-        positions={positions}
-        assignedPositionIds={assignedPositionIds}
-        onCreate={createPosition}
-        onRename={renamePosition}
-        onMove={movePosition}
-        onDelete={deletePosition}
-        disabled={initialLoading || adding || busyId !== null}
-        onBusyChange={setPositionBusy}
-      />
+      </div>
       {error && <div className="inline-error">{error}</div>}
       {credentials && (
         <CredentialsCard credentials={credentials} onClose={() => setCredentials(null)} />
       )}
+      <div className="employee-list-heading">
+        <div>
+          <h3>Danh sách nhân viên</h3>
+          <p>Chọn một nhân viên để xem và cập nhật thông tin.</p>
+        </div>
+        <span>{employees.length} nhân viên</span>
+      </div>
       <div className="employee-list">
         {employees.map((employee) => {
           const groupName = groups.find((group) => group.id === employee.groupId)?.name
