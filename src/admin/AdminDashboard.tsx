@@ -11,17 +11,11 @@ import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { BrandLogo } from "../components/BrandLogo";
 import { CowMascot } from "../components/CowMascot";
-import { selectEmployeeRegistrationWeek } from "../employee/registrationWeekSelection";
 import {
   createEmployeeAccount,
   resetEmployeePassword,
   type TemporaryCredentials,
 } from "../lib/serverApi";
-import {
-  formatAdminDeadline,
-  formatWeekDisplay,
-  isRegistrationLocked,
-} from "../lib/week";
 import type {
   AvailabilitySubmission,
   RegistrationWeekStatus,
@@ -35,17 +29,27 @@ import {
   listWeeks,
   updateWeek,
 } from "./api";
+import {
+  adminWeekPath,
+  resolveAdminRegistrationWeek,
+  weekStartFromSearch,
+} from "./adminWeekSelection";
+import { AdminNavigation, type AdminSection } from "./AdminNavigation";
 
-const AdminMatrix = lazy(() =>
-  import("./AdminMatrix").then(({ AdminMatrix }) => ({ default: AdminMatrix })),
+const AdminAvailabilityPage = lazy(() =>
+  import("./AdminAvailabilityPage").then(({ AdminAvailabilityPage }) => ({
+    default: AdminAvailabilityPage,
+  })),
+);
+const RegistrationWeeksPage = lazy(() =>
+  import("./RegistrationWeeksPage").then(({ RegistrationWeeksPage }) => ({
+    default: RegistrationWeeksPage,
+  })),
 );
 const EmployeeManager = lazy(() =>
   import("./EmployeeManager").then(({ EmployeeManager }) => ({
     default: EmployeeManager,
   })),
-);
-const WeekManager = lazy(() =>
-  import("./WeekManager").then(({ WeekManager }) => ({ default: WeekManager })),
 );
 const AdminScheduler = lazy(() =>
   import("./AdminScheduler").then(({ AdminScheduler }) => ({
@@ -66,31 +70,32 @@ const SUBMISSION_REFRESH_MS = 15_000;
 
 type Props = {
   session: Session;
-  section:
-    | "dashboard"
-    | "availability"
-    | "schedule"
-    | "employees"
-    | "groups"
-    | "shifts";
+  section: AdminSection;
+  search: string;
   navigate: (path: string) => void;
   onLogout: () => Promise<void>;
 };
+
 export function AdminDashboard({
   session,
   section,
+  search,
   navigate,
   onLogout,
 }: Props) {
   const [employees, setEmployees] = useState<CloudEmployee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [weeks, setWeeks] = useState<Awaited<ReturnType<typeof listWeeks>>>([]);
-  const [selectedWeekId, setSelectedWeekId] = useState("");
   const [submissions, setSubmissions] = useState<AvailabilitySubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekBusy, setWeekBusy] = useState(false);
   const submissionsRequest = useRef(0);
+
+  const requestedWeekStart = weekStartFromSearch(search);
+  const { week: selectedWeek, invalidRequestedWeek } =
+    resolveAdminRegistrationWeek(weeks, requestedWeekStart);
+  const selectedWeekId = selectedWeek?.id ?? "";
 
   const refreshBase = useCallback(async () => {
     const [nextEmployees, nextGroups, nextWeeks] = await Promise.all([
@@ -101,18 +106,15 @@ export function AdminDashboard({
     setEmployees(nextEmployees);
     setGroups(nextGroups);
     setWeeks(nextWeeks);
-    setSelectedWeekId((current) =>
-      current && nextWeeks.some((week) => week.id === current)
-        ? current
-        : (selectEmployeeRegistrationWeek(nextWeeks)?.id ?? ""),
-    );
+    return nextWeeks;
   }, []);
 
   useEffect(() => {
     if (
-      section !== "dashboard"
-      && section !== "availability"
-      && section !== "schedule"
+      section !== "dashboard" &&
+      section !== "availability" &&
+      section !== "registration-weeks" &&
+      section !== "schedule"
     ) {
       setLoading(false);
       return;
@@ -139,8 +141,7 @@ export function AdminDashboard({
     }
     try {
       const nextSubmissions = await listSubmissions(selectedWeekId);
-      if (request === submissionsRequest.current)
-        setSubmissions(nextSubmissions);
+      if (request === submissionsRequest.current) setSubmissions(nextSubmissions);
     } catch (reason) {
       console.error(reason);
       if (request === submissionsRequest.current)
@@ -173,10 +174,6 @@ export function AdminDashboard({
     };
   }, [refreshSubmissions, section]);
 
-  const selectedWeek = weeks.find((week) => week.id === selectedWeekId) ?? null;
-  const selectedWeekLocked = selectedWeek
-    ? isRegistrationLocked(selectedWeek.status, selectedWeek.lock_at)
-    : false;
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.active),
     [employees],
@@ -194,12 +191,11 @@ export function AdminDashboard({
     name: string,
     email: string,
   ): Promise<TemporaryCredentials> {
-    const credentials = await createEmployeeAccount({
+    return createEmployeeAccount({
       name,
       email,
       accessToken: session.access_token,
     });
-    return credentials;
   }
 
   async function resetPassword(
@@ -213,7 +209,7 @@ export function AdminDashboard({
     try {
       const created = await createWeek(weekStart, lockAt);
       await refreshBase();
-      setSelectedWeekId(created.id);
+      navigate(adminWeekPath("/admin/registration-weeks", created.week_start));
       return created;
     } finally {
       setWeekBusy(false);
@@ -236,16 +232,29 @@ export function AdminDashboard({
   async function removeWeek(id: string) {
     setWeekBusy(true);
     try {
+      const deletingSelectedWeek = selectedWeekId === id;
       await deleteWeek(id);
-      if (selectedWeekId === id) {
-        setSelectedWeekId("");
+      const nextWeeks = await refreshBase();
+      if (deletingSelectedWeek) {
         setSubmissions([]);
+        const next = resolveAdminRegistrationWeek(nextWeeks, null).week;
+        navigate(
+          next
+            ? adminWeekPath("/admin/registration-weeks", next.week_start)
+            : "/admin/registration-weeks",
+        );
       }
-      await refreshBase();
     } finally {
       setWeekBusy(false);
     }
   }
+
+  const availabilityPath = selectedWeek
+    ? adminWeekPath("/admin/availability", selectedWeek.week_start)
+    : "/admin/availability";
+  const schedulePath = selectedWeek
+    ? adminWeekPath("/admin/schedule", selectedWeek.week_start)
+    : "/admin/schedule";
 
   return (
     <div className="admin-shell">
@@ -265,26 +274,11 @@ export function AdminDashboard({
           Đăng xuất
         </button>
       </header>
-      <nav className="admin-tabs">
-        {[
-          ["dashboard", "/admin", "Trang chủ"],
-          ["availability", "/admin/availability", "Đăng ký nhân viên"],
-          ["schedule", "/admin/schedule", "Xếp lịch"],
-          ["employees", "/admin/employees", "Nhân viên"],
-          ["groups", "/admin/groups", "Nhóm"],
-          ["shifts", "/admin/shifts", "Ca làm"],
-        ].map(([key, path, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={section === key ? "active" : ""}
-            aria-current={section === key ? "page" : undefined}
-            onClick={() => navigate(path)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+      <AdminNavigation
+        section={section}
+        selectedWeekStart={selectedWeek?.week_start ?? null}
+        navigate={navigate}
+      />
       <main className="admin-main">
         {loading ? (
           <div className="empty-panel">Đang tải dashboard...</div>
@@ -313,18 +307,71 @@ export function AdminDashboard({
           <Suspense fallback={sectionFallback}>
             <ShiftManager />
           </Suspense>
-        ) : section === "schedule" ? (
+        ) : section === "registration-weeks" ? (
           <Suspense fallback={sectionFallback}>
-            <AdminScheduler
-              preferredWeekStart={selectedWeek?.week_start}
-              registrationWeekStarts={weeks.map((week) => week.week_start)}
-              onWeekStartChange={(weekStart) => {
-                const matching = weeks.find((week) => week.week_start === weekStart);
-                setSelectedWeekId(matching?.id ?? "");
+            <RegistrationWeeksPage
+              weeks={weeks}
+              selectedId={selectedWeekId}
+              busy={weekBusy}
+              onSelect={(id) => {
+                const next = weeks.find((week) => week.id === id);
+                if (next)
+                  navigate(
+                    adminWeekPath(
+                      "/admin/registration-weeks",
+                      next.week_start,
+                    ),
+                  );
               }}
-              onOpenAvailability={() => navigate("/admin/availability")}
+              onCreate={addWeek}
+              onUpdate={patchWeek}
+              onDelete={removeWeek}
             />
           </Suspense>
+        ) : section === "schedule" ? (
+          invalidRequestedWeek ? (
+            <section className="panel schedule-missing-week">
+              <span className="eyebrow">Xếp lịch</span>
+              <h2>Không tìm thấy tuần đăng ký</h2>
+              <p>Tuần được yêu cầu không tồn tại hoặc đã bị xóa.</p>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => navigate("/admin/registration-weeks")}
+              >
+                Quản lý tuần đăng ký
+              </button>
+            </section>
+          ) : !selectedWeek ? (
+            <section className="panel schedule-missing-week">
+              <span className="eyebrow">Xếp lịch</span>
+              <h2>Chưa có tuần đăng ký</h2>
+              <p>Hãy tạo tuần đăng ký trước khi bắt đầu xếp lịch.</p>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => navigate("/admin/registration-weeks")}
+              >
+                Tạo tuần đăng ký
+              </button>
+            </section>
+          ) : (
+            <Suspense fallback={sectionFallback}>
+              <AdminScheduler
+                preferredWeekStart={selectedWeek.week_start}
+                registrationWeekStarts={weeks.map((week) => week.week_start)}
+                onWeekStartChange={(weekStart) => {
+                  if (
+                    weekStart !== selectedWeek.week_start &&
+                    weeks.some((week) => week.week_start === weekStart)
+                  ) {
+                    navigate(adminWeekPath("/admin/schedule", weekStart));
+                  }
+                }}
+                onOpenAvailability={() => navigate(availabilityPath)}
+              />
+            </Suspense>
+          )
         ) : section === "dashboard" ? (
           <div className="admin-home-page">
             <section className="admin-home-welcome">
@@ -338,7 +385,7 @@ export function AdminDashboard({
                 <button
                   type="button"
                   className="button primary"
-                  onClick={() => navigate("/admin/availability")}
+                  onClick={() => navigate(availabilityPath)}
                 >
                   Xem đăng ký tuần này
                 </button>
@@ -346,116 +393,48 @@ export function AdminDashboard({
               <CowMascot />
             </section>
             <div className="admin-home-grid">
-            <button
-              type="button"
-              className="panel"
-              onClick={() => navigate("/admin/availability")}
-            >
-              <span className="eyebrow">Đăng ký</span>
-              <strong>
-                {submittedActive} / {activeEmployees.length}
-              </strong>
-              <p>nhân viên đã đăng ký tuần đang chọn</p>
-            </button>
-            <button
-              type="button"
-              className="panel"
-              onClick={() => navigate("/admin/schedule")}
-            >
-              <span className="eyebrow">Lịch chính thức</span>
-              <strong>Xếp lịch</strong>
-              <p>Tạo bản nháp, kiểm tra và công bố lịch.</p>
-            </button>
-            <button
-              type="button"
-              className="panel"
-              onClick={() => navigate("/admin/employees")}
-            >
-              <span className="eyebrow">Đội ngũ</span>
-              <strong>{activeEmployees.length}</strong>
-              <p>nhân viên đang hoạt động</p>
-            </button>
-          </div>
+              <button
+                type="button"
+                className="panel"
+                onClick={() => navigate(availabilityPath)}
+              >
+                <span className="eyebrow">Đăng ký</span>
+                <strong>
+                  {submittedActive} / {activeEmployees.length}
+                </strong>
+                <p>nhân viên đã đăng ký tuần đang chọn</p>
+              </button>
+              <button
+                type="button"
+                className="panel"
+                onClick={() => navigate(schedulePath)}
+              >
+                <span className="eyebrow">Lịch chính thức</span>
+                <strong>Xếp lịch</strong>
+                <p>Tạo bản nháp, kiểm tra và công bố lịch.</p>
+              </button>
+              <button
+                type="button"
+                className="panel"
+                onClick={() => navigate("/admin/employees")}
+              >
+                <span className="eyebrow">Đội ngũ</span>
+                <strong>{activeEmployees.length}</strong>
+                <p>nhân viên đang hoạt động</p>
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="availability-admin-page">
-            <section className="panel availability-admin-hero">
-              <div>
-                <span className="eyebrow">Đăng ký lịch làm việc</span>
-                <h1>
-                  {selectedWeek
-                    ? formatWeekDisplay(selectedWeek.week_start)
-                    : "Lịch đăng ký nhân viên"}
-                </h1>
-                <p>
-                  Theo dõi đăng ký, xử lý trường hợp còn thiếu và chuyển sang
-                  xếp lịch đúng tuần.
-                </p>
-              </div>
-              <div className="availability-progress-card">
-                <span>Tiến độ tuần</span>
-                <strong>
-                  {submittedActive}<small>/{activeEmployees.length}</small>
-                </strong>
-                <p>nhân viên đã gửi</p>
-              </div>
-            </section>
-            <Suspense fallback={sectionFallback}>
-              <div className="dashboard-grid">
-                <WeekManager
-                  weeks={weeks}
-                  selectedId={selectedWeekId}
-                  busy={weekBusy}
-                  onSelect={setSelectedWeekId}
-                  onCreate={addWeek}
-                  onUpdate={patchWeek}
-                  onDelete={removeWeek}
-                />
-                <section className="panel availability-week-summary">
-                  <span className="eyebrow">Tổng quan tuần</span>
-                  {selectedWeek && (
-                    <>
-                      <div className="availability-summary-row">
-                        <span>Trạng thái</span>
-                        <span
-                          className={`status-badge ${selectedWeek.status === "archived" ? "archived" : selectedWeekLocked ? "locked" : "open"}`}
-                        >
-                          {selectedWeek.status === "archived"
-                            ? "Đã lưu trữ"
-                            : selectedWeekLocked
-                              ? "Đã khóa"
-                              : "Đang mở"}
-                        </span>
-                      </div>
-                      <div className="availability-summary-row">
-                        <span>Hạn đăng ký</span>
-                        <strong>{formatAdminDeadline(selectedWeek.lock_at)}</strong>
-                      </div>
-                      <div className="availability-summary-row">
-                        <span>Chưa đăng ký</span>
-                        <strong>
-                          {Math.max(0, activeEmployees.length - submittedActive)} nhân viên
-                        </strong>
-                      </div>
-                    </>
-                  )}
-                </section>
-              </div>
-              {selectedWeek ? (
-                <AdminMatrix
-                  employees={employees}
-                  groups={groups}
-                  submissions={submissions}
-                  weekStart={selectedWeek.week_start}
-                  onOpenScheduler={() => navigate("/admin/schedule")}
-                />
-              ) : (
-                <div className="panel empty-panel">
-                  Hãy tạo một tuần đăng ký để bắt đầu.
-                </div>
-              )}
-            </Suspense>
-          </div>
+          <Suspense fallback={sectionFallback}>
+            <AdminAvailabilityPage
+              selectedWeek={selectedWeek}
+              invalidRequestedWeek={invalidRequestedWeek}
+              employees={employees}
+              groups={groups}
+              submissions={submissions}
+              navigate={navigate}
+            />
+          </Suspense>
         )}
       </main>
       <footer
