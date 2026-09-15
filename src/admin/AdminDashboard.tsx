@@ -472,6 +472,23 @@ export function AdminDashboard({
           </div>
         )}
       </main>
+      <footer
+        className="love-gyukaku-banner"
+        aria-label="I love Gyu-kaku ❤️❤️❤️"
+      >
+        <div className="love-gyukaku-track" aria-hidden="true">
+          {[0, 1].map((group) => (
+            <div className="love-gyukaku-group" key={group}>
+              {[0, 1, 2, 3, 4, 5].map((item) => (
+                <span className="love-gyukaku-message" key={item}>
+                  I love Gyu-kaku{" "}
+                  <span className="love-gyukaku-hearts">❤️❤️❤️</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </footer>
       {selectedSubmission && selectedWeek && (
         <Suspense fallback={sectionFallback}>
           <SubmissionDialog

@@ -1,0 +1,89 @@
+<style>
+  .insight { margin: 0 0 20px; padding: 14px 16px; color: #414541; background: #f5f6f4; border: 1px solid #e1e5e1; border-radius: 12px; font-size: 13px; line-height: 1.6; }
+  .banner-grid { display: grid; gap: 20px; }
+  .banner-choice { overflow: hidden; padding: 0; }
+  .banner-choice .card-body { padding: 15px 18px 18px; }
+  .preview-shell { padding-top: 60px; background: #edf0ee; }
+  .preview-page { width: 82%; height: 48px; margin: 0 auto; border-radius: 9px 9px 0 0; background: white; box-shadow: 0 6px 22px rgba(18, 26, 23, .08); }
+  .ticker { position: relative; overflow: hidden; width: 100%; }
+  .track { display: flex; width: max-content; animation: marquee 18s linear infinite; }
+  .group { display: flex; flex: none; align-items: center; min-width: 760px; }
+  .message { display: inline-flex; align-items: center; white-space: nowrap; }
+
+  .seal-rail { height: 32px; color: #302a26; background: #fbf4e9; border-block: 1px solid #dfd0bc; }
+  .seal-rail .group { justify-content: space-around; gap: 58px; padding-right: 58px; }
+  .seal-rail .message { gap: 8px; font: 600 12px/1 ui-sans-serif, system-ui; letter-spacing: .012em; }
+  .seal { display: inline-grid; place-items: center; width: 19px; height: 19px; color: #fff8ed; background: #9b1b20; border-radius: 3px; font: 700 9px/1 ui-sans-serif, system-ui; letter-spacing: 0; }
+  .seal-hearts { color: #c92128; font-size: 10px; letter-spacing: -2px; }
+
+  .utility-rail { height: 30px; color: #4c4f4c; background: #f7f7f5; border-top: 1px solid #dfe2df; }
+  .utility-rail .group { justify-content: space-around; gap: 90px; padding-right: 90px; }
+  .utility-rail .message { gap: 7px; font: 650 11px/1 ui-sans-serif, system-ui; letter-spacing: .035em; }
+  .utility-dot { width: 4px; height: 4px; background: #a8171d; border-radius: 50%; }
+
+  .midnight-rail { height: 33px; color: #f4eee3; background: #1d1e1c; border-top: 1px solid #9c2024; }
+  .midnight-rail .group { justify-content: space-around; gap: 72px; padding-right: 72px; }
+  .midnight-rail .message { gap: 8px; font: 500 12px/1 Georgia, serif; letter-spacing: .045em; }
+  .midnight-mark { color: #c69b61; font-size: 9px; }
+
+  .ticker::before, .ticker::after { position: absolute; z-index: 2; top: 0; bottom: 0; width: 28px; content: ""; pointer-events: none; }
+  .seal-rail::before { left: 0; background: linear-gradient(90deg, #fbf4e9, transparent); }
+  .seal-rail::after { right: 0; background: linear-gradient(-90deg, #fbf4e9, transparent); }
+  .utility-rail::before { left: 0; background: linear-gradient(90deg, #f7f7f5, transparent); }
+  .utility-rail::after { right: 0; background: linear-gradient(-90deg, #f7f7f5, transparent); }
+  .midnight-rail::before { left: 0; background: linear-gradient(90deg, #1d1e1c, transparent); }
+  .midnight-rail::after { right: 0; background: linear-gradient(-90deg, #1d1e1c, transparent); }
+
+  @keyframes marquee { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+</style>
+
+<h2>Vòng 2 · Bỏ “banner quảng cáo”, chuyển thành dải chữ ký thương hiệu</h2>
+<p class="subtitle">Các thương hiệu lớn thường thắng bằng tiết chế: một thông điệp, chiều cao 28–34px, màu phẳng, typography rõ và chỉ một chuyển động. Không glow, không pulse, không gradient dày.</p>
+
+<div class="insight">
+  <strong>Apple / Nike:</strong> utility bar nhỏ, nội dung ngắn, nhiều khoảng thở. &nbsp;•&nbsp;
+  <strong>Uniqlo:</strong> đỏ–trắng rất kỷ luật, hình khối phẳng. &nbsp;•&nbsp;
+  <strong>Hospitality cao cấp:</strong> màu giấy ấm hoặc đen than, hairline border và chuyển động cực chậm. Các phương án dưới đây áp dụng nguyên tắc đó, không sao chép giao diện cụ thể.
+</div>
+
+<div class="cards banner-grid">
+  <div class="card banner-choice" data-choice="japanese-seal" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-page"></div>
+      <div class="ticker seal-rail">
+        <div class="track">
+          <div class="group"><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span></div>
+          <div class="group"><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span><span class="message"><i class="seal">牛角</i>I love Gyu-kaku <b class="seal-hearts">❤️❤️❤️</b></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Japanese seal — đề xuất mới</h3><p>Nền giấy ấm, dấu triện đỏ “牛角”, chữ than. Có bản sắc Nhật và nhìn giống một chi tiết thương hiệu có chủ đích.</p></div>
+  </div>
+
+  <div class="card banner-choice" data-choice="quiet-utility" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-page"></div>
+      <div class="ticker utility-rail">
+        <div class="track">
+          <div class="group"><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span></div>
+          <div class="group"><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="utility-dot"></i>I love Gyu-kaku ❤️❤️❤️</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · Quiet utility</h3><p>Gần cách Apple/Nike xử lý announcement bar nhất: xám rất nhạt, chữ nhỏ, một chấm đỏ nhận diện.</p></div>
+  </div>
+
+  <div class="card banner-choice" data-choice="midnight-dining" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-page"></div>
+      <div class="ticker midnight-rail">
+        <div class="track">
+          <div class="group"><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span></div>
+          <div class="group"><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span><span class="message"><i class="midnight-mark">◆</i>I love Gyu-kaku ❤️❤️❤️</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C · Midnight dining</h3><p>Đen than, serif nhẹ và điểm vàng nhỏ. Hợp cảm giác nhà hàng cao cấp nhưng tách biệt rõ khỏi giao diện admin sáng.</p></div>
+  </div>
+</div>

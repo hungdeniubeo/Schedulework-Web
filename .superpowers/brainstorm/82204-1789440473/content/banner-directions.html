@@ -1,0 +1,73 @@
+<style>
+  .banner-grid { display: grid; gap: 18px; }
+  .banner-choice { overflow: hidden; padding: 0; }
+  .banner-choice .card-body { padding: 16px 18px 18px; }
+  .preview-shell { background: #eef1ef; padding-top: 54px; }
+  .preview-content { width: 78%; height: 54px; margin: 0 auto; border-radius: 10px 10px 0 0; background: #fff; box-shadow: 0 6px 18px rgba(20, 29, 26, .08); }
+  .ticker { position: relative; overflow: hidden; width: 100%; }
+  .ticker-track { display: flex; width: max-content; animation: preview-marquee 12s linear infinite; }
+  .ticker-group { display: flex; flex: none; align-items: center; gap: 42px; padding-right: 42px; }
+  .ticker span { white-space: nowrap; }
+  .heart { letter-spacing: -2px; }
+
+  .cream { padding: 6px 0; color: #8d181c; background: #fff8eb; border-block: 1px solid #d8aa73; }
+  .cream .ticker-track { font: 700 12px/1.2 ui-sans-serif, system-ui; letter-spacing: .025em; }
+  .cream .sep { color: #c39458; font-size: 8px; }
+
+  .charcoal { padding: 7px 0; color: #fff9ef; background: #20211f; border-top: 2px solid #a91e22; }
+  .charcoal .ticker-track { font: 650 12px/1.2 ui-sans-serif, system-ui; letter-spacing: .045em; }
+  .charcoal .heart { filter: drop-shadow(0 0 4px rgba(242, 59, 65, .32)); }
+
+  .redline { padding: 5px 0; color: #fff; background: #8f171c; border-block: 1px solid #b95b5e; }
+  .redline .ticker-track { font: 700 11px/1.2 ui-sans-serif, system-ui; letter-spacing: .02em; }
+  .redline::before, .redline::after { position: absolute; z-index: 2; top: 0; bottom: 0; width: 44px; content: ""; }
+  .redline::before { left: 0; background: linear-gradient(90deg, #8f171c, transparent); }
+  .redline::after { right: 0; background: linear-gradient(-90deg, #8f171c, transparent); }
+
+  @keyframes preview-marquee { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+</style>
+
+<h2>Banner nào hợp với trang admin hơn?</h2>
+<p class="subtitle">Phiên bản hiện tại bị nặng vì nền gradient đậm, quá nhiều cụm tim và hiệu ứng cạnh tranh nhau. Ba hướng dưới đây đều giữ đúng câu chữ nhưng giảm chiều cao và độ ồn thị giác.</p>
+
+<div class="cards banner-grid">
+  <div class="card banner-choice" data-choice="cream-rail" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-content"></div>
+      <div class="ticker cream">
+        <div class="ticker-track">
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span></div>
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span class="sep">◆</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A · Cream rail — đề xuất</h3><p>Nền kem, chữ đỏ Gyu-Kaku, đường viền vàng rất mảnh. Nhẹ, tinh tế và ăn nhập với nền sáng của admin.</p></div>
+  </div>
+
+  <div class="card banner-choice" data-choice="charcoal-signature" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-content"></div>
+      <div class="ticker charcoal">
+        <div class="ticker-track">
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span></div>
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>•</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B · Charcoal signature</h3><p>Nền than chì, viền đỏ mảnh. Sang và rõ, nhưng tương phản mạnh hơn phương án A.</p></div>
+  </div>
+
+  <div class="card banner-choice" data-choice="red-microbar" onclick="toggleSelect(this)">
+    <div class="card-image preview-shell">
+      <div class="preview-content"></div>
+      <div class="ticker redline">
+        <div class="ticker-track">
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span></div>
+          <div class="ticker-group"><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span><span>I love Gyu-kaku <b class="heart">❤️❤️❤️</b></span><span>·</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C · Red micro-bar</h3><p>Vẫn giữ đỏ thương hiệu nhưng phẳng, thấp và sạch hơn bản hiện tại.</p></div>
+  </div>
+</div>

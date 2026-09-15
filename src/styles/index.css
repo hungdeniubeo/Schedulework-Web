@@ -1110,6 +1110,8 @@ select:disabled {
 
 .admin-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 .admin-header {
   height: 72px;
@@ -1148,9 +1150,104 @@ select:disabled {
   border-color: #c5d7d3;
 }
 .admin-main {
+  flex: 1;
   width: min(1440px, 100%);
   margin: auto;
   padding: 24px clamp(14px, 3vw, 38px) 50px;
+}
+
+.love-gyukaku-banner {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 7px 0;
+  color: #fff9f0;
+  background:
+    linear-gradient(90deg, rgba(255, 213, 148, 0.08), transparent 30%, rgba(255, 213, 148, 0.1) 50%, transparent 70%),
+    linear-gradient(90deg, #4d0d10, #7c171a 50%, #4d0d10);
+  border-block: 1px solid rgba(255, 213, 148, 0.34);
+  box-shadow: 0 -5px 18px rgba(64, 9, 12, 0.1);
+}
+
+.love-gyukaku-banner::before,
+.love-gyukaku-banner::after {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: clamp(24px, 5vw, 72px);
+  content: "";
+  pointer-events: none;
+}
+
+.love-gyukaku-banner::before {
+  left: 0;
+  background: linear-gradient(90deg, #4d0d10, transparent);
+}
+
+.love-gyukaku-banner::after {
+  right: 0;
+  background: linear-gradient(-90deg, #4d0d10, transparent);
+}
+
+.love-gyukaku-track {
+  display: flex;
+  width: max-content;
+  animation: love-gyukaku-marquee 28s linear infinite;
+  will-change: transform;
+}
+
+.love-gyukaku-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: clamp(34px, 5vw, 76px);
+  min-width: 100vw;
+  padding-right: clamp(34px, 5vw, 76px);
+}
+
+.love-gyukaku-message {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: clamp(0.76rem, 1.25vw, 0.88rem);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-shadow: 0 1px 8px rgba(43, 3, 5, 0.38);
+}
+
+.love-gyukaku-hearts {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.9em;
+  line-height: 1;
+  letter-spacing: 0;
+  filter: drop-shadow(0 1px 4px rgba(255, 83, 83, 0.42));
+  transform-origin: center;
+  animation: love-gyukaku-heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes love-gyukaku-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes love-gyukaku-heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .love-gyukaku-track,
+  .love-gyukaku-hearts {
+    animation: none;
+  }
 }
 .dashboard-grid {
   display: grid;
@@ -2613,6 +2710,7 @@ select:disabled {
   border: 1px solid var(--shift-border);
   font-weight: 750;
 }
+
 .scheduler-shift {
   min-height: 42px;
   padding: 8px;
@@ -2751,9 +2849,14 @@ select:disabled {
   pointer-events: none;
 }
 .cloud-schedule-table tbody th {
-  text-align: left;
+  text-align: center;
+  vertical-align: middle;
   line-height: 1.2;
   overflow-wrap: anywhere;
+}
+.cloud-schedule-table tbody tr:not(.schedule-group-row) > th {
+  text-align: center;
+  vertical-align: middle;
 }
 .cloud-schedule-table tbody th > strong {
   display: block;
@@ -3108,7 +3211,7 @@ select:disabled {
     isolation: isolate;
   }
   .team-page .team-schedule-scroll table {
-    min-width: 0;
+    min-width: 1000px;
   }
   .team-page .cloud-schedule-table th,
   .team-page .cloud-schedule-table td {

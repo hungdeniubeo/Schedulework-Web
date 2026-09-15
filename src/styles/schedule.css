@@ -52,9 +52,18 @@
   font-size: 0.8rem;
   line-height: 1.45;
 }
-.schedule-entry-chip.readonly {
-  display: block;
+.team-page .schedule-entry-chip.readonly {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   text-align: center;
+}
+
+.team-page .published-schedule-sheet .cloud-schedule-table tbody td {
+  vertical-align: middle;
 }
 .schedule-off {
   display: block;
