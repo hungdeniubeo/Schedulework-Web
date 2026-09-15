@@ -28,6 +28,10 @@ describe("matchRoute", () => {
       name: "admin",
       section: "availability",
     });
+    expect(matchRoute("/admin/registration-weeks")).toEqual({
+      name: "admin",
+      section: "registration-weeks",
+    });
     expect(matchRoute("/admin/schedule")).toEqual({
       name: "admin",
       section: "schedule",
