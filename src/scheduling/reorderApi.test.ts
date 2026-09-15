@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const supabase = vi.hoisted(() => ({ client: null as any }));
 vi.mock("../lib/config", () => ({ getSupabase: () => supabase.client }));
 
-import { reorderSchedulerEmployee } from "./api";
+import { reorderSchedulerEmployee } from "./employeeReorderApi";
 
 describe("reorderSchedulerEmployee", () => {
   it("persists a scheduler row move through one RPC", async () => {
@@ -30,5 +30,16 @@ describe("reorderSchedulerEmployee", () => {
       target_group_id: "group-soup",
       before_employee_id: null,
     });
+  });
+
+  it("maps database errors to a scheduler-specific message", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    supabase.client = {
+      rpc: vi.fn(async () => ({ error: { message: "boom" } })),
+    };
+
+    await expect(
+      reorderSchedulerEmployee("employee-a", "group-soup"),
+    ).rejects.toThrow("Không sắp xếp được nhân viên.");
   });
 });
