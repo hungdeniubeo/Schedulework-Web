@@ -18,24 +18,33 @@ const ChangePasswordPage = lazy(() =>
 );
 
 const routeFallback = (
-  <AppState
-    title="Một chút thôi…"
-    message="Đang chuẩn bị trang."
-  />
+  <AppState title="Một chút thôi…" message="Đang chuẩn bị trang." />
 );
 
+type BrowserLocation = {
+  pathname: string;
+  search: string;
+};
+
+function readLocation(): BrowserLocation {
+  return {
+    pathname: window.location.pathname,
+    search: window.location.search,
+  };
+}
+
 export default function App() {
-  const [pathname, setPathname] = useState(window.location.pathname);
+  const [location, setLocation] = useState(readLocation);
   useEffect(() => {
-    const update = () => setPathname(window.location.pathname);
+    const update = () => setLocation(readLocation());
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, []);
   const navigate = useCallback((path: string) => {
     window.history.pushState({}, "", path);
-    setPathname(path);
+    setLocation(readLocation());
   }, []);
-  const route = matchRoute(pathname);
+  const route = matchRoute(location.pathname);
 
   if (configurationError)
     return <AppState title="Thiếu cấu hình" message={configurationError} />;
@@ -62,6 +71,7 @@ export default function App() {
         <AdminApp
           loginRoute={route.name === "admin-login"}
           section={route.name === "admin" ? route.section : "dashboard"}
+          search={location.search}
           navigate={navigate}
         />
       </Suspense>
