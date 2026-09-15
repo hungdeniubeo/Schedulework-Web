@@ -1,0 +1,335 @@
+/* Gyu-Kaku chibi cow mascot */
+.cow-mascot {
+  width: min(100%, 340px);
+  justify-self: center;
+  overflow: visible;
+  cursor: default;
+  filter: drop-shadow(0 14px 18px rgba(24, 28, 26, 0.14));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cow-character,
+.cow-head,
+.cow-ear,
+.cow-horn,
+.cow-eye,
+.cow-arm,
+.cow-eye-ball,
+.cow-eye-depth,
+.cow-eye-highlight,
+.cow-eye-sparkle,
+.cow-cheek {
+  transform-box: fill-box;
+}
+
+/* Idle movement */
+.cow-character {
+  transform-origin: center bottom;
+  animation: cow-bob 3.2s ease-in-out infinite;
+}
+
+.cow-head {
+  transform-origin: center 80%;
+  animation: cow-head-tilt 4.8s ease-in-out infinite;
+}
+
+.cow-ground-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cow-shadow-breathe 3.2s ease-in-out infinite;
+}
+
+.cow-ear-left {
+  transform-origin: right center;
+  animation: cow-ear-left 3.4s ease-in-out infinite;
+}
+
+.cow-ear-right {
+  transform-origin: left center;
+  animation: cow-ear-right 3.4s ease-in-out infinite;
+}
+
+.cow-horn-left,
+.cow-horn-right {
+  transform-origin: center bottom;
+}
+
+/* Arms remain calm until hover */
+.cow-arm-left {
+  transform-origin: right top;
+}
+
+.cow-arm-right {
+  transform-origin: left top;
+}
+
+/* Logo badge on the apron */
+.cow-apron-logo {
+  pointer-events: none;
+}
+
+.cow-apron-logo image {
+  opacity: 0.96;
+}
+
+/* Natural blink + glossy watery eyes */
+.cow-eye {
+  transform-origin: center;
+  animation: cow-blink 5.2s infinite;
+  transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cow-eye-ball,
+.cow-eye-depth,
+.cow-eye-highlight,
+.cow-eye-sparkle,
+.cow-eye-waterline,
+.cow-cheek {
+  transition:
+    opacity 260ms ease,
+    transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cow-eye-depth {
+  opacity: 0.16;
+}
+
+.cow-eye-waterline {
+  opacity: 0.22;
+}
+
+.cow-eye-sparkle {
+  opacity: 0.42;
+  transform-origin: center;
+}
+
+.cow-eye-sparkle-a {
+  transform: scale(0.78) rotate(0deg);
+}
+
+.cow-eye-sparkle-b {
+  transform: scale(0.86);
+}
+
+/* Hover: eyes become larger, watery and sparkly — no lamp-like glow */
+.cow-mascot:hover .cow-eye {
+  animation: none;
+  transform: scale(1.1);
+}
+
+.cow-mascot:hover .cow-eye-depth {
+  opacity: 0.34;
+  transform: scaleX(1.08);
+}
+
+.cow-mascot:hover .cow-eye-waterline {
+  opacity: 0.56;
+}
+
+.cow-mascot:hover .cow-eye-highlight-main {
+  transform: translate(-0.5px, -0.8px) scale(1.22);
+}
+
+.cow-mascot:hover .cow-eye-highlight-small {
+  transform: translate(0.8px, 0.4px) scale(1.18);
+}
+
+.cow-mascot:hover .cow-eye-sparkle-a {
+  opacity: 1;
+  animation: cow-eye-sparkle-star 1.45s ease-in-out infinite;
+}
+
+.cow-mascot:hover .cow-eye-sparkle-b {
+  opacity: 0.96;
+  animation: cow-eye-sparkle-dot 1.45s ease-in-out 180ms infinite;
+}
+
+.cow-mascot:hover .cow-cheek {
+  opacity: 0.84;
+}
+
+/* Hover: both real arms wave at a moderate pace */
+.cow-mascot:hover .cow-arm-left {
+  animation: cow-wave-left 1.25s ease-in-out infinite;
+}
+
+.cow-mascot:hover .cow-arm-right {
+  animation: cow-wave-right 1.25s ease-in-out infinite;
+}
+
+/* Hover: slightly happier body */
+.cow-mascot:hover .cow-character {
+  animation-duration: 2.5s;
+}
+
+@keyframes cow-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(0.4deg);
+  }
+}
+
+@keyframes cow-head-tilt {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  38% {
+    transform: rotate(-1.5deg);
+  }
+  68% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes cow-shadow-breathe {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.14;
+  }
+  50% {
+    transform: scaleX(0.84);
+    opacity: 0.08;
+  }
+}
+
+@keyframes cow-ear-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  44% {
+    transform: rotate(-7deg);
+  }
+  58% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes cow-ear-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  44% {
+    transform: rotate(7deg);
+  }
+  58% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes cow-blink {
+  0%,
+  43%,
+  47%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes cow-eye-sparkle-star {
+  0%,
+  100% {
+    transform: scale(0.78) rotate(0deg);
+    opacity: 0.58;
+  }
+  50% {
+    transform: scale(1.18) rotate(14deg);
+    opacity: 1;
+  }
+}
+
+@keyframes cow-eye-sparkle-dot {
+  0%,
+  100% {
+    transform: scale(0.78);
+    opacity: 0.52;
+  }
+  50% {
+    transform: scale(1.28);
+    opacity: 1;
+  }
+}
+
+@keyframes cow-wave-left {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(19deg) translateY(-3px);
+  }
+  68% {
+    transform: rotate(-6deg) translateY(1px);
+  }
+}
+
+@keyframes cow-wave-right {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(-19deg) translateY(-3px);
+  }
+  68% {
+    transform: rotate(6deg) translateY(1px);
+  }
+}
+
+@media (max-width: 680px) {
+  .cow-mascot {
+    width: 220px;
+    margin-top: -8px;
+  }
+}
+
+@media (hover: none) {
+  .cow-mascot:hover .cow-eye {
+    transform: none;
+  }
+
+  .cow-mascot:hover .cow-eye-depth {
+    opacity: 0.16;
+    transform: none;
+  }
+
+  .cow-mascot:hover .cow-eye-waterline {
+    opacity: 0.22;
+  }
+
+  .cow-mascot:hover .cow-eye-highlight-main,
+  .cow-mascot:hover .cow-eye-highlight-small {
+    transform: none;
+  }
+
+  .cow-mascot:hover .cow-eye-sparkle-a,
+  .cow-mascot:hover .cow-eye-sparkle-b {
+    animation: none;
+    opacity: 0.42;
+  }
+
+  .cow-mascot:hover .cow-arm-left,
+  .cow-mascot:hover .cow-arm-right {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cow-character,
+  .cow-head,
+  .cow-ground-shadow,
+  .cow-ear,
+  .cow-eye,
+  .cow-arm {
+    animation: none !important;
+  }
+}

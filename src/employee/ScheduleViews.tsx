@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./TeamSchedule.css";
 import { AppState } from "../components/AppState";
 import { DAY_KEYS } from "../types/domain";
 import {
@@ -13,12 +14,13 @@ import {
   formatWeekDisplay,
 } from "../lib/week";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
-import { ArrowLeftRightIcon } from "../components/Icons";
+import { ArrowLeftRightIcon, DownloadIcon } from "../components/Icons";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import {
   semanticShiftColor,
   shiftStyle,
 } from "../scheduling/shiftStyle";
+import { exportScheduleJpg } from "../scheduling/exportJpg";
 import type {
   MyScheduleData,
   PublishedScheduleData,
@@ -138,11 +140,12 @@ export function SubmittedAvailability({
           const preset = formatAvailabilityPreset(day);
           const offReason = getOffReason(day);
           const shiftValue = formatAvailabilityCell(day);
+          const date = addDateOnlyDays(data.weekStart, index);
           return (
             <article key={key}>
-              <div>
+              <div className="submitted-day-date">
                 <strong>{DAY_LABELS[key]}</strong>
-                <span>{formatDateShort(addDateOnlyDays(data.weekStart, index))}</span>
+                <time dateTime={date}>{formatDateShort(date)}</time>
               </div>
               <div className="submitted-day-value">
                 <strong
@@ -159,7 +162,7 @@ export function SubmittedAvailability({
                 >
                   {shiftValue}
                 </strong>
-                {preset && <span>{preset}</span>}
+                {preset && <span className="submitted-day-period">{preset}</span>}
                 {offReason && (
                   <span className="submitted-off-reason">
                     Lý do: {offReason}
@@ -231,30 +234,87 @@ export function TeamSchedulePage({ employeeId }: { employeeId: string }) {
   const state = <ScheduleState data={data} error={error} team />;
   if (!data) return state;
 
+  return <TeamScheduleContent data={data} />;
+}
+
+export function TeamScheduleContent({
+  data,
+}: {
+  data: PublishedScheduleData;
+}) {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const scheduleEmployees = employeesForSchedule(data.employees, data.entries);
+
+  async function downloadSchedule() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportScheduleJpg(
+        "employee-published-schedule-export",
+        data.week.weekStart,
+      );
+    } catch (reason) {
+      setExportError(
+        reason instanceof Error ? reason.message : "Không tải được ảnh lịch.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
-    <main className="employee-schedule-page team-page">
-      <header>
-        <span className="eyebrow">Lịch chính thức</span>
-        <h1>Lịch tổng</h1>
-        <p>{formatWeekDisplay(data.week.weekStart)}</p>
-      </header>
-      <div className="team-scroll-guide" aria-hidden="true">
-        <span><ArrowLeftRightIcon /></span>
-        Vuốt ngang để xem đủ 7 ngày
-      </div>
-      <div className="team-schedule-scroll schedule-table-scroll">
+    <>
+      <main className="employee-schedule-page team-page">
+        <header className="team-page-header">
+          <div>
+            <span className="eyebrow">Lịch chính thức</span>
+            <h1>Lịch tổng</h1>
+            <p>{formatWeekDisplay(data.week.weekStart)}</p>
+          </div>
+          <div className="team-download-action">
+            <button
+              type="button"
+              className="button secondary team-download-button"
+              disabled={exporting}
+              onClick={() => void downloadSchedule()}
+            >
+              <DownloadIcon />
+              {exporting ? "Đang tạo ảnh…" : "Tải ảnh lịch"}
+            </button>
+            {exportError && <span role="alert">{exportError}</span>}
+          </div>
+        </header>
+        <div className="team-scroll-guide" aria-hidden="true">
+          <span><ArrowLeftRightIcon /></span>
+          Vuốt ngang để xem đủ 7 ngày
+        </div>
+        <div className="team-schedule-scroll schedule-table-scroll">
+          <ScheduleSheet
+            className="published-schedule-sheet"
+            groups={data.groups}
+            employees={scheduleEmployees}
+            entries={data.entries}
+            shifts={data.shifts}
+            weekStart={data.week.weekStart}
+            countOverrides={data.week.countOverrides}
+            showStaffing
+            highlightEmployeeId={data.currentEmployeeId}
+          />
+        </div>
+      </main>
+      <div className="schedule-export-stage" aria-hidden="true">
         <ScheduleSheet
-          className="published-schedule-sheet"
+          id="employee-published-schedule-export"
           groups={data.groups}
-          employees={employeesForSchedule(data.employees, data.entries)}
+          employees={scheduleEmployees}
           entries={data.entries}
           shifts={data.shifts}
           weekStart={data.week.weekStart}
           countOverrides={data.week.countOverrides}
           showStaffing
-          highlightEmployeeId={data.currentEmployeeId}
         />
       </div>
-    </main>
+    </>
   );
 }

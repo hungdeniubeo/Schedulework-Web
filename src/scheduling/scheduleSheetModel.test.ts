@@ -43,7 +43,7 @@ describe("buildScheduleGroups", () => {
 });
 
 describe("employeesForSchedule", () => {
-  it("keeps inactive employees only when the selected week contains their history", () => {
+  it("hides inactive employees even when the selected week contains their history", () => {
     const active = employee("active", "g1", 1);
     const historical = { ...employee("historical", "g1", 2), active: false };
     const unrelated = { ...employee("unrelated", "g1", 3), active: false };
@@ -51,7 +51,6 @@ describe("employeesForSchedule", () => {
 
     expect(employeesForSchedule([active, historical, unrelated], entries)).toEqual([
       active,
-      historical,
     ]);
   });
 });

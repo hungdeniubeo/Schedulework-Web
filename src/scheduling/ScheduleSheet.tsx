@@ -11,6 +11,18 @@ import { formatShiftLabel, resolvedShiftColor, shiftStyle } from "./shiftStyle";
 import { periodCounts, type StaffingPeriod } from "./staffing";
 import type { CloudEmployee, Group, ScheduleEntry, ShiftType } from "./types";
 
+const STAFFING_PERIOD_LABELS: Record<StaffingPeriod, string> = {
+  S: "Sáng",
+  T: "Trưa",
+  Đ: "Tối",
+};
+
+const AREA_TONE_CLASSES = [
+  "schedule-area-one",
+  "schedule-area-two",
+  "schedule-area-three",
+] as const;
+
 type Props = {
   groups: Group[];
   employees: CloudEmployee[];
@@ -73,6 +85,16 @@ export function ScheduleSheet({
 }: Props) {
   const sections = buildScheduleGroups(groups, employees);
   const counts = showStaffing ? periodCounts(entries, shifts) : [];
+  const areaClassByGroupId = new Map<string, string>(
+    [...groups]
+      .sort((first, second) => first.sortOrder - second.sortOrder)
+      .map(
+        (group, index): [string, string] => [
+          group.id,
+          AREA_TONE_CLASSES[index] ?? "schedule-area-neutral",
+        ],
+      ),
+  );
 
   return (
     <div id={id} className={`cloud-schedule-sheet ${className}`.trim()}>
@@ -102,6 +124,9 @@ export function ScheduleSheet({
             <ScheduleSection
               key={group.id}
               groupName={group.name}
+              areaClass={
+                areaClassByGroupId.get(group.id) ?? "schedule-area-neutral"
+              }
               employees={groupEmployees}
               entries={entries}
               shifts={shifts}
@@ -114,7 +139,7 @@ export function ScheduleSheet({
           <tfoot>
             {(["S", "T", "Đ"] as StaffingPeriod[]).map((period) => (
               <tr className="schedule-staffing-row" key={period}>
-                <th>{period}</th>
+                <th>{STAFFING_PERIOD_LABELS[period]}</th>
                 {counts.map((count, index) => (
                   <td key={index}>
                     {countOverrides[`${index + 1}:${period}`] ?? count[period]}
@@ -131,6 +156,7 @@ export function ScheduleSheet({
 
 function ScheduleSection({
   groupName,
+  areaClass,
   employees,
   entries,
   shifts,
@@ -138,6 +164,7 @@ function ScheduleSection({
   renderCell,
 }: {
   groupName: string;
+  areaClass: string;
   employees: CloudEmployee[];
   entries: ScheduleEntry[];
   shifts: ShiftType[];
@@ -146,18 +173,22 @@ function ScheduleSection({
 }) {
   return (
     <>
-      <tr className="schedule-group-row">
+      <tr className={`schedule-group-row ${areaClass}`}>
         <th colSpan={8}>
           <span className="schedule-group-label">{groupName}</span>
         </th>
       </tr>
       {employees.map((employee) => (
         <tr
-          className={
+          className={[
+            "schedule-area-row",
+            areaClass,
             employee.id === highlightEmployeeId
               ? "current-employee-row"
-              : undefined
-          }
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           key={employee.id}
         >
           <th>

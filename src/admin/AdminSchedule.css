@@ -1,0 +1,73 @@
+@media (min-width: 821px) {
+  .scheduler-layout {
+    grid-template-columns: 172px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .scheduler-layout .scheduler-palette-heading {
+    padding: 14px 11px 12px;
+  }
+
+  .scheduler-layout .scheduler-palette-heading p {
+    font-size: 0.7rem;
+  }
+
+  .scheduler-layout .scheduler-shift-list {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .scheduler-layout .scheduler-palette .scheduler-shift {
+    min-height: 40px;
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
+  .scheduler-layout .schedule-table-scroll {
+    min-width: 0;
+  }
+
+  .scheduler-layout .cloud-schedule-sheet {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .scheduler-layout .cloud-schedule-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .scheduler-layout .cloud-schedule-table thead th:first-child {
+    width: 160px;
+  }
+
+  .scheduler-layout .cloud-schedule-table th,
+  .scheduler-layout .cloud-schedule-table td {
+    padding: 6px;
+  }
+
+  .scheduler-layout .schedule-cell-stack,
+  .scheduler-layout .official-shifts,
+  .scheduler-layout .schedule-entry-wrap {
+    min-width: 0;
+  }
+
+  .scheduler-layout .availability-hint,
+  .scheduler-layout .schedule-entry-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .scheduler-layout .availability-hint {
+    font-size: 0.65rem;
+  }
+
+  .scheduler-layout .schedule-entry-wrap .schedule-entry-chip {
+    padding-right: 24px;
+    padding-left: 6px;
+    font-size: 0.68rem;
+  }
+}

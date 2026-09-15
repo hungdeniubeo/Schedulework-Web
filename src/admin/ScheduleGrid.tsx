@@ -6,9 +6,14 @@ import {
   useDroppable,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useState } from "react";
+import "./AdminSchedule.css";
+import { CloseIcon, TrashIcon } from "../components/Icons";
 import {
   formatAvailabilityCell,
   getOffReason,
@@ -54,11 +59,12 @@ function PaletteShift({
         ...shiftStyle(color),
         transform: CSS.Translate.toString(drag.transform),
       }}
-      className={`scheduler-shift ${selected ? "selected" : ""}`}
+      className={`scheduler-shift ${selected ? "selected" : ""} ${drag.isDragging ? "dragging" : ""}`}
       disabled={disabled}
       onClick={onSelect}
       {...drag.listeners}
       {...drag.attributes}
+      aria-pressed={selected}
     >
 <span className="scheduler-shift-dot" aria-hidden="true" />
 
@@ -81,12 +87,16 @@ function EntryChip({
   entry,
   shifts,
   editable,
+  employeeName,
   onEdit,
+  onDelete,
 }: {
   entry: ScheduleEntry;
   shifts: ShiftType[];
   editable: boolean;
+  employeeName: string;
   onEdit: () => void;
+  onDelete?: () => void;
 }) {
   const shift = shifts.find((item) => item.id === entry.shiftTypeId);
   const label = entryLabel(entry, shifts);
@@ -96,29 +106,50 @@ function EntryChip({
     disabled: !editable,
   });
   return (
-    <button
+    <div
       ref={drag.setNodeRef}
-      type="button"
-      className="schedule-entry-chip"
+      className={`schedule-entry-wrap ${drag.isDragging ? "dragging" : ""}`}
       style={{
-        ...shiftStyle(
+        transform: CSS.Translate.toString(drag.transform),
+      }}
+    >
+      <button
+        type="button"
+        className="schedule-entry-chip"
+        style={shiftStyle(
           resolvedShiftColor(
             label,
             shift?.color ?? "#A6A6A6",
-            Boolean(entry.customLabel || entry.customStart || entry.customEnd),
+            Boolean(
+              entry.customLabel || entry.customStart || entry.customEnd,
+            ),
           ),
-        ),
-        transform: CSS.Translate.toString(drag.transform),
-      }}
-      onClick={(event) => {
-        event.stopPropagation();
-        if (editable) onEdit();
-      }}
-      {...drag.listeners}
-      {...drag.attributes}
-    >
-      {formatShiftLabel(label)}
-    </button>
+        )}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (editable) onEdit();
+        }}
+        {...drag.listeners}
+        {...drag.attributes}
+      >
+        {formatShiftLabel(label)}
+      </button>
+      {editable && onDelete && (
+        <button
+          type="button"
+          className="schedule-entry-delete"
+          aria-label={`Xóa ca ${formatShiftLabel(label)} của ${employeeName}`}
+          title="Xóa ca chính thức"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete?.();
+          }}
+        >
+          <CloseIcon />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -131,6 +162,7 @@ function ScheduleCell({
   selectedShiftId,
   onAssign,
   onEdit,
+  onDelete,
   availability,
 }: {
   employee: CloudEmployee;
@@ -141,6 +173,7 @@ function ScheduleCell({
   selectedShiftId: string | null;
   onAssign: (employeeId: string, day: number) => void;
   onEdit: (entry: ScheduleEntry) => void;
+  onDelete?: (entry: ScheduleEntry) => void;
   availability?: Availability["days"][string];
 }) {
   const drop = useDroppable({
@@ -156,7 +189,7 @@ function ScheduleCell({
   return (
     <td
       ref={drop.setNodeRef}
-      className={`${drop.isOver ? "drag-over" : ""} ${assignable ? "assignable" : ""}`}
+      className={`${drop.isOver ? "drag-over" : ""} ${assignable ? "assignable" : ""} ${availability ? "has-availability" : ""} ${entries.length > 0 ? "has-official-shift" : ""}`}
       role={assignable ? "button" : undefined}
       tabIndex={assignable ? 0 : undefined}
       aria-label={assignable ? `Xếp ca cho ${employee.name}, ngày ${day}` : undefined}
@@ -174,31 +207,92 @@ function ScheduleCell({
         onAssign(employee.id, day);
       }}
     >
-      {availability && (
-        <small
-          className={`availability-hint ${availability.status}`}
-          style={
-            availability.status === "available"
-              ? shiftStyle(semanticShiftColor(availabilityLabel))
-              : undefined
-          }
-        >
-          <span>ĐK</span> · {availabilityLabel}
-          {offReason && <em title={offReason}>{offReason}</em>}
-        </small>
-      )}
-      <div className="official-shifts">
-      {entries.map((entry) => (
-        <EntryChip
-          key={entry.id}
-          entry={entry}
-          shifts={shifts}
-          editable={editable}
-          onEdit={() => onEdit(entry)}
-        />
-      ))}
+      <div className="schedule-cell-stack">
+        {availability && (
+          <small
+            className={`availability-hint ${availability.status}`}
+            style={
+              availability.status === "available"
+                ? shiftStyle(semanticShiftColor(availabilityLabel))
+                : undefined
+            }
+          >
+            <span>ĐK</span> · {availabilityLabel}
+            {offReason && <em title={offReason}>{offReason}</em>}
+          </small>
+        )}
+        <div className="official-shifts">
+          {entries.map((entry) => (
+            <EntryChip
+              key={entry.id}
+              entry={entry}
+              shifts={shifts}
+              editable={editable}
+              employeeName={employee.name}
+              onEdit={() => onEdit(entry)}
+              onDelete={onDelete ? () => onDelete(entry) : undefined}
+            />
+          ))}
+        </div>
       </div>
     </td>
+  );
+}
+
+function ScheduleTrash({
+  enabled,
+  active,
+}: {
+  enabled: boolean;
+  active: boolean;
+}) {
+  const drop = useDroppable({
+    id: "schedule-trash",
+    disabled: !enabled,
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <div
+      ref={drop.setNodeRef}
+      className={`schedule-trash-zone ${active ? "active" : ""} ${drop.isOver ? "drag-over" : ""}`}
+      aria-label="Thả ca chính thức vào đây để xóa"
+    >
+      <TrashIcon />
+      <span>Thả ca đã xếp vào đây để xóa</span>
+    </div>
+  );
+}
+
+type ActiveDrag =
+  | { kind: "palette"; shiftId: string }
+  | { kind: "entry"; entry: ScheduleEntry };
+
+function DragPreview({
+  active,
+  shifts,
+}: {
+  active: ActiveDrag | null;
+  shifts: ShiftType[];
+}) {
+  if (!active) return null;
+  const entry = active.kind === "entry" ? active.entry : null;
+  const shiftId =
+    entry?.shiftTypeId ?? (active.kind === "palette" ? active.shiftId : "");
+  const shift = shifts.find((item) => item.id === shiftId);
+  const label = entry ? entryLabel(entry, shifts) : (shift?.label ?? "");
+  const color = resolvedShiftColor(
+    label,
+    shift?.color ?? "#A6A6A6",
+    Boolean(entry?.customLabel || entry?.customStart || entry?.customEnd),
+  );
+
+  return (
+    <div className="schedule-drag-preview" style={shiftStyle(color)}>
+      <span aria-hidden="true" />
+      {formatShiftLabel(label)}
+    </div>
   );
 }
 
@@ -214,13 +308,27 @@ type Props = {
   onAssign: (employeeId: string, day: number, shiftId?: string) => void;
   onMove: (entry: ScheduleEntry, employeeId: string, day: number) => void;
   onEdit: (entry: ScheduleEntry) => void;
+  onDelete?: (entry: ScheduleEntry) => void;
   availabilityByEmployee?: Record<string, Availability>;
 };
 
 export function ScheduleGrid(props: Props) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const selectedShift = props.shifts.find(
+    (shift) => shift.id === props.selectedShiftId,
   );
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 7 } }),
+  );
+
+  function dragStart(event: DragStartEvent) {
+    const source = event.active.data.current as ActiveDrag | undefined;
+    setActiveDrag(source ?? null);
+  }
+
+  function dragCancel(_event: DragCancelEvent) {
+    setActiveDrag(null);
+  }
 
   function dragEnd(event: DragEndEvent) {
     const target = event.over?.data.current as
@@ -229,6 +337,12 @@ export function ScheduleGrid(props: Props) {
     const source = event.active.data.current as
       | { kind?: string; shiftId?: string; entry?: ScheduleEntry }
       | undefined;
+    setActiveDrag(null);
+    if (event.over?.id === "schedule-trash") {
+      if (source?.kind === "entry" && source.entry)
+        props.onDelete?.(source.entry);
+      return;
+    }
     if (!target?.employeeId || !target.day || !source) return;
     if (source.kind === "palette" && source.shiftId)
       props.onAssign(target.employeeId, target.day, source.shiftId);
@@ -237,25 +351,63 @@ export function ScheduleGrid(props: Props) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={dragEnd}>
-      <div className="scheduler-layout">
+    <DndContext
+      sensors={sensors}
+      onDragStart={dragStart}
+      onDragCancel={dragCancel}
+      onDragEnd={dragEnd}
+    >
+      <div
+        className={`scheduler-layout ${activeDrag ? "is-dragging" : ""}`}
+      >
         <aside className="scheduler-palette">
-          <h3>Ca làm</h3>
-          <p>Chọn hoặc kéo ca vào lịch.</p>
-          {props.shifts.map((shift) => (
-            <PaletteShift
-              key={shift.id}
-              shift={shift}
-              disabled={!props.editable}
-              selected={props.selectedShiftId === shift.id}
-              onSelect={() =>
-                props.onSelectShift(
-                  props.selectedShiftId === shift.id ? null : shift.id,
-                )
-              }
-            />
-          ))}
-          {props.shifts.length === 0 && <small>Hãy tạo ca làm trước.</small>}
+          <header className="scheduler-palette-heading">
+            <span className="scheduler-palette-kicker">Công cụ xếp lịch</span>
+            <h3>Ca làm</h3>
+            <p>
+              {props.editable
+                ? "Chọn một ca để xếp nhanh hoặc kéo vào bảng."
+                : "Tuần này đang khóa chỉnh sửa."}
+            </p>
+          </header>
+          {selectedShift && (
+            <div
+              className="scheduler-selection-status"
+              style={shiftStyle(
+                resolvedShiftColor(selectedShift.label, selectedShift.color),
+              )}
+            >
+              <span>Đang chọn để xếp nhanh</span>
+              <strong>{formatShiftLabel(selectedShift.label)}</strong>
+              <button
+                type="button"
+                aria-label="Bỏ chọn ca"
+                onClick={() => props.onSelectShift(null)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+          )}
+          <div className="scheduler-shift-list">
+            {props.shifts.map((shift) => (
+              <PaletteShift
+                key={shift.id}
+                shift={shift}
+                disabled={!props.editable}
+                selected={props.selectedShiftId === shift.id}
+                onSelect={() =>
+                  props.onSelectShift(
+                    props.selectedShiftId === shift.id ? null : shift.id,
+                  )
+                }
+              />
+            ))}
+            {props.shifts.length === 0 && <small>Hãy tạo ca làm trước.</small>}
+          </div>
+          <ScheduleTrash
+            enabled={props.editable && Boolean(props.onDelete)}
+            active={activeDrag?.kind === "entry"}
+          />
         </aside>
         <div className="schedule-table-scroll">
           <ScheduleSheet
@@ -278,6 +430,7 @@ export function ScheduleGrid(props: Props) {
                   props.onAssign(employeeId, nextDay)
                 }
                 onEdit={props.onEdit}
+                onDelete={props.onDelete}
                 availability={
                   props.availabilityByEmployee?.[employee.id]?.days[String(day)]
                 }
@@ -286,7 +439,11 @@ export function ScheduleGrid(props: Props) {
           />
         </div>
       </div>
-      <DragOverlay dropAnimation={null} />
+      <DragOverlay
+        dropAnimation={{ duration: 180, easing: "cubic-bezier(.2,.8,.2,1)" }}
+      >
+        <DragPreview active={activeDrag} shifts={props.shifts} />
+      </DragOverlay>
     </DndContext>
   );
 }

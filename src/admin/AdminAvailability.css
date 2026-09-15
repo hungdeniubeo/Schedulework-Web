@@ -1,0 +1,130 @@
+.admin-availability-matrix .panel-heading {
+  padding-bottom: 16px;
+}
+
+.admin-availability-matrix .schedule-legend {
+  margin: 0 20px 16px;
+}
+
+.admin-availability-matrix .matrix-scroll {
+  border-top: 1px solid var(--line);
+}
+
+.admin-availability-matrix .availability-schedule-sheet {
+  min-width: 900px;
+  padding: 0;
+}
+
+.admin-availability-matrix .cloud-sheet-title {
+  display: none;
+}
+
+.admin-availability-matrix .cloud-schedule-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.admin-availability-matrix .cloud-schedule-table th,
+.admin-availability-matrix .cloud-schedule-table td {
+  height: 72px;
+  padding: 9px 8px;
+  border: 0;
+  border-right: 1px solid #dfe5e2;
+  border-bottom: 1px solid #dfe5e2;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.admin-availability-matrix .cloud-schedule-table tr > :last-child {
+  border-right: 0;
+}
+
+.admin-availability-matrix .cloud-schedule-table thead th {
+  height: 58px;
+  color: var(--muted);
+  background: #f5f7f6;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.admin-availability-matrix .cloud-schedule-table thead th strong,
+.admin-availability-matrix .cloud-schedule-table thead th small {
+  display: block;
+}
+
+.admin-availability-matrix .cloud-schedule-table thead th small {
+  margin-top: 3px;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.admin-availability-matrix .cloud-schedule-table th:first-child {
+  width: 180px;
+  text-align: left;
+}
+
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th {
+  padding-left: 20px;
+  background: #fff;
+}
+
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th strong,
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th small {
+  display: block;
+}
+
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.admin-availability-matrix .schedule-group-row th {
+  height: 34px;
+  padding: 6px 20px;
+  color: #3f4944;
+  background: #edf1ef;
+  text-align: left;
+}
+
+.admin-availability-matrix .schedule-group-label {
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-availability-matrix .matrix-cell {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 6px;
+  cursor: default;
+}
+
+.admin-availability-matrix .matrix-cell.missing {
+  border: 1px dashed #d4dad7;
+  background: #f7f8f7;
+}
+
+@media (min-width: 1180px) {
+  .admin-availability-matrix .matrix-scroll {
+    overflow-x: hidden;
+  }
+
+  .admin-availability-matrix .availability-schedule-sheet {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-availability-matrix .panel-heading {
+    padding-bottom: 12px;
+  }
+
+  .admin-availability-matrix .schedule-legend {
+    margin-inline: 16px;
+  }
+}

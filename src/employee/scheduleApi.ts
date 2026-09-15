@@ -42,12 +42,22 @@ export function selectSubmittedAvailability(
   preferredWeekStart?: string,
 ): SubmittedAvailabilityData | null {
   const byWeek = new Map(submissions.map((submission) => [submission.week_id, submission]));
+  if (preferredWeekStart) {
+    const preferredWeek = weeks.find(
+      (week) =>
+        week.status !== "archived" && week.week_start === preferredWeekStart,
+    );
+    const preferredSubmission = preferredWeek
+      ? byWeek.get(preferredWeek.id)
+      : undefined;
+    return preferredWeek && preferredSubmission
+      ? { weekStart: preferredWeek.week_start, submission: preferredSubmission }
+      : null;
+  }
   const available = weeks
     .filter((week) => week.status !== "archived" && byWeek.has(week.id))
     .sort((first, second) => second.week_start.localeCompare(first.week_start));
-  const week =
-    available.find((item) => item.week_start === preferredWeekStart) ??
-    available[0];
+  const week = available[0];
   return week
     ? { weekStart: week.week_start, submission: byWeek.get(week.id)! }
     : null;

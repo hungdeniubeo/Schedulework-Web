@@ -39,10 +39,7 @@ export function buildScheduleGroups(
 
 export function employeesForSchedule(
   employees: CloudEmployee[],
-  entries: ScheduleEntry[],
+  _entries: ScheduleEntry[],
 ): CloudEmployee[] {
-  const scheduled = new Set(entries.map((entry) => entry.employeeId));
-  return employees.filter(
-    (employee) => employee.active || scheduled.has(employee.id),
-  );
+  return employees.filter((employee) => employee.active);
 }

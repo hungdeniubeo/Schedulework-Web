@@ -55,6 +55,19 @@ describe("my schedule availability selection", () => {
     ).toBeNull();
   });
 
+  it("does not show an older submission when the selected week has no submission", () => {
+    const olderWeek = week("week-old", "2026-09-14");
+    const selectedWeek = week("week-current", "2026-09-21");
+
+    expect(
+      selectSubmittedAvailability(
+        [olderWeek, selectedWeek],
+        [submission("older-submission", olderWeek.id)],
+        selectedWeek.week_start,
+      ),
+    ).toBeNull();
+  });
+
   it("ignores archived weeks even when they contain the newest submission", () => {
     const current = week("week-current", "2026-09-21");
     const archived = {

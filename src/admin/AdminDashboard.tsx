@@ -11,6 +11,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { BrandLogo } from "../components/BrandLogo";
 import { CowMascot } from "../components/CowMascot";
+import { selectEmployeeRegistrationWeek } from "../employee/registrationWeekSelection";
 import {
   createEmployeeAccount,
   resetEmployeePassword,
@@ -22,18 +23,16 @@ import {
   isRegistrationLocked,
 } from "../lib/week";
 import type {
-  AdminEmployee,
-  Availability,
   AvailabilitySubmission,
   RegistrationWeekStatus,
 } from "../types/domain";
+import { listGroups, listSchedulerEmployees } from "../scheduling/api";
+import type { CloudEmployee, Group } from "../scheduling/types";
 import {
   createWeek,
   deleteWeek,
-  listEmployees,
   listSubmissions,
   listWeeks,
-  saveAdminSubmission,
   updateWeek,
 } from "./api";
 
@@ -43,11 +42,6 @@ const AdminMatrix = lazy(() =>
 const EmployeeManager = lazy(() =>
   import("./EmployeeManager").then(({ EmployeeManager }) => ({
     default: EmployeeManager,
-  })),
-);
-const SubmissionDialog = lazy(() =>
-  import("./SubmissionDialog").then(({ SubmissionDialog }) => ({
-    default: SubmissionDialog,
   })),
 );
 const WeekManager = lazy(() =>
@@ -68,6 +62,7 @@ const ShiftManager = lazy(() =>
 const sectionFallback = (
   <AppState title="Một chút thôi…" message="Đang tải nội dung." />
 );
+const SUBMISSION_REFRESH_MS = 15_000;
 
 type Props = {
   session: Session;
@@ -81,42 +76,35 @@ type Props = {
   navigate: (path: string) => void;
   onLogout: () => Promise<void>;
 };
-type SelectedSubmission = {
-  employee: AdminEmployee;
-  submission: AvailabilitySubmission | null;
-};
-
 export function AdminDashboard({
   session,
   section,
   navigate,
   onLogout,
 }: Props) {
-  const [employees, setEmployees] = useState<AdminEmployee[]>([]);
+  const [employees, setEmployees] = useState<CloudEmployee[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [weeks, setWeeks] = useState<Awaited<ReturnType<typeof listWeeks>>>([]);
   const [selectedWeekId, setSelectedWeekId] = useState("");
   const [submissions, setSubmissions] = useState<AvailabilitySubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekBusy, setWeekBusy] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] =
-    useState<SelectedSubmission | null>(null);
-  const [savingSubmission, setSavingSubmission] = useState(false);
   const submissionsRequest = useRef(0);
 
   const refreshBase = useCallback(async () => {
-    const [nextEmployees, nextWeeks] = await Promise.all([
-      listEmployees(),
+    const [nextEmployees, nextGroups, nextWeeks] = await Promise.all([
+      listSchedulerEmployees(),
+      listGroups(),
       listWeeks(),
     ]);
     setEmployees(nextEmployees);
+    setGroups(nextGroups);
     setWeeks(nextWeeks);
     setSelectedWeekId((current) =>
       current && nextWeeks.some((week) => week.id === current)
         ? current
-        : ((
-            nextWeeks.find((week) => week.status !== "archived") ?? nextWeeks[0]
-          )?.id ?? ""),
+        : (selectEmployeeRegistrationWeek(nextWeeks)?.id ?? ""),
     );
   }, []);
 
@@ -165,6 +153,24 @@ export function AdminDashboard({
   useEffect(() => {
     if (section === "availability" || section === "dashboard")
       void refreshSubmissions();
+  }, [refreshSubmissions, section]);
+
+  useEffect(() => {
+    if (section !== "availability" && section !== "dashboard") return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshSubmissions();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    const refreshTimer = window.setInterval(
+      refreshWhenVisible,
+      SUBMISSION_REFRESH_MS,
+    );
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.clearInterval(refreshTimer);
+    };
   }, [refreshSubmissions, section]);
 
   const selectedWeek = weeks.find((week) => week.id === selectedWeekId) ?? null;
@@ -241,29 +247,11 @@ export function AdminDashboard({
     }
   }
 
-  async function saveDetail(availability: Availability, note: string) {
-    if (!selectedSubmission || !selectedWeek) return;
-    setSavingSubmission(true);
-    try {
-      await saveAdminSubmission({
-        id: selectedSubmission.submission?.id,
-        weekId: selectedWeek.id,
-        employeeId: selectedSubmission.employee.id,
-        availability,
-        note,
-      });
-      await refreshSubmissions();
-      setSelectedSubmission(null);
-    } finally {
-      setSavingSubmission(false);
-    }
-  }
-
   return (
     <div className="admin-shell">
       <header className="admin-header">
         <div className="brand-lockup">
-          <BrandLogo />
+          <BrandLogo home={{ path: "/admin", navigate }} />
           <div>
             <strong>ScheduleWork</strong>
             <small>Đăng ký lịch nhân viên</small>
@@ -456,12 +444,10 @@ export function AdminDashboard({
               {selectedWeek ? (
                 <AdminMatrix
                   employees={employees}
+                  groups={groups}
                   submissions={submissions}
                   weekStart={selectedWeek.week_start}
                   onOpenScheduler={() => navigate("/admin/schedule")}
-                  onSelect={(employee, submission) =>
-                    setSelectedSubmission({ employee, submission })
-                  }
                 />
               ) : (
                 <div className="panel empty-panel">
@@ -489,18 +475,6 @@ export function AdminDashboard({
           ))}
         </div>
       </footer>
-      {selectedSubmission && selectedWeek && (
-        <Suspense fallback={sectionFallback}>
-          <SubmissionDialog
-            employee={selectedSubmission.employee}
-            submission={selectedSubmission.submission}
-            weekStart={selectedWeek.week_start}
-            saving={savingSubmission}
-            onClose={() => setSelectedSubmission(null)}
-            onSave={saveDetail}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }

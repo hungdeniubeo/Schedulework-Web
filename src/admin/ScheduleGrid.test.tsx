@@ -32,7 +32,11 @@ const entry: ScheduleEntry = {
   sortOrderInCell: 0,
 };
 
-function render(availabilityByEmployee = {}, selectedShiftId: string | null = null) {
+function render(
+  availabilityByEmployee = {},
+  selectedShiftId: string | null = null,
+  editable = true,
+) {
   return renderToStaticMarkup(
     <ScheduleGrid
       groups={[{ id: "group-1", name: "Bếp nóng", sortOrder: 0 }]}
@@ -40,12 +44,13 @@ function render(availabilityByEmployee = {}, selectedShiftId: string | null = nu
       entries={[entry]}
       shifts={[shift]}
       weekStart="2026-09-21"
-      editable
+      editable={editable}
       selectedShiftId={selectedShiftId}
       onSelectShift={() => undefined}
       onAssign={() => undefined}
       onMove={() => undefined}
       onEdit={() => undefined}
+      onDelete={() => undefined}
       availabilityByEmployee={availabilityByEmployee}
     />,
   );
@@ -85,5 +90,37 @@ describe("Admin scheduler availability guidance", () => {
     const html = render({}, shift.id);
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('aria-label="Xếp ca cho Nguyễn Phi Hùng, ngày 1"');
+  });
+
+  it("offers direct deletion only for an editable official shift", () => {
+    const editableHtml = render();
+    const publishedHtml = render({}, null, false);
+
+    expect(editableHtml).toContain(
+      'aria-label="Xóa ca 17:00 – 23:00 của Nguyễn Phi Hùng"',
+    );
+    expect(editableHtml).not.toContain("Xóa đăng ký");
+    expect(publishedHtml).not.toContain('aria-label="Xóa ca');
+  });
+
+  it("provides a trash target only for editable official shifts", () => {
+    const editableHtml = render();
+    const publishedHtml = render({}, null, false);
+
+    expect(editableHtml).toContain(
+      'aria-label="Thả ca chính thức vào đây để xóa"',
+    );
+    expect(publishedHtml).not.toContain(
+      'aria-label="Thả ca chính thức vào đây để xóa"',
+    );
+  });
+
+  it("explains whether the shift palette is ready or locked", () => {
+    expect(render()).toContain("Chọn một ca để xếp nhanh");
+    expect(render({}, null, false)).toContain("Tuần này đang khóa chỉnh sửa");
+  });
+
+  it("makes the shift selected for quick assignment explicit", () => {
+    expect(render({}, shift.id)).toContain("Đang chọn để xếp nhanh");
   });
 });

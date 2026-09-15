@@ -373,21 +373,30 @@ export function AdminScheduler({
     };
     const issue = issueMessage(candidate);
     if (issue) return setError(issue);
+    const previousEntries = entries;
+    const inCell = entries.filter(
+      (entry) =>
+        entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
+    );
+    const optimisticEntry =
+      inCell.length > 0
+        ? {
+            ...consolidateCellEntry(candidate, inCell, shifts),
+            id: inCell[0].id,
+          }
+        : candidate;
+    setEntries((current) => [
+      ...current.filter(
+        (entry) => !inCell.some((existing) => existing.id === entry.id),
+      ),
+      optimisticEntry,
+    ]);
     setBusy(true);
     setError(null);
     try {
-      const inCell = entries.filter(
-        (entry) =>
-          entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
-      );
       if (inCell.length > 0) {
-        const keeper = inCell[0];
-        const merged = {
-          ...consolidateCellEntry(candidate, inCell, shifts),
-          id: keeper.id,
-        };
         await consolidateScheduleEntry(
-          merged,
+          optimisticEntry,
           inCell.slice(1).map((entry) => entry.id),
         );
       } else {
@@ -397,6 +406,7 @@ export function AdminScheduler({
       }
       await loadEntries();
     } catch (reason) {
+      setEntries(previousEntries);
       setError(
         reason instanceof Error ? reason.message : "Không thêm được ca.",
       );
@@ -419,18 +429,31 @@ export function AdminScheduler({
     const candidate = { ...entry, employeeId, dayOfWeek };
     const issue = issueMessage(candidate);
     if (issue) return setError(issue);
-    setBusy(true);
-    try {
-      const inTargetCell = entries.filter(
+    const previousEntries = entries;
+    const inTargetCell = entries.filter(
+      (item) =>
+        item.id !== entry.id &&
+        item.employeeId === employeeId &&
+        item.dayOfWeek === dayOfWeek,
+    );
+    const optimisticEntry =
+      inTargetCell.length > 0
+        ? consolidateCellEntry(candidate, inTargetCell, shifts)
+        : candidate;
+    setEntries((current) => [
+      ...current.filter(
         (item) =>
           item.id !== entry.id &&
-          item.employeeId === employeeId &&
-          item.dayOfWeek === dayOfWeek,
-      );
+          !inTargetCell.some((target) => target.id === item.id),
+      ),
+      optimisticEntry,
+    ]);
+    setBusy(true);
+    setError(null);
+    try {
       if (inTargetCell.length > 0) {
-        const merged = consolidateCellEntry(candidate, inTargetCell, shifts);
         await consolidateScheduleEntry(
-          merged,
+          optimisticEntry,
           inTargetCell.map((item) => item.id),
         );
       } else {
@@ -438,6 +461,7 @@ export function AdminScheduler({
       }
       await loadEntries();
     } catch (reason) {
+      setEntries(previousEntries);
       setError(
         reason instanceof Error ? reason.message : "Không di chuyển được ca.",
       );
@@ -458,11 +482,17 @@ export function AdminScheduler({
   }
 
   async function deleteEntry(id: string) {
+    const previousEntries = entries;
+    setEntries((current) => current.filter((entry) => entry.id !== id));
     setBusy(true);
+    setError(null);
     try {
       await removeScheduleEntry(id);
       await loadEntries();
       setEditing(null);
+    } catch (reason) {
+      setEntries(previousEntries);
+      setError(reason instanceof Error ? reason.message : "Không xóa được ca.");
     } finally {
       setBusy(false);
     }
@@ -755,7 +785,7 @@ export function AdminScheduler({
             entries={entries}
             shifts={shifts}
             weekStart={week.weekStart}
-            editable={editable}
+            editable={editable && !busy}
             selectedShiftId={selectedShiftId}
             onSelectShift={setSelectedShiftId}
             onAssign={(employeeId, day, shiftId) =>
@@ -765,6 +795,7 @@ export function AdminScheduler({
               void move(entry, employeeId, day)
             }
             onEdit={(entry) => editable && setEditing(entry)}
+            onDelete={(entry) => void deleteEntry(entry.id)}
             availabilityByEmployee={availabilityByEmployee}
           />
           <div className="schedule-export-stage" aria-hidden="true">

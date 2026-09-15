@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import "./EmployeeApp.css";
 import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
 import { BrandLogo } from "../components/BrandLogo";
@@ -52,7 +53,9 @@ export function EmployeeHeader({
     <header className="employee-header">
       <div className="employee-header-top">
         <div className="employee-brand">
-          <BrandLogo />
+          <BrandLogo
+            mobileHome={{ path: "/app/availability", navigate }}
+          />
           <div>
             <strong>ScheduleWork</strong>
             <small>Cổng nhân viên</small>

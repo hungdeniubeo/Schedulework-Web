@@ -57,6 +57,15 @@ export function ArrowLeftRightIcon(props: IconProps) {
   );
 }
 
+export function DownloadIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 3v12M7 10l5 5 5-5" />
+      <path d="M5 20h14" />
+    </IconBase>
+  );
+}
+
 export function CloseIcon(props: IconProps) {
   return <IconBase {...props}><path d="M6 6l12 12M18 6 6 18" /></IconBase>;
 }
@@ -74,6 +83,15 @@ export function RefreshIcon(props: IconProps) {
     <IconBase {...props}>
       <path d="M20 6v5h-5M4 18v-5h5" />
       <path d="M6.1 9a7 7 0 0 1 11.5-2.5L20 9M4 15l2.4 2.5A7 7 0 0 0 17.9 15" />
+    </IconBase>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13" />
+      <path d="M10 11v5M14 11v5" />
     </IconBase>
   );
 }

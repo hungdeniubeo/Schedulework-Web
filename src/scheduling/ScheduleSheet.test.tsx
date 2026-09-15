@@ -130,4 +130,34 @@ describe("ScheduleSheet employee labels", () => {
     expect(highlighted).toContain(">Bạn<");
     expect(renderEmployee(null)).not.toContain(">Bạn<");
   });
+
+  it("assigns distinct visual hooks to the first three configured areas", () => {
+    const groups = ["MEAT", "BAR", "SERVICE", "EXTRA"].map(
+      (name, index) => ({
+        id: `group-${index + 1}`,
+        name,
+        sortOrder: index,
+      }),
+    );
+    const employees = groups.map((group, index) => ({
+      ...employee(null),
+      id: `employee-${index + 1}`,
+      name: `Nhân viên ${index + 1}`,
+      groupId: group.id,
+    }));
+    const html = renderToStaticMarkup(
+      <ScheduleSheet
+        groups={groups}
+        employees={employees}
+        entries={[]}
+        shifts={[]}
+        weekStart="2026-09-14"
+      />,
+    );
+
+    expect(html).toContain("schedule-group-row schedule-area-one");
+    expect(html).toContain("schedule-group-row schedule-area-two");
+    expect(html).toContain("schedule-group-row schedule-area-three");
+    expect(html).toContain("schedule-group-row schedule-area-neutral");
+  });
 });

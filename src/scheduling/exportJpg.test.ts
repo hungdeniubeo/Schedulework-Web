@@ -33,7 +33,7 @@ describe("exportScheduleJpg", () => {
 
     await exportScheduleJpg("cloud-schedule-sheet", "2026-09-14");
 
-    expect(anchor.download).toBe("schedule-2026-09-14.jpg");
+    expect(anchor.download).toBe("lich-lam-viec-2026-09-14.jpg");
     expect(anchor.click).toHaveBeenCalledOnce();
   });
 });
