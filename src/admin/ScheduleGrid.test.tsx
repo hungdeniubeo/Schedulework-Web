@@ -124,6 +124,13 @@ describe("Admin scheduler availability guidance", () => {
     expect(render({}, shift.id)).toContain("Đang chọn để xếp nhanh");
   });
 
+  it("shows the desktop-style weekly overview in the shift palette", () => {
+    const html = render();
+    expect(html).toContain("Tổng quan tuần");
+    expect(html).toContain("1</strong><span>ca đã xếp");
+    expect(html).toContain("1/1</strong><span>nhân viên có ca");
+  });
+
   it("keeps staffing controls aligned inside the schedule table footer", () => {
     const html = renderToStaticMarkup(
       <ScheduleGrid
@@ -158,5 +165,13 @@ describe("Admin scheduler availability guidance", () => {
     expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
     expect(html).toContain('value="4"');
     expect(html).not.toContain('class="staffing-summary"');
+  });
+
+  it("exposes readable employee name and position hooks", () => {
+    const html = render();
+    expect(html).toContain('class="schedule-employee-name"');
+    expect(html).toContain('class="schedule-employee-position"');
+    expect(html).toContain("Nguyễn Phi Hùng");
+    expect(html).toContain("Bếp trưởng");
   });
 });

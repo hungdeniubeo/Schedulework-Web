@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { EmployeeHeader } from "./EmployeeApp";
 
 describe("shared employee header", () => {
-  it("renders compact account actions and three accessible tabs", () => {
+  it("renders compact account actions and two accessible tabs", () => {
     const html = renderToStaticMarkup(
       <EmployeeHeader
         section="my-schedule"
@@ -18,7 +18,7 @@ describe("shared employee header", () => {
     expect(html).toContain("Đăng xuất");
     expect(html).toContain("Đăng ký lịch");
     expect(html).toContain("Lịch của tôi");
-    expect(html).toContain("Lịch tổng");
+    expect(html).not.toContain("Lịch tổng");
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('class="active"');
   });

@@ -1,7 +1,7 @@
 export type AppRoute =
   | {
       name: "employee";
-      section: "availability" | "my-schedule" ;
+      section: "availability" | "my-schedule";
     }
   | { name: "employee-login" }
   | { name: "change-password" }
@@ -10,6 +10,7 @@ export type AppRoute =
       section:
         | "dashboard"
         | "availability"
+        | "registration-weeks"
         | "schedule"
         | "employees"
         | "groups"
@@ -32,7 +33,7 @@ export function matchRoute(pathname: string): AppRoute {
   if (pathname === "/change-password") return { name: "change-password" };
   if (pathname === "/admin") return { name: "admin", section: "dashboard" };
   const adminSection =
-    /^\/admin\/(availability|schedule|employees|groups|shifts)$/.exec(
+    /^\/admin\/(availability|registration-weeks|schedule|employees|groups|shifts)$/.exec(
       pathname,
     )?.[1];
   if (adminSection)
@@ -40,6 +41,7 @@ export function matchRoute(pathname: string): AppRoute {
       name: "admin",
       section: adminSection as
         | "availability"
+        | "registration-weeks"
         | "schedule"
         | "employees"
         | "groups"

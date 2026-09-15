@@ -15,10 +15,6 @@ describe("matchRoute", () => {
       name: "employee",
       section: "my-schedule",
     });
-    expect(matchRoute("/app/team-schedule")).toEqual({
-      name: "employee",
-      section: "team-schedule",
-    });
     expect(matchRoute("/login")).toEqual({ name: "employee-login" });
     expect(matchRoute("/change-password")).toEqual({ name: "change-password" });
   });
@@ -31,6 +27,10 @@ describe("matchRoute", () => {
     expect(matchRoute("/admin/availability")).toEqual({
       name: "admin",
       section: "availability",
+    });
+    expect(matchRoute("/admin/registration-weeks")).toEqual({
+      name: "admin",
+      section: "registration-weeks",
     });
     expect(matchRoute("/admin/schedule")).toEqual({
       name: "admin",
@@ -51,7 +51,8 @@ describe("matchRoute", () => {
     expect(matchRoute("/admin/login")).toEqual({ name: "admin-login" });
   });
 
-  it("returns not-found for malformed routes", () => {
+  it("returns not-found for removed and malformed routes", () => {
+    expect(matchRoute("/app/team-schedule")).toEqual({ name: "not-found" });
     expect(matchRoute("/unknown")).toEqual({ name: "not-found" });
   });
 });

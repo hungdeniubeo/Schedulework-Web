@@ -9,6 +9,7 @@ describe("AdminDashboard", () => {
       <AdminDashboard
         session={{} as Session}
         section="dashboard"
+        search=""
         navigate={vi.fn()}
         onLogout={vi.fn(async () => undefined)}
       />,

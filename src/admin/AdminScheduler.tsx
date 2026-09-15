@@ -36,12 +36,13 @@ import {
   patchScheduleWeek,
   removeScheduleEntry,
 } from "../scheduling/api";
+import { availabilityNoticeForEntry } from "../scheduling/availabilityNotice";
+import { moveEmployeeLocally } from "../scheduling/employeeOrder";
+import { reorderSchedulerEmployee } from "../scheduling/employeeReorderApi";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
 import { consolidateCellEntry } from "../scheduling/merge";
-import {
-  type StaffingPeriod,
-} from "../scheduling/staffing";
+import { type StaffingPeriod } from "../scheduling/staffing";
 import type {
   ScheduleEntry,
   ScheduleWeek,
@@ -234,9 +235,7 @@ export function AdminScheduler({
   onWeekStartChange,
   onOpenAvailability,
 }: AdminSchedulerProps = {}) {
-  const [groups, setGroups] = useState<Awaited<ReturnType<typeof listGroups>>>(
-    [],
-  );
+  const [groups, setGroups] = useState<Awaited<ReturnType<typeof listGroups>>>([]);
   const [employees, setEmployees] = useState<
     Awaited<ReturnType<typeof listSchedulerEmployees>>
   >([]);
@@ -254,6 +253,7 @@ export function AdminScheduler({
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -263,13 +263,12 @@ export function AdminScheduler({
   );
 
   const loadBase = useCallback(async () => {
-    const [nextGroups, nextEmployees, nextShifts, nextWeeks] =
-      await Promise.all([
-        listGroups(),
-        listSchedulerEmployees(),
-        listShiftTypes(),
-        listScheduleWeeks(),
-      ]);
+    const [nextGroups, nextEmployees, nextShifts, nextWeeks] = await Promise.all([
+      listGroups(),
+      listSchedulerEmployees(),
+      listShiftTypes(),
+      listScheduleWeeks(),
+    ]);
     setGroups(nextGroups);
     setEmployees(nextEmployees);
     setShifts(nextShifts);
@@ -298,9 +297,7 @@ export function AdminScheduler({
   }, [weekId]);
   const loadAvailability = useCallback(async () => {
     const request = ++availabilityRequest.current;
-    const submissions = weekStart
-      ? await listScheduleAvailability(weekStart)
-      : [];
+    const submissions = weekStart ? await listScheduleAvailability(weekStart) : [];
     if (request === availabilityRequest.current) {
       setAvailabilityByEmployee(mapAvailabilityByEmployee(submissions));
     }
@@ -309,6 +306,7 @@ export function AdminScheduler({
     let active = true;
     setEntries([]);
     setAvailabilityByEmployee({});
+    setNotice(null);
     setWeekDataLoading(Boolean(weekId));
     Promise.all([loadEntries(), loadAvailability()])
       .catch((reason) => active && setError(reason.message))
@@ -318,11 +316,9 @@ export function AdminScheduler({
       entriesRequest.current += 1;
       availabilityRequest.current += 1;
     };
-  }, [loadAvailability, loadEntries]);
+  }, [loadAvailability, loadEntries, weekId]);
 
-  const editable = Boolean(
-    week && week.status !== "archived" && !weekDataLoading,
-  );
+  const editable = Boolean(week && week.status !== "archived" && !weekDataLoading);
   const filteredEmployees = useMemo(
     () =>
       employees.filter(
@@ -340,21 +336,23 @@ export function AdminScheduler({
     [employees, entries],
   );
   const activeEmployeeIds = useMemo(
-    () => new Set(
-      employees.filter((employee) => employee.active).map((employee) => employee.id),
-    ),
+    () =>
+      new Set(
+        employees.filter((employee) => employee.active).map((employee) => employee.id),
+      ),
     [employees],
   );
-  const availabilityCount = Object.keys(availabilityByEmployee)
-    .filter((employeeId) => activeEmployeeIds.has(employeeId)).length;
+  const availabilityCount = Object.keys(availabilityByEmployee).filter((employeeId) =>
+    activeEmployeeIds.has(employeeId),
+  ).length;
   const hasRegistrationWeek = week
     ? registrationWeekStarts.includes(week.weekStart)
     : false;
+
   async function ensureDraftWeek(): Promise<void> {
     if (!week) throw new Error("Chưa chọn tuần xếp lịch.");
-    const nextWeek = await prepareScheduleWeekForEditing(
-      week,
-      (id, status) => patchScheduleWeek(id, { status }),
+    const nextWeek = await prepareScheduleWeekForEditing(week, (id, status) =>
+      patchScheduleWeek(id, { status }),
     );
     if (nextWeek === week) return;
     setWeeks((current) =>
@@ -369,6 +367,22 @@ export function AdminScheduler({
         ? "Không thể xếp ca: ca này bị trùng giờ."
         : issue.message
       : null;
+  }
+
+  function updateAvailabilityNotice(entry: ScheduleEntry): void {
+    const employee = employees.find((item) => item.id === entry.employeeId);
+    if (!employee) {
+      setNotice(null);
+      return;
+    }
+    setNotice(
+      availabilityNoticeForEntry(
+        entry,
+        employee,
+        availabilityByEmployee[entry.employeeId]?.days[String(entry.dayOfWeek)],
+        shifts,
+      ),
+    );
   }
 
   async function assign(
@@ -388,23 +402,18 @@ export function AdminScheduler({
       customEnd: null,
       customLabel: null,
       sortOrderInCell: entries.filter(
-        (item) =>
-          item.employeeId === employeeId && item.dayOfWeek === dayOfWeek,
+        (item) => item.employeeId === employeeId && item.dayOfWeek === dayOfWeek,
       ).length,
     };
     const issue = issueMessage(candidate);
     if (issue) return setError(issue);
     const previousEntries = entries;
     const inCell = entries.filter(
-      (entry) =>
-        entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
+      (entry) => entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
     );
     const optimisticEntry =
       inCell.length > 0
-        ? {
-            ...consolidateCellEntry(candidate, inCell, shifts),
-            id: inCell[0].id,
-          }
+        ? { ...consolidateCellEntry(candidate, inCell, shifts), id: inCell[0].id }
         : candidate;
     setEntries((current) => [
       ...current.filter(
@@ -414,6 +423,7 @@ export function AdminScheduler({
     ]);
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await ensureDraftWeek();
       if (inCell.length > 0) {
@@ -427,11 +437,10 @@ export function AdminScheduler({
         await addScheduleEntry(payload);
       }
       await loadEntries();
+      updateAvailabilityNotice(optimisticEntry);
     } catch (reason) {
       setEntries(previousEntries);
-      setError(
-        reason instanceof Error ? reason.message : "Không thêm được ca.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không thêm được ca.");
     } finally {
       setBusy(false);
     }
@@ -472,6 +481,7 @@ export function AdminScheduler({
     ]);
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await ensureDraftWeek();
       if (inTargetCell.length > 0) {
@@ -483,10 +493,42 @@ export function AdminScheduler({
         await patchScheduleEntry(candidate);
       }
       await loadEntries();
+      updateAvailabilityNotice(optimisticEntry);
     } catch (reason) {
       setEntries(previousEntries);
+      setError(reason instanceof Error ? reason.message : "Không di chuyển được ca.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function moveEmployeeRow(
+    employeeId: string,
+    targetGroupId: string,
+    beforeEmployeeId?: string,
+  ) {
+    if (!editable || busy) return;
+    const previousEmployees = employees;
+    const optimisticEmployees = moveEmployeeLocally(
+      employees,
+      employeeId,
+      targetGroupId,
+      beforeEmployeeId,
+    );
+    if (optimisticEmployees === employees) return;
+    setEmployees(optimisticEmployees);
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await reorderSchedulerEmployee(employeeId, targetGroupId, beforeEmployeeId);
+      setEmployees(await listSchedulerEmployees());
+    } catch (reason) {
+      setEmployees(previousEmployees);
       setError(
-        reason instanceof Error ? reason.message : "Không di chuyển được ca.",
+        reason instanceof Error
+          ? reason.message
+          : "Không sắp xếp được nhân viên.",
       );
     } finally {
       setBusy(false);
@@ -497,15 +539,15 @@ export function AdminScheduler({
     if (!week || !editable || busy) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await ensureDraftWeek();
       await patchScheduleEntry(entry);
       await loadEntries();
+      updateAvailabilityNotice(entry);
       setEditing(null);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không lưu được ca.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không lưu được ca.");
     } finally {
       setBusy(false);
     }
@@ -517,6 +559,7 @@ export function AdminScheduler({
     setEntries((current) => current.filter((entry) => entry.id !== id));
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await ensureDraftWeek();
       await removeScheduleEntry(id);
@@ -534,15 +577,14 @@ export function AdminScheduler({
     if (!week || busy || !editable) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await ensureDraftWeek();
       await clearScheduleWeek(week.id);
-      await loadEntries();
+      await Promise.all([loadEntries(), loadBase()]);
       setConfirmingClear(false);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không xóa được lịch tuần.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không xóa được lịch tuần.");
       setConfirmingClear(false);
     } finally {
       setBusy(false);
@@ -555,14 +597,13 @@ export function AdminScheduler({
       return setError("Ngày bắt đầu tuần phải là Thứ Hai.");
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await addScheduleWeek(newWeekStart);
       await loadBase();
       setCreatingWeek(false);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không tạo được tuần.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không tạo được tuần.");
     } finally {
       setBusy(false);
     }
@@ -570,29 +611,40 @@ export function AdminScheduler({
 
   async function setStatus(status: "draft" | "published" | "archived") {
     if (!week) return;
-    if (status === "published") {
-      if (findScheduleIssues(entries, shifts).length > 0) {
-        setError(
-          "Không thể công bố vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.",
-        );
-        return;
-      }
+    if (status === "published" && findScheduleIssues(entries, shifts).length > 0) {
+      setError(
+        "Không thể công bố vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.",
+      );
+      return;
     }
     setBusy(true);
+    setError(null);
     try {
       await patchScheduleWeek(week.id, {
         status,
-        ...(status === "published"
-          ? { publishedAt: new Date().toISOString() }
-          : {}),
+        ...(status === "published" ? { publishedAt: new Date().toISOString() } : {}),
       });
       await loadBase();
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không cập nhật được lịch.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không cập nhật được lịch.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function exportCurrentSchedule() {
+    if (!week) return;
+    if (findScheduleIssues(entries, shifts).length > 0) {
+      setError(
+        "Không thể xuất JPG vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.",
+      );
+      return;
+    }
+    setError(null);
+    try {
+      await exportScheduleJpg("cloud-schedule-export", week.weekStart);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không xuất được JPG.");
     }
   }
 
@@ -615,9 +667,7 @@ export function AdminScheduler({
         ),
       );
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không lưu được tổng ca.",
-      );
+      setError(reason instanceof Error ? reason.message : "Không lưu được tổng ca.");
     } finally {
       setBusy(false);
     }
@@ -629,9 +679,7 @@ export function AdminScheduler({
         <div>
           <span className="eyebrow">Xếp lịch chính thức</span>
           <h2>
-            {week
-              ? formatWeekDisplay(week.weekStart)
-              : "Chưa có tuần xếp lịch"}
+            {week ? formatWeekDisplay(week.weekStart) : "Chưa có tuần xếp lịch"}
           </h2>
         </div>
         <div className="schedule-actions">
@@ -654,12 +702,7 @@ export function AdminScheduler({
               <button
                 className="button secondary"
                 disabled={busy || weekDataLoading}
-                onClick={() =>
-                  void exportScheduleJpg(
-                    "cloud-schedule-export",
-                    week.weekStart,
-                  ).catch((reason) => setError(reason.message))
-                }
+                onClick={() => void exportCurrentSchedule()}
               >
                 Xuất JPG
               </button>
@@ -720,6 +763,7 @@ export function AdminScheduler({
                 setWeekDataLoading(true);
                 setEntries([]);
                 setAvailabilityByEmployee({});
+                setNotice(null);
                 setWeekId(nextWeekId);
               }}
             />
@@ -740,10 +784,7 @@ export function AdminScheduler({
               value={groupFilter}
               options={[
                 { value: "all", label: "Tất cả nhóm" },
-                ...groups.map((group) => ({
-                  value: group.id,
-                  label: group.name,
-                })),
+                ...groups.map((group) => ({ value: group.id, label: group.name })),
               ]}
               onChange={setGroupFilter}
             />
@@ -767,7 +808,9 @@ export function AdminScheduler({
         </div>
       </section>
       {week ? (
-        <section className={`schedule-sync-bar ${hasRegistrationWeek ? "synced" : "missing"}`}>
+        <section
+          className={`schedule-sync-bar ${hasRegistrationWeek ? "synced" : "missing"}`}
+        >
           <span className="schedule-sync-icon" aria-hidden="true">
             {hasRegistrationWeek ? <CheckIcon /> : <AlertTriangleIcon />}
           </span>
@@ -784,7 +827,11 @@ export function AdminScheduler({
             </p>
           </div>
           {onOpenAvailability && (
-            <button type="button" className="button secondary" onClick={onOpenAvailability}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={onOpenAvailability}
+            >
               Xem lịch đăng ký
             </button>
           )}
@@ -796,7 +843,9 @@ export function AdminScheduler({
           </span>
           <div>
             <strong>Chưa có lịch chính thức cho tuần đang chọn</strong>
-            <p>{formatWeekDisplay(preferredWeekStart)} · Tạo lịch tuần để bắt đầu xếp ca.</p>
+            <p>
+              {formatWeekDisplay(preferredWeekStart)} · Tạo lịch tuần để bắt đầu xếp ca.
+            </p>
           </div>
         </section>
       ) : null}
@@ -807,6 +856,18 @@ export function AdminScheduler({
             type="button"
             aria-label="Đóng thông báo lỗi"
             onClick={() => setError(null)}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+      )}
+      {notice && (
+        <div className="scheduler-info-notice" role="status">
+          <span>{notice}</span>
+          <button
+            type="button"
+            aria-label="Đóng thông báo"
+            onClick={() => setNotice(null)}
           >
             <CloseIcon />
           </button>
@@ -826,8 +887,9 @@ export function AdminScheduler({
             onAssign={(employeeId, day, shiftId) =>
               void assign(employeeId, day, shiftId)
             }
-            onMove={(entry, employeeId, day) =>
-              void move(entry, employeeId, day)
+            onMove={(entry, employeeId, day) => void move(entry, employeeId, day)}
+            onMoveEmployee={(employeeId, targetGroupId, beforeEmployeeId) =>
+              void moveEmployeeRow(employeeId, targetGroupId, beforeEmployeeId)
             }
             onEdit={(entry) => editable && setEditing(entry)}
             onDelete={(entry) => void deleteEntry(entry.id)}

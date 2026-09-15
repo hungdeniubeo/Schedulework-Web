@@ -93,13 +93,16 @@
   padding: 6px 20px;
   color: #3f4944;
   background: #edf1ef;
-  text-align: left;
+  text-align: center;
 }
 
 .admin-availability-matrix .schedule-group-label {
+  display: block;
+  width: 100%;
   font-size: 0.72rem;
   font-weight: 850;
   letter-spacing: 0.08em;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -114,6 +117,25 @@
 .admin-availability-matrix .matrix-cell.missing {
   border: 1px dashed #d4dad7;
   background: #f7f8f7;
+}
+
+.availability-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 680px;
+  margin: 20px auto;
+  padding: 32px;
+  text-align: center;
+}
+
+.availability-empty-state h2,
+.availability-empty-state p {
+  margin: 0;
+}
+
+.availability-empty-state p {
+  color: var(--muted);
 }
 
 @media (min-width: 1180px) {
@@ -133,5 +155,11 @@
 
   .admin-availability-matrix .schedule-legend {
     margin-inline: 16px;
+  }
+
+  .availability-empty-state {
+    justify-items: start;
+    padding: 24px 18px;
+    text-align: left;
   }
 }
