@@ -69,7 +69,7 @@ function ReadOnlyCell({
         )}
         key={entry.id}
       >
-        {formatShiftLabel(label)}
+        {formatShiftLabel(label).replace(" / ", " /\n")}
       </span>
     );
   });

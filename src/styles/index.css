@@ -927,7 +927,12 @@ p {
 }
 
 .submitted-day-date {
-  align-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
   gap: 3px;
   min-width: 0;
   padding-right: 12px;
@@ -1128,8 +1133,9 @@ p {
 }
 .employee-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 3px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
   max-width: 560px;
   margin: 7px auto 0;
   padding: 3px;
@@ -1137,17 +1143,21 @@ p {
   border: 1px solid #d9dddb;
   border-radius: 12px;
 }
+
 .employee-tabs button {
-  min-height: 44px;
+  width: 100%;
   min-width: 0;
-  padding: 0 8px;
+  min-height: 44px;
+  padding: 0 10px;
   color: var(--muted);
   background: transparent;
   border: 0;
   border-radius: 9px;
   font-size: 0.82rem;
   font-weight: 750;
+  text-align: center;
 }
+
 .employee-tabs button.active {
   color: var(--primary-dark);
   background: white;

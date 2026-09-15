@@ -1,31 +1,50 @@
+/* =========================================================
+   TEAM SCHEDULE
+   Mobile-first employee schedule
+   ========================================================= */
+
+/* ---------- Page ---------- */
+
 .employee-schedule-page.team-page {
   width: 100%;
   max-width: 1400px;
+  margin: 0 auto;
 }
 
+/* ---------- Page header ---------- */
+
 .team-page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .team-page-header > div:first-child {
   min-width: 0;
 }
 
+.team-page-header .eyebrow {
+  margin-bottom: 4px;
+}
+
 .team-page-header h1 {
-  margin: 7px 0 4px;
+  margin: 0 0 3px;
+  font-size: clamp(1.4rem, 6.5vw, 2rem);
+  line-height: 1.15;
 }
 
 .team-page-header p {
-  margin-bottom: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
+
+/* ---------- Download ---------- */
 
 .team-download-action {
   display: grid;
-  flex: 0 0 auto;
-  justify-items: end;
   gap: 6px;
 }
 
@@ -33,32 +52,141 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  gap: 7px;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 
 .team-download-button .ui-icon {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .team-download-action [role="alert"] {
-  max-width: 260px;
   color: var(--danger);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 650;
-  text-align: right;
+  line-height: 1.4;
 }
+
+/* ---------- Horizontal scroll hint ---------- */
+
+.team-page .team-scroll-guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 7px;
+  padding: 6px 9px;
+  color: #69706c;
+  background: #f5f7f6;
+  border: 1px solid #e4e8e6;
+  border-radius: 9px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.team-page .team-scroll-guide span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.team-page .team-scroll-guide .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* =========================================================
+   SCHEDULE FRAME
+   Title stays outside the horizontal scrolling element.
+   ========================================================= */
+
+.team-schedule-frame {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dde2df;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(31, 36, 34, 0.06);
+}
+
+/* ---------- Fixed schedule title ---------- */
+
+.team-schedule-fixed-title {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  gap: 2px;
+  padding: 6px 10px 7px;
+  background: #fff;
+  border-bottom: 1px solid #e8ecea;
+  text-align: center;
+}
+
+.team-schedule-fixed-title strong {
+  color: #676e6a;
+  font-size: 0.61rem;
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+}
+
+.team-schedule-fixed-title span {
+  color: #3f4642;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* ---------- Only this element scrolls horizontally ---------- */
 
 .team-page .team-schedule-scroll {
-  border-color: #d8dfdb;
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(31, 36, 34, 0.08);
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fff;
+
+  /* Override the shared .schedule-table-scroll card styles. */
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
 }
 
+/* ---------- Sheet ---------- */
+
 .team-page .published-schedule-sheet {
-  padding: 16px;
+  min-width: 820px;
+  padding: 8px;
+  background: #fff;
 }
+
+/*
+ * ScheduleSheet renders its own .cloud-sheet-title.
+ * The employee team page uses .team-schedule-fixed-title instead so that
+ * the title is not part of the horizontally scrolling content.
+ * This selector does not affect the hidden export sheet.
+ */
+.team-page .published-schedule-sheet > .cloud-sheet-title {
+  display: none;
+}
+
+/* =========================================================
+   AREA COLORS
+   ========================================================= */
 
 .team-page .schedule-area-one {
   --area-accent: #60796c;
@@ -76,179 +204,384 @@
   --area-accent: #7a817d;
 }
 
-.team-page .cloud-sheet-title {
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: 2px 2px 12px;
-  border-bottom: 1px solid #e7ebe9;
-}
+/* =========================================================
+   TABLE
+   ========================================================= */
 
-.team-page .cloud-sheet-title strong {
-  font-size: 0.82rem;
-}
-
-.team-page .cloud-sheet-title span {
-  color: #626966;
-  font-size: 0.78rem;
-  font-weight: 650;
+.team-page .cloud-schedule-table {
+  width: 100%;
+  table-layout: fixed;
 }
 
 .team-page .cloud-schedule-table th,
 .team-page .cloud-schedule-table td {
-  height: 62px;
-  padding: 8px;
-  border-color: #d7ded9;
+  height: 52px;
+  padding: 5px;
+  border-color: #dce1de;
   vertical-align: middle;
 }
 
+/* ---------- Day header ---------- */
+
 .team-page .cloud-schedule-table thead th {
-  height: 54px;
-  color: #3d4541;
-  background: #e9eeeb;
-  border-bottom-color: #c5d0ca;
+  height: 47px;
+  color: #424945;
+  background: #eef1ef;
+  border-bottom-color: #ccd4d0;
   border-bottom-width: 2px;
-  vertical-align: middle;
+  text-align: center;
 }
 
 .team-page .cloud-schedule-table thead th:first-child {
-  background: #e1e8e4;
+  width: 112px;
+  background: #e7ece9;
 }
 
 .team-page .cloud-schedule-table thead th > strong {
   display: block;
-  color: #313734;
-  font-size: 0.78rem;
+  color: #303633;
+  font-size: 0.69rem;
   font-weight: 850;
+  line-height: 1.15;
 }
 
 .team-page .cloud-schedule-table thead th > small {
-  margin-top: 3px;
-  font-size: 0.68rem;
+  display: block;
+  margin-top: 2px;
+  color: #747b77;
+  font-size: 0.6rem;
   font-weight: 650;
+  line-height: 1.1;
 }
 
-.team-page .cloud-schedule-table thead th:last-child,
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row) > td:last-child {
-  background-color: #faf6f1;
-}
+/* ---------- Employee column ---------- */
 
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row):nth-child(even) > th,
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row):nth-child(even) > td {
-  background-color: #fafbfa;
-}
-
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row):hover > th,
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row):hover > td {
-  background-color: #f2f5f3;
-}
-
-.team-page .cloud-schedule-table tbody tr:not(.schedule-group-row) > th {
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr:not(.schedule-group-row)
+  > th {
   color: #303633;
+  font-size: 0.71rem;
   text-align: left;
 }
 
-.team-page .cloud-schedule-table tbody tr.schedule-area-row > th:first-child {
-  border-left: 4px solid var(--area-accent, #7a817d);
-}
-
 .team-page .cloud-schedule-table tbody th > strong {
-  font-size: 0.8rem;
-  line-height: 1.3;
+  display: block;
+  font-size: 0.71rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
-.team-page .cloud-schedule-table tbody th > small:not(.current-employee-badge) {
-  margin-top: 4px;
-  font-size: 0.67rem;
+.team-page
+  .cloud-schedule-table
+  tbody
+  th
+  > small:not(.current-employee-badge) {
+  display: block;
+  margin-top: 2px;
+  color: #777e7a;
+  font-size: 0.59rem;
+  font-weight: 650;
+  line-height: 1.2;
 }
+
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr.schedule-area-row
+  > th:first-child {
+  border-left: 3px solid var(--area-accent, #7a817d);
+}
+
+/* ---------- Alternating rows ---------- */
+
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr:not(.schedule-group-row):nth-child(even)
+  > th,
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr:not(.schedule-group-row):nth-child(even)
+  > td {
+  background-color: #fafbfa;
+}
+
+/* ---------- Sunday ---------- */
+
+.team-page .cloud-schedule-table thead th:last-child,
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr:not(.schedule-group-row)
+  > td:last-child {
+  background-color: #fcf8f3;
+}
+
+/* =========================================================
+   GROUP ROW
+   ========================================================= */
 
 .team-page .schedule-group-row th {
-  height: 36px;
+  height: 29px;
   padding: 0;
-  color: #3e4742;
+
+  color: #414844;
   background: #edf1ef;
-  border-color: #d3dad6;
-  border-top: 3px solid var(--area-accent, #7a817d);
+
+  border-color: #d4dad7;
+  border-top: 2px solid var(--area-accent, #7a817d);
   border-bottom-width: 1px;
+
+  text-align: center;
 }
 
 .team-page .schedule-group-label {
-  min-height: 34px;
-  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  min-height: 28px;
+
+  gap: 6px;
+
+  font-size: 0.64rem;
   font-weight: 850;
+  line-height: 1;
+
   letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .team-page .schedule-group-label::before {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
   background: var(--area-accent, #7a817d);
   border-radius: 50%;
   content: "";
 }
 
+/* =========================================================
+   SHIFT CHIP
+   ========================================================= */
+
 .team-page .schedule-entry-chip.readonly {
-  width: 100%;
-  min-height: 32px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px;
-  border-radius: 8px;
-  font-size: 0.7rem;
-  line-height: 1.25;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 3px;
+  border-radius: 7px;
+  font-size: 0.61rem;
+  font-weight: 700;
+  line-height: 1.28;
+  text-align: center;
+
+  /*
+   * ScheduleSheet.tsx can render:
+   * 10:00 – 14:00 /
+   * 17:00 – 23:00
+   */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.team-page .schedule-off {
+  display: block;
+  padding: 4px 2px;
+  color: #909591;
+  font-size: 0.63rem;
+  font-weight: 650;
   text-align: center;
 }
+
+/* =========================================================
+   CURRENT EMPLOYEE
+   ========================================================= */
 
 .team-page .current-employee-row > th,
 .team-page .current-employee-row > td,
 .team-page .current-employee-row > td:last-child {
-  background-color: #eef4f1 !important;
-  border-top-color: #ccd8d2;
-  border-bottom-color: #ccd8d2;
+  background-color: #edf5f1 !important;
+  border-top-color: #cbd9d1;
+  border-bottom-color: #cbd9d1;
 }
 
-.team-page .cloud-schedule-table tbody tr.current-employee-row > th,
-.team-page .cloud-schedule-table tbody tr.current-employee-row > th > strong,
-.team-page .cloud-schedule-table tbody tr.current-employee-row > th > small {
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr.current-employee-row
+  > th,
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr.current-employee-row
+  > th
+  > strong,
+.team-page
+  .cloud-schedule-table
+  tbody
+  tr.current-employee-row
+  > th
+  > small {
   text-align: center !important;
 }
 
-.team-page .current-employee-row .current-employee-badge {
-  padding: 2px 7px;
-  color: #28583b !important;
-  background: #cfe6d7;
-  border: 1px solid #a9cdb6;
-  margin-right: auto !important;
-  margin-left: auto !important;
+.team-page .current-employee-row > th:first-child {
+  box-shadow:
+    inset 3px 0 0 #739280,
+    4px 0 8px -8px rgba(31, 36, 34, 0.6);
 }
 
-.team-page .current-employee-row > th:first-child {
-  box-shadow: 7px 0 12px -11px rgba(31, 36, 34, 0.7);
+.team-page .current-employee-row .current-employee-badge {
+  display: table;
+  margin: 3px auto 0 !important;
+  padding: 2px 6px;
+  color: #28583b !important;
+  background: #d3e9dc;
+  border: 1px solid #aed0bb;
+  border-radius: 999px;
+  font-size: 0.55rem !important;
+  font-weight: 850;
+  line-height: 1.2;
 }
+
+/* =========================================================
+   STAFFING
+   ========================================================= */
 
 .team-page .schedule-staffing-row th,
 .team-page .schedule-staffing-row td {
-  height: 40px;
-  color: #46504b;
+  height: 31px;
+  padding: 3px 5px;
+  color: #535b57;
   background: #f3f5f4;
-  font-size: 0.72rem;
+  font-size: 0.61rem;
   font-weight: 800;
   text-align: center;
 }
 
-@media (max-width: 820px) {
-  .team-page .team-scroll-guide {
-    display: flex;
-    margin: 0 0 10px;
-    padding: 8px 10px;
-    background: #f2f5f3;
-    border: 1px solid #e0e5e2;
-    border-radius: 10px;
+/* =========================================================
+   HOVER - POINTER DEVICES ONLY
+   ========================================================= */
+
+@media (hover: hover) {
+  .team-page
+    .cloud-schedule-table
+    tbody
+    tr:not(.schedule-group-row):hover
+    > th,
+  .team-page
+    .cloud-schedule-table
+    tbody
+    tr:not(.schedule-group-row):hover
+    > td {
+    background-color: #f3f6f4;
+  }
+}
+
+/* =========================================================
+   VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 380px) {
+  .team-page .published-schedule-sheet {
+    min-width: 790px;
+    padding: 7px;
   }
 
-  .team-page .team-schedule-scroll {
-    border-radius: 14px;
+  .team-schedule-fixed-title {
+    min-height: 40px;
+    padding: 5px 7px 6px;
+  }
+
+  .team-schedule-fixed-title strong {
+    font-size: 0.58rem;
+  }
+
+  .team-schedule-fixed-title span {
+    font-size: 0.67rem;
+  }
+
+  .team-page .cloud-schedule-table th,
+  .team-page .cloud-schedule-table td {
+    padding: 4px;
+  }
+
+  .team-page .schedule-entry-chip.readonly {
+    min-height: 31px;
+    font-size: 0.58rem;
+  }
+}
+
+/* =========================================================
+   WIDE MOBILE / TABLET
+   ========================================================= */
+
+@media (min-width: 520px) {
+  .team-schedule-fixed-title {
+    flex-direction: row;
+    min-height: 38px;
+    gap: 8px;
+    padding: 6px 10px;
+  }
+
+  .team-schedule-fixed-title strong {
+    font-size: 0.65rem;
+  }
+
+  .team-schedule-fixed-title span {
+    display: flex;
+    align-items: center;
+    font-size: 0.7rem;
+  }
+
+  .team-schedule-fixed-title span::before {
+    width: 1px;
+    height: 11px;
+    margin-right: 8px;
+    background: #d6dcd8;
+    content: "";
+  }
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (min-width: 681px) {
+  .team-page-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 18px;
+  }
+
+  .team-download-action {
+    justify-items: end;
+  }
+
+  .team-download-button {
+    width: auto;
+  }
+
+  .team-download-action [role="alert"] {
+    max-width: 260px;
+    text-align: right;
+  }
+
+  .team-page .team-scroll-guide {
+    display: none;
+  }
+
+  .team-schedule-frame {
+    border-radius: 15px;
+    box-shadow: 0 9px 26px rgba(31, 36, 34, 0.07);
   }
 
   .team-page .published-schedule-sheet {
@@ -258,34 +591,101 @@
 
   .team-page .cloud-schedule-table th,
   .team-page .cloud-schedule-table td {
-    height: 58px;
-    padding: 6px;
+    height: 57px;
+    padding: 7px;
   }
 
-  .team-page .cloud-sheet-title {
-    position: sticky;
-    left: 0;
-    width: calc(100vw - 54px);
-    max-width: 560px;
+  .team-page .cloud-schedule-table thead th {
+    height: 50px;
+  }
+
+  .team-page .cloud-schedule-table thead th:first-child {
+    width: 135px;
+  }
+
+  .team-page .schedule-entry-chip.readonly {
+    min-height: 34px;
+    padding: 5px 4px;
+    font-size: 0.66rem;
+  }
+
+  .team-page .schedule-group-row th {
+    height: 33px;
+  }
+
+  .team-page .schedule-group-label {
+    min-height: 32px;
+    font-size: 0.68rem;
+  }
+
+  .team-page .schedule-staffing-row th,
+  .team-page .schedule-staffing-row td {
+    height: 36px;
+    font-size: 0.67rem;
   }
 }
 
-@media (max-width: 680px) {
-  .team-page-header {
-    display: grid;
-    align-items: stretch;
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+@media (min-width: 1024px) {
+  .team-schedule-frame {
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(31, 36, 34, 0.08);
   }
 
-  .team-download-action {
-    justify-items: stretch;
+  .team-page .published-schedule-sheet {
+    min-width: 1050px;
+    padding: 15px;
   }
 
-  .team-download-action [role="alert"] {
-    max-width: none;
-    text-align: left;
+  .team-page .cloud-schedule-table th,
+  .team-page .cloud-schedule-table td {
+    height: 61px;
+    padding: 8px;
   }
 
-  .team-download-button {
-    width: 100%;
+  .team-page .cloud-schedule-table thead th {
+    height: 53px;
+  }
+
+  .team-page .cloud-schedule-table thead th:first-child {
+    width: 155px;
+  }
+
+  .team-page .cloud-schedule-table thead th > strong {
+    font-size: 0.76rem;
+  }
+
+  .team-page .cloud-schedule-table thead th > small {
+    font-size: 0.66rem;
+  }
+
+  .team-page .cloud-schedule-table tbody th > strong {
+    font-size: 0.78rem;
+  }
+
+  .team-page
+    .cloud-schedule-table
+    tbody
+    th
+    > small:not(.current-employee-badge) {
+    font-size: 0.65rem;
+  }
+
+  .team-page .schedule-entry-chip.readonly {
+    min-height: 35px;
+    font-size: 0.7rem;
+  }
+
+  .team-page .schedule-group-label {
+    font-size: 0.72rem;
+  }
+
+  .team-page .schedule-staffing-row th,
+  .team-page .schedule-staffing-row td {
+    height: 39px;
+    font-size: 0.71rem;
   }
 }

@@ -19,11 +19,6 @@ const MySchedulePage = lazy(() =>
     default: MySchedulePage,
   })),
 );
-const TeamSchedulePage = lazy(() =>
-  import("./ScheduleViews").then(({ TeamSchedulePage }) => ({
-    default: TeamSchedulePage,
-  })),
-);
 
 const sectionFallback = (
   <AppState title="Một chút thôi…" message="Đang tải nội dung." />
@@ -31,7 +26,7 @@ const sectionFallback = (
 
 type Props = {
   loginRoute: boolean;
-  section: "availability" | "my-schedule" | "team-schedule";
+  section: "availability" | "my-schedule";
   navigate: (path: string) => void;
 };
 
@@ -47,7 +42,6 @@ export function EmployeeHeader({
   const tabs: Array<{ section: Props["section"]; label: string; path: string }> = [
     { section: "availability", label: "Đăng ký lịch", path: "/app/availability" },
     { section: "my-schedule", label: "Lịch của tôi", path: "/app/my-schedule" },
-    { section: "team-schedule", label: "Lịch tổng", path: "/app/team-schedule" },
   ];
   return (
     <header className="employee-header">
@@ -199,22 +193,22 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         onLogout={() => void logout()}
       />
       <Suspense fallback={sectionFallback}>
-        {section === "availability" ? (
-          <EmployeeRegistrationPage
-            onLogout={logout}
-            onSubmissionSaved={() => setSubmissionRevision((current) => current + 1)}
-            employee={employee!}
-          />
-        ) : section === "my-schedule" ? (
-          <MySchedulePage
-            employeeId={employee!.id}
-            submissionRevision={submissionRevision}
-            onRegister={() => navigate("/app/availability")}
-          />
-        ) : (
-          <TeamSchedulePage employeeId={employee!.id} />
-        )}
-      </Suspense>
+  {section === "availability" ? (
+    <EmployeeRegistrationPage
+      onLogout={logout}
+      onSubmissionSaved={() =>
+        setSubmissionRevision((current) => current + 1)
+      }
+      employee={employee!}
+    />
+  ) : (
+    <MySchedulePage
+      employeeId={employee!.id}
+      submissionRevision={submissionRevision}
+      onRegister={() => navigate("/app/availability")}
+    />
+  )}
+</Suspense>
     </div>
   );
 }

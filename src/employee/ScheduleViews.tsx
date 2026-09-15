@@ -12,6 +12,7 @@ import {
   addDateOnlyDays,
   formatDateShort,
   formatWeekDisplay,
+  formatWeekOfMonth,
 } from "../lib/week";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { ArrowLeftRightIcon, DownloadIcon } from "../components/Icons";
@@ -249,6 +250,7 @@ export function TeamScheduleContent({
   async function downloadSchedule() {
     setExporting(true);
     setExportError(null);
+
     try {
       await exportScheduleJpg(
         "employee-published-schedule-export",
@@ -272,6 +274,7 @@ export function TeamScheduleContent({
             <h1>Lịch tổng</h1>
             <p>{formatWeekDisplay(data.week.weekStart)}</p>
           </div>
+
           <div className="team-download-action">
             <button
               type="button"
@@ -282,27 +285,44 @@ export function TeamScheduleContent({
               <DownloadIcon />
               {exporting ? "Đang tạo ảnh…" : "Tải ảnh lịch"}
             </button>
+
             {exportError && <span role="alert">{exportError}</span>}
           </div>
         </header>
+
         <div className="team-scroll-guide" aria-hidden="true">
-          <span><ArrowLeftRightIcon /></span>
+          <span>
+            <ArrowLeftRightIcon />
+          </span>
           Vuốt ngang để xem đủ 7 ngày
         </div>
-        <div className="team-schedule-scroll schedule-table-scroll">
-          <ScheduleSheet
-            className="published-schedule-sheet"
-            groups={data.groups}
-            employees={scheduleEmployees}
-            entries={data.entries}
-            shifts={data.shifts}
-            weekStart={data.week.weekStart}
-            countOverrides={data.week.countOverrides}
-            showStaffing
-            highlightEmployeeId={data.currentEmployeeId}
-          />
-        </div>
+
+        <section className="team-schedule-frame">
+          <div className="team-schedule-fixed-title">
+            <strong>LỊCH LÀM VIỆC</strong>
+            <span>
+              {formatWeekOfMonth(data.week.weekStart)} ·{" "}
+              {formatDateShort(data.week.weekStart)} –{" "}
+              {formatDateShort(addDateOnlyDays(data.week.weekStart, 6))}
+            </span>
+          </div>
+
+          <div className="team-schedule-scroll schedule-table-scroll">
+            <ScheduleSheet
+              className="published-schedule-sheet"
+              groups={data.groups}
+              employees={scheduleEmployees}
+              entries={data.entries}
+              shifts={data.shifts}
+              weekStart={data.week.weekStart}
+              countOverrides={data.week.countOverrides}
+              showStaffing
+              highlightEmployeeId={data.currentEmployeeId}
+            />
+          </div>
+        </section>
       </main>
+
       <div className="schedule-export-stage" aria-hidden="true">
         <ScheduleSheet
           id="employee-published-schedule-export"
