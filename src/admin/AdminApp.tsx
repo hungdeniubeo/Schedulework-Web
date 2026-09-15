@@ -34,6 +34,7 @@ export function AdminApp({ loginRoute, section, search, navigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(configurationError);
+  void search;
 
   useEffect(() => {
     if (configurationError) {
@@ -116,7 +117,6 @@ export function AdminApp({ loginRoute, section, search, navigate }: Props) {
       <AdminDashboard
         session={session}
         section={section}
-        search={search}
         navigate={navigate}
         onLogout={logout}
       />
