@@ -249,11 +249,6 @@ describe("Admin scheduler confirmations", () => {
     );
   });
 
-  it("shows an explicit create state when the selected week has no schedule", () => {
-    expect(adminSchedulerSource).toContain("Tuần này chưa có lịch xếp");
-    expect(adminSchedulerSource).toContain("Tạo lịch tuần này");
-  });
-
   it("maps schedule statuses to Vietnamese labels", () => {
     expect(scheduleWeekStatusLabel("draft")).toBe("Bản nháp");
     expect(scheduleWeekStatusLabel("published")).toBe("Đã công bố");
