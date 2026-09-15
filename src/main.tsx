@@ -4,7 +4,6 @@ import App from "./app/App";
 import "./styles/index.css";
 import "./styles/schedule.css";
 import "./scheduling/ScheduleExport.css";
-import "./styles/typography.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
