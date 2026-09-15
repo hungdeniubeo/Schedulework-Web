@@ -14,14 +14,27 @@ export function staffingStatusForShiftCount(
 }
 
 export function periodsForRange(range: TimeRange): StaffingPeriod[] {
-  const periods: Array<{ key: StaffingPeriod; start: number; end: number }> = [
-    { key: "S", start: 10 * 60, end: 14 * 60 },
-    { key: "T", start: 14 * 60, end: 17 * 60 },
-    { key: "Đ", start: 17 * 60, end: 24 * 60 },
+  const windows = [
+    { key: "S" as const, start: 0, end: 14 * 60 },
+    { key: "T" as const, start: 14 * 60, end: 17 * 60 },
+    { key: "Đ" as const, start: 17 * 60, end: 24 * 60 },
   ];
-  return periods
-    .filter((period) => range.start < period.end && range.end > period.start)
-    .map((period) => period.key);
+  const coverage = windows.map((window) => ({
+    key: window.key,
+    overlap: Math.max(
+      0,
+      Math.min(range.end, window.end) - Math.max(range.start, window.start),
+    ),
+  }));
+  const substantial = coverage
+    .filter(({ overlap }) => overlap >= 2 * 60)
+    .map(({ key }) => key);
+  if (substantial.length) return substantial;
+  return [
+    coverage.reduce((best, current) =>
+      current.overlap > best.overlap ? current : best,
+    ).key,
+  ];
 }
 
 export function periodCounts(
