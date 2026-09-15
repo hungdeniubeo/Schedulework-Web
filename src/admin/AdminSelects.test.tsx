@@ -184,6 +184,21 @@ describe("Admin desktop selects", () => {
     expect(html).toContain('aria-label="Lọc theo nhóm"');
   });
 
+  it("keeps week creation outside the frequently used schedule filters", () => {
+    const html = renderToStaticMarkup(<AdminScheduler />);
+
+    expect(html).toContain('aria-label="Tạo lịch tuần mới"');
+    expect(html).not.toContain('aria-label="Tuần bắt đầu từ Thứ Hai"');
+  });
+
+  it("gives each schedule filter a visible label", () => {
+    const html = renderToStaticMarkup(<AdminScheduler />);
+
+    expect(html).toContain("Tuần đang xem");
+    expect(html).toContain("Tìm nhân viên");
+    expect(html).toContain("Nhóm nhân viên");
+  });
+
   it("uses the shared custom control in the shift editor dialog", () => {
     const html = renderToStaticMarkup(
       <EntryEditor

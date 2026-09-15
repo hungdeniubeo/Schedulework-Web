@@ -1,0 +1,68 @@
+<style>
+  .finding { margin-bottom: 18px; padding: 14px 16px; color: #46504b; background: #f5f7f5; border: 1px solid #dfe5e1; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+  .schedule-options { display: grid; gap: 20px; }
+  .schedule-card { overflow: hidden; padding: 0; }
+  .schedule-card .card-body { padding: 15px 18px 18px; }
+  .screen { min-height: 250px; padding: 14px; color: #2b302e; background: #f2f4f3; font: 11px/1.35 ui-sans-serif, system-ui; }
+  .topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .title { font-size: 14px; font-weight: 800; }
+  .publish { padding: 6px 10px; color: white; background: #303533; border-radius: 7px; font-weight: 700; }
+  .controls { display: grid; grid-template-columns: 1.35fr .8fr .7fr; gap: 7px; margin-bottom: 8px; }
+  .control { padding: 7px 8px; background: white; border: 1px solid #d8ddda; border-radius: 7px; }
+  .control strong { display: block; margin-bottom: 2px; font-size: 9px; color: #78827d; text-transform: uppercase; }
+  .week-control { display: flex; align-items: center; justify-content: space-between; border-color: #aaa39a; box-shadow: 0 2px 8px rgba(28, 35, 32, .05); }
+  .status { display: inline-flex; padding: 2px 5px; color: #276657; background: #e8f6f1; border-radius: 999px; font-size: 8px; font-weight: 800; }
+  .summary { display: flex; gap: 6px; margin-bottom: 8px; }
+  .summary span { padding: 4px 7px; background: white; border: 1px solid #e0e4e2; border-radius: 999px; font-size: 9px; }
+  .summary .good { color: #24705d; background: #edf8f4; border-color: #cfe9e0; }
+  .summary .warn { color: #9a611f; background: #fff7e9; border-color: #eed9b6; }
+  .workarea { display: grid; grid-template-columns: 82px 1fr; gap: 7px; }
+  .palette { padding: 7px; background: white; border: 1px solid #dde1df; border-radius: 8px; }
+  .shift { margin-top: 5px; padding: 5px; background: #e8eef8; border: 1px solid #c7d4e8; border-radius: 5px; font-size: 9px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: 76px repeat(4, 1fr); overflow: hidden; background: white; border: 1px solid #dfe3e1; border-radius: 8px; }
+  .cell { min-height: 42px; padding: 5px; border-right: 1px solid #e5e8e6; border-bottom: 1px solid #e5e8e6; }
+  .head { min-height: auto; color: #68716d; background: #f4f5f4; font-weight: 800; text-align: center; }
+  .name { font-weight: 800; }
+  .registered { display: block; margin-bottom: 4px; padding: 2px 4px; color: #316d60; background: #edf8f4; border-left: 2px solid #45a68e; border-radius: 3px; font-size: 8px; }
+  .off { color: #9a5d57; background: #fbefed; border-left-color: #cb756c; }
+  .official { display: block; padding: 3px 4px; color: #294f7d; background: #e9f0fa; border: 1px solid #c9d7e9; border-radius: 4px; font-size: 8px; font-weight: 800; text-align: center; }
+  .conflict { color: #914d1d; background: #fff2df; border-color: #dfa862; }
+  .toast { position: absolute; top: 42px; right: 20px; width: 180px; padding: 8px 10px; color: #735025; background: #fffaf0; border: 1px solid #e7c995; border-radius: 8px; box-shadow: 0 8px 22px rgba(50, 38, 24, .14); font-size: 9px; }
+  .relative { position: relative; }
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .mini-table { padding: 8px; background: white; border: 1px solid #dfe3e1; border-radius: 8px; }
+  .mini-table h4 { margin: 0 0 7px; font-size: 10px; }
+  .rows { display: grid; gap: 4px; }
+  .row { height: 22px; background: repeating-linear-gradient(90deg, #f1f3f2 0 23%, white 23% 25%); border: 1px solid #e6e9e7; border-radius: 3px; }
+  .togglebar { display: flex; width: fit-content; margin-bottom: 8px; padding: 3px; background: #e7eae8; border-radius: 8px; }
+  .togglebar span { padding: 5px 9px; border-radius: 6px; font-weight: 700; }
+  .togglebar .active { background: white; box-shadow: 0 1px 4px rgba(25, 32, 29, .1); }
+</style>
+
+<h2>Thiết kế lại trang Xếp lịch</h2>
+<p class="subtitle">Mục tiêu: chọn tuần rõ ràng, nhìn thấy đăng ký ngay tại nơi xếp ca và cảnh báo nhẹ mà không cản thao tác.</p>
+
+<div class="finding"><strong>Chẩn đoán:</strong> dropdown hiện tại quá hẹp cho chuỗi thông tin dài; bộ lọc và tạo tuần chen trong một hàng; nhãn “ĐK” trong ô chưa tạo được phân cấp với ca chính thức; hệ thống chưa đánh dấu ca lệch đăng ký sau khi lưu.</div>
+
+<div class="cards schedule-options">
+  <div class="card schedule-card" data-choice="availability-first-grid" onclick="toggleSelect(this)">
+    <div class="card-image screen relative">
+      <div class="topline"><span class="title">Xếp lịch · 21/09 – 27/09</span><span class="publish">Công bố lịch</span></div>
+      <div class="controls"><div class="control week-control"><span><strong>Tuần xếp lịch</strong>Tuần 4 tháng 9 · 21/09 – 27/09</span><i class="status">Có đăng ký</i></div><div class="control"><strong>Tìm nhân viên</strong>Nguyễn Phi Hùng</div><div class="control"><strong>Nhóm</strong>Tất cả nhóm</div></div>
+      <div class="summary"><span class="good">18/20 đã đăng ký</span><span>96 ô có thể xếp</span><span class="warn">3 ca lệch đăng ký</span></div>
+      <div class="workarea"><div class="palette"><b>Ca làm</b><div class="shift">10:00–14:00</div><div class="shift">17:00–23:00</div></div><div class="grid"><div class="cell head">Nhân viên</div><div class="cell head">T2 · 21/09</div><div class="cell head">T3 · 22/09</div><div class="cell head">T4 · 23/09</div><div class="cell head">T5 · 24/09</div><div class="cell name">Phi Hùng<br><span class="status">Đã ĐK</span></div><div class="cell"><span class="registered">ĐK 10h–18h</span><span class="official">10h–14h ✓</span></div><div class="cell"><span class="registered off">ĐK Nghỉ</span></div><div class="cell"><span class="registered">ĐK 17h–23h</span><span class="official">17h–23h ✓</span></div><div class="cell"><span class="registered">ĐK 10h–18h</span><span class="official conflict">17h–23h !</span></div></div></div>
+      <div class="toast"><b>Ca ngoài đăng ký</b><br>Phi Hùng đăng ký 10h–18h, ca vừa xếp là 17h–23h.</div>
+    </div>
+    <div class="card-body"><h3>A · Availability-first grid — đề xuất</h3><p>Mỗi ô tách rõ “Đăng ký” và “Đã xếp”; ca phù hợp có dấu ✓, ca lệch có viền vàng và toast bên phải. Nhanh nhất cho admin vì mọi dữ liệu nằm cùng một điểm nhìn.</p></div>
+  </div>
+
+  <div class="card schedule-card" data-choice="dual-tables" onclick="toggleSelect(this)">
+    <div class="card-image screen"><div class="topline"><span class="title">Đối chiếu đăng ký và lịch</span><span class="publish">Công bố lịch</span></div><div class="controls"><div class="control week-control"><span><strong>Tuần xếp lịch</strong>21/09 – 27/09</span><i class="status">Có đăng ký</i></div><div class="control"><strong>Tìm nhân viên</strong>Tất cả</div><div class="control"><strong>Nhóm</strong>Tất cả nhóm</div></div><div class="dual"><div class="mini-table"><h4>Đăng ký nhân viên</h4><div class="rows"><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div><div class="mini-table"><h4>Lịch chính thức</h4><div class="rows"><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div></div></div>
+    <div class="card-body"><h3>B · Hai bảng đối chiếu</h3><p>Dữ liệu rất rõ về mặt khái niệm, nhưng màn hình rộng gấp đôi và admin phải liên tục dò cùng hàng ở hai bảng.</p></div>
+  </div>
+
+  <div class="card schedule-card" data-choice="layer-toggle" onclick="toggleSelect(this)">
+    <div class="card-image screen"><div class="topline"><span class="title">Xếp lịch · 21/09 – 27/09</span><span class="publish">Công bố lịch</span></div><div class="togglebar"><span class="active">Lịch đã xếp</span><span>Đăng ký nhân viên</span><span>So sánh</span></div><div class="mini-table"><h4>Chế độ đang xem: Lịch đã xếp</h4><div class="rows"><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div></div></div>
+    <div class="card-body"><h3>C · Chuyển lớp dữ liệu</h3><p>Bảng sạch và ít chữ nhất, nhưng thông tin đăng ký bị giấu sau thao tác chuyển chế độ nên dễ xếp nhầm hơn.</p></div>
+  </div>
+</div>

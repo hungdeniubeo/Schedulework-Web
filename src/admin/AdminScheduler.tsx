@@ -12,6 +12,7 @@ import {
   CheckIcon,
   CloseIcon,
   PlusIcon,
+  RefreshIcon,
 } from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
 import { DateTimePicker } from "../components/DateTimePicker";
@@ -247,6 +248,7 @@ export function AdminScheduler({
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [creatingWeek, setCreatingWeek] = useState(false);
   const [newWeekStart, setNewWeekStart] = useState(
     defaultRegistrationWindow().weekStart,
   );
@@ -489,9 +491,11 @@ export function AdminScheduler({
     if (!isMondayDate(newWeekStart))
       return setError("Ngày bắt đầu tuần phải là Thứ Hai.");
     setBusy(true);
+    setError(null);
     try {
       await addScheduleWeek(newWeekStart);
       await loadBase();
+      setCreatingWeek(false);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Không tạo được tuần.",
@@ -603,91 +607,99 @@ export function AdminScheduler({
                   Lưu trữ
                 </button>
               )}
+              {editable && (
+                <button
+                  className="button ghost danger"
+                  type="button"
+                  disabled={busy || entries.length === 0}
+                  onClick={() => setConfirmingClear(true)}
+                >
+                  Xóa lịch tuần
+                </button>
+              )}
             </>
           )}
         </div>
       </section>
-      <section className="panel scheduler-filters">
-        <CustomSelect
-          ariaLabel="Tuần xếp lịch"
-          value={weekId}
-          disabled={busy || weekDataLoading}
-          options={[
-            { value: "", label: "Chọn tuần" },
-            ...weeks.map((item) => ({
-              value: item.id,
-              label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
-            })),
-          ]}
-          onChange={(nextWeekId) => {
-            setWeekDataLoading(true);
-            setEntries([]);
-            setAvailabilityByEmployee({});
-            setWeekId(nextWeekId);
-          }}
-        />
-        <input
-          aria-label="Tìm nhân viên"
-          placeholder="Tìm nhân viên"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <CustomSelect
-          ariaLabel="Lọc theo nhóm"
-          value={groupFilter}
-          options={[
-            { value: "all", label: "Tất cả nhóm" },
-            ...groups.map((group) => ({
-              value: group.id,
-              label: group.name,
-            })),
-          ]}
-          onChange={setGroupFilter}
-        />
-        <button
-          type="button"
-          className="button secondary"
-          disabled={busy || weekDataLoading}
-          onClick={() => {
-            setWeekDataLoading(true);
-            void Promise.all([loadBase(), loadEntries(), loadAvailability()])
-              .catch((reason) => setError(reason.message))
-              .finally(() => setWeekDataLoading(false));
-          }}
-        >
-          Làm mới
-        </button>
-        <form
-          className="new-schedule-week"
-          onSubmit={(event) => void createWeek(event)}
-        >
-          <label>
-            <span>Tuần bắt đầu từ Thứ Hai</span>
-              <DateTimePicker
-                ariaLabel="Tuần bắt đầu từ Thứ Hai"
-                dateOnly
-                requiredWeekday={1}
-                value={newWeekStart}
-                onChange={setNewWeekStart}
-              />
-              {isMondayDate(newWeekStart) && (
-                <small>{formatWeekDisplay(newWeekStart)}</small>
-              )}
-            </label>
-          <button className="button secondary" disabled={busy}>
+      <section className="panel scheduler-filters" aria-label="Bộ lọc lịch">
+        <div className="scheduler-filter-heading">
+          <div>
+            <span className="eyebrow">Bộ lọc lịch</span>
+            <h3>Chọn lịch làm việc</h3>
+          </div>
+          <button
+            type="button"
+            className="button secondary scheduler-create-week"
+            aria-label="Tạo lịch tuần mới"
+            disabled={busy}
+            onClick={() => setCreatingWeek(true)}
+          >
             <PlusIcon /> Tạo lịch tuần
           </button>
-        </form>
-        {editable && (
+        </div>
+        <div className="scheduler-filter-grid">
+          <label className="scheduler-filter-field schedule-week-filter">
+            <span>Tuần đang xem</span>
+            <CustomSelect
+              ariaLabel="Tuần xếp lịch"
+              value={weekId}
+              disabled={busy || weekDataLoading}
+              options={[
+                ...(!weekId ? [{ value: "", label: "Chọn tuần" }] : []),
+                ...weeks.map((item) => ({
+                  value: item.id,
+                  label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
+                })),
+              ]}
+              onChange={(nextWeekId) => {
+                setWeekDataLoading(true);
+                setEntries([]);
+                setAvailabilityByEmployee({});
+                setWeekId(nextWeekId);
+              }}
+            />
+          </label>
+          <label className="scheduler-filter-field">
+            <span>Tìm nhân viên</span>
+            <input
+              aria-label="Tìm nhân viên"
+              placeholder="Nhập tên nhân viên..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <label className="scheduler-filter-field">
+            <span>Nhóm nhân viên</span>
+            <CustomSelect
+              ariaLabel="Lọc theo nhóm"
+              value={groupFilter}
+              options={[
+                { value: "all", label: "Tất cả nhóm" },
+                ...groups.map((group) => ({
+                  value: group.id,
+                  label: group.name,
+                })),
+              ]}
+              onChange={setGroupFilter}
+            />
+          </label>
           <button
-            className="button ghost danger"
             type="button"
-            disabled={busy || entries.length === 0}
-            onClick={() => setConfirmingClear(true)}
+            className="button secondary scheduler-refresh"
+            aria-label="Làm mới dữ liệu lịch"
+            title="Làm mới dữ liệu lịch"
+            disabled={busy || weekDataLoading}
+            onClick={() => {
+              setWeekDataLoading(true);
+              void Promise.all([loadBase(), loadEntries(), loadAvailability()])
+                .catch((reason) => setError(reason.message))
+                .finally(() => setWeekDataLoading(false));
+            }}
           >
-            Xóa lịch tuần
+            <RefreshIcon />
+            <span>Làm mới</span>
           </button>
-        )}
+        </div>
       </section>
       {week ? (
         <section className={`schedule-sync-bar ${hasRegistrationWeek ? "synced" : "missing"}`}>
@@ -818,6 +830,63 @@ export function AdminScheduler({
           onSave={saveEntry}
           onDelete={deleteEntry}
         />
+      )}
+      {creatingWeek && (
+        <ModalBackdrop onClose={() => setCreatingWeek(false)}>
+          <form
+            className="create-schedule-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-schedule-title"
+            onSubmit={(event) => void createWeek(event)}
+          >
+            <header>
+              <div>
+                <span className="eyebrow">Lịch chính thức</span>
+                <h2 id="create-schedule-title">Tạo lịch tuần mới</h2>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Đóng"
+                onClick={() => setCreatingWeek(false)}
+              >
+                <CloseIcon />
+              </button>
+            </header>
+            <div className="dialog-content">
+              <p>Chọn ngày Thứ Hai bắt đầu tuần cần xếp lịch.</p>
+              <label className="field">
+                Tuần bắt đầu từ Thứ Hai
+                <DateTimePicker
+                  ariaLabel="Tuần bắt đầu từ Thứ Hai"
+                  dateOnly
+                  requiredWeekday={1}
+                  value={newWeekStart}
+                  onChange={setNewWeekStart}
+                />
+              </label>
+              {isMondayDate(newWeekStart) && (
+                <div className="create-schedule-preview">
+                  <span>Tuần sẽ tạo</span>
+                  <strong>{formatWeekDisplay(newWeekStart)}</strong>
+                </div>
+              )}
+            </div>
+            <footer>
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setCreatingWeek(false)}
+              >
+                Hủy
+              </button>
+              <button className="button primary" disabled={busy}>
+                <PlusIcon /> {busy ? "Đang tạo..." : "Tạo lịch tuần"}
+              </button>
+            </footer>
+          </form>
+        </ModalBackdrop>
       )}
       {confirmingClear && (
         <ModalBackdrop onClose={() => setConfirmingClear(false)}>

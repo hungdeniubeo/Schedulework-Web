@@ -69,6 +69,15 @@ export function PlusIcon(props: IconProps) {
   return <IconBase {...props}><path d="M12 5v14M5 12h14" /></IconBase>;
 }
 
+export function RefreshIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M20 6v5h-5M4 18v-5h5" />
+      <path d="M6.1 9a7 7 0 0 1 11.5-2.5L20 9M4 15l2.4 2.5A7 7 0 0 0 17.9 15" />
+    </IconBase>
+  );
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <IconBase {...props}>

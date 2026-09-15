@@ -60,8 +60,19 @@ function PaletteShift({
       {...drag.listeners}
       {...drag.attributes}
     >
-      <span />
-      {formatShiftLabel(shift.label)}
+<span className="scheduler-shift-dot" aria-hidden="true" />
+
+<span className="scheduler-shift-label">
+  {formatShiftLabel(shift.label)
+    .split(" / ")
+    .map((part, index, parts) => (
+      <span key={`${part}-${index}`}>
+        {part}
+        {index < parts.length - 1 && " /"}
+        {index < parts.length - 1 && <br />}
+      </span>
+    ))}
+</span>
     </button>
   );
 }
