@@ -13,9 +13,7 @@ import {
   selectScheduleWeekId,
   scheduleWeekStatusLabel,
 } from "./AdminScheduler";
-import {
-  WeekManager,
-} from "./WeekManager";
+import { WeekManager } from "./WeekManager";
 import {
   registrationWeekActionState,
   registrationWeekStatusLabel,
@@ -243,10 +241,17 @@ describe("Admin scheduler confirmations", () => {
       },
     ];
 
-    expect(selectScheduleWeekId(scheduleWeeks, "schedule-a", "2026-09-21"))
-      .toBe("schedule-b");
-    expect(selectScheduleWeekId(scheduleWeeks, "schedule-a", "2026-09-28"))
-      .toBe("");
+    expect(selectScheduleWeekId(scheduleWeeks, "schedule-a", "2026-09-21")).toBe(
+      "schedule-b",
+    );
+    expect(selectScheduleWeekId(scheduleWeeks, "schedule-a", "2026-09-28")).toBe(
+      "",
+    );
+  });
+
+  it("shows an explicit create state when the selected week has no schedule", () => {
+    expect(adminSchedulerSource).toContain("Tuần này chưa có lịch xếp");
+    expect(adminSchedulerSource).toContain("Tạo lịch tuần này");
   });
 
   it("maps schedule statuses to Vietnamese labels", () => {
@@ -254,7 +259,9 @@ describe("Admin scheduler confirmations", () => {
     expect(scheduleWeekStatusLabel("published")).toBe("Đã công bố");
     expect(scheduleWeekStatusLabel("archived")).toBe("Đã lưu trữ");
     expect(adminSchedulerSource).not.toContain(">Archive<");
-    expect(adminSchedulerSource).not.toContain("label: `${formatWeekRange(item.weekStart)} · ${item.status}`");
+    expect(adminSchedulerSource).not.toContain(
+      "label: `${formatWeekRange(item.weekStart)} · ${item.status}`",
+    );
   });
 
   it("lets the first edit reopen a published schedule as a draft", async () => {
