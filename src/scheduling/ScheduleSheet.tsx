@@ -4,6 +4,7 @@ import {
   addDateOnlyDays,
   formatDateShort,
   formatWeekOfMonth,
+  localDateInputValue,
 } from "../lib/week";
 import { entryLabel } from "./overlap";
 import { buildScheduleGroups } from "./scheduleSheetModel";
@@ -34,6 +35,7 @@ type Props = {
   countOverrides?: Record<string, number>;
   showStaffing?: boolean;
   highlightEmployeeId?: string;
+  todayDate?: string;
   renderCell?: (
     employee: CloudEmployee,
     day: number,
@@ -98,6 +100,7 @@ export function ScheduleSheet({
   countOverrides = {},
   showStaffing = false,
   highlightEmployeeId,
+  todayDate = localDateInputValue(),
   renderCell,
   renderStaffingCell,
   renderGroupRow,
@@ -132,14 +135,25 @@ export function ScheduleSheet({
         <thead>
           <tr>
             <th>Nhân viên</th>
-            {DAY_KEYS.map((key, index) => (
-              <th key={key}>
-                <strong>{key === "7" ? "CN" : `T${Number(key) + 1}`}</strong>
-                <small>
-                  {formatDateShort(addDateOnlyDays(weekStart, index))}
-                </small>
-              </th>
-            ))}
+            {DAY_KEYS.map((key, index) => {
+              const date = addDateOnlyDays(weekStart, index);
+              const dayClassName = [
+                "schedule-day-head",
+                index >= 5 ? "weekend" : "",
+                date === todayDate ? "today" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+              return (
+                <th key={key} className={dayClassName}>
+                  <strong>{key === "7" ? "CN" : `T${Number(key) + 1}`}</strong>
+                  <small>{formatDateShort(date)}</small>
+                  {date === todayDate && (
+                    <span className="schedule-today-dot" aria-hidden="true" />
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
