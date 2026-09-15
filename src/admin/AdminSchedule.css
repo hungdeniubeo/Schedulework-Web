@@ -1,6 +1,6 @@
 @media (min-width: 821px) {
   .scheduler-layout {
-    grid-template-columns: 148px minmax(0, 1fr);
+    grid-template-columns: 128px minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -41,7 +41,7 @@
   }
 
   .scheduler-layout .cloud-schedule-table thead th:first-child {
-    width: 205px;
+    width: 180px;
   }
 
   .scheduler-layout .cloud-schedule-table th,
