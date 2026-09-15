@@ -160,4 +160,20 @@ describe("ScheduleSheet employee labels", () => {
     expect(html).toContain("schedule-group-row schedule-area-three");
     expect(html).toContain("schedule-group-row schedule-area-neutral");
   });
+
+  it("marks today and weekend headers without changing exported content", () => {
+    const html = renderToStaticMarkup(
+      <ScheduleSheet
+        groups={[]}
+        employees={[employee(null)]}
+        entries={[]}
+        shifts={[]}
+        weekStart="2026-09-14"
+        todayDate="2026-09-19"
+      />,
+    );
+
+    expect(html).toContain('class="schedule-day-head weekend today"');
+    expect(html.match(/schedule-day-head weekend/g)).toHaveLength(2);
+  });
 });
