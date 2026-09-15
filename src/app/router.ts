@@ -1,7 +1,7 @@
 export type AppRoute =
   | {
       name: "employee";
-      section: "availability" | "my-schedule" | "team-schedule";
+      section: "availability" | "my-schedule" ;
     }
   | { name: "employee-login" }
   | { name: "change-password" }
@@ -28,8 +28,6 @@ export function matchRoute(pathname: string): AppRoute {
   }
   if (pathname === "/app/my-schedule")
     return { name: "employee", section: "my-schedule" };
-  if (pathname === "/app/team-schedule")
-    return { name: "employee", section: "team-schedule" };
   if (pathname === "/login") return { name: "employee-login" };
   if (pathname === "/change-password") return { name: "change-password" };
   if (pathname === "/admin") return { name: "admin", section: "dashboard" };
