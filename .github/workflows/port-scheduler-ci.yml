@@ -30,8 +30,7 @@ jobs:
           src/scheduling/merge.test.ts
           src/scheduling/staffing.test.ts
           src/scheduling/publication.test.ts
-      - name: Full test suite (baseline has two unrelated employee-app failures)
-        continue-on-error: true
+      - name: Full test suite
         run: npm test
       - name: Build
         run: npm run build
