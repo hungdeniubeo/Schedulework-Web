@@ -32,6 +32,28 @@ export type SchedulerDropAction =
       beforeEmployeeId?: string;
     };
 
+export function previewEntryForCell(
+  source: SchedulerDragData | undefined,
+  employeeId: string,
+  day: number,
+): ScheduleEntry | null {
+  if (!source || source.kind === "employee") return null;
+  if (source.kind === "entry") {
+    return { ...source.entry, employeeId, dayOfWeek: day };
+  }
+  return {
+    id: "preview",
+    scheduleWeekId: "",
+    employeeId,
+    dayOfWeek: day,
+    shiftTypeId: source.shiftId,
+    customStart: null,
+    customEnd: null,
+    customLabel: null,
+    sortOrderInCell: 0,
+  };
+}
+
 export function resolveSchedulerDrop(
   source: SchedulerDragData | undefined,
   target: SchedulerDropData | undefined,
