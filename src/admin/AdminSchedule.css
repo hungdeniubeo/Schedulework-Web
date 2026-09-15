@@ -246,3 +246,65 @@
 .scheduler-info-notice button:hover {
   background: rgba(70, 91, 80, 0.08);
 }
+
+.scheduler-layout .cloud-schedule-table td.drop-blocked {
+  position: relative;
+  background: #fff1ef;
+  box-shadow: inset 0 0 0 2px rgba(177, 76, 64, 0.42);
+}
+
+.schedule-drop-message {
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 2px 6px;
+  color: #8b4138;
+  background: #fff;
+  border: 1px solid rgba(177, 76, 64, 0.28);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.scheduler-week-overview {
+  margin: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(85, 104, 94, 0.14);
+  border-radius: 10px;
+}
+
+.scheduler-week-overview-title {
+  display: block;
+  margin-bottom: 8px;
+  color: #56635d;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scheduler-week-overview-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.scheduler-week-overview-stats > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 5px;
+  background: #f7f9f8;
+  border-radius: 7px;
+  text-align: center;
+}
+
+.scheduler-week-overview-stats strong {
+  color: #34423b;
+  font-size: 0.92rem;
+}
+
+.scheduler-week-overview-stats span {
+  color: #737d78;
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
