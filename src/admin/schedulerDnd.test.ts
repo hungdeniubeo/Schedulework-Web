@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../scheduling/types";
-import { resolveSchedulerDrop } from "./schedulerDnd";
+import { previewEntryForCell, resolveSchedulerDrop } from "./schedulerDnd";
 
 const entry: ScheduleEntry = {
   id: "entry-1",
@@ -98,5 +98,54 @@ describe("resolveSchedulerDrop", () => {
     expect(
       resolveSchedulerDrop({ kind: "entry", entry }, { kind: "trash" }),
     ).toEqual({ kind: "deleteEntry", entry });
+  });
+});
+
+describe("previewEntryForCell", () => {
+  it("builds a preview entry for a palette shift", () => {
+    expect(
+      previewEntryForCell(
+        { kind: "palette", shiftId: "shift-2" },
+        "employee-b",
+        4,
+      ),
+    ).toEqual({
+      id: "preview",
+      scheduleWeekId: "",
+      employeeId: "employee-b",
+      dayOfWeek: 4,
+      shiftTypeId: "shift-2",
+      customStart: null,
+      customEnd: null,
+      customLabel: null,
+      sortOrderInCell: 0,
+    });
+  });
+
+  it("moves an existing entry only in the preview copy", () => {
+    const preview = previewEntryForCell(
+      { kind: "entry", entry },
+      "employee-b",
+      5,
+    );
+
+    expect(preview).toEqual({ ...entry, employeeId: "employee-b", dayOfWeek: 5 });
+    expect(entry.employeeId).toBe("employee-a");
+    expect(entry.dayOfWeek).toBe(1);
+  });
+
+  it("does not create a schedule preview for employee row drags", () => {
+    expect(
+      previewEntryForCell(
+        {
+          kind: "employee",
+          employeeId: "employee-a",
+          employeeName: "A",
+          groupId: "group-meat",
+        },
+        "employee-b",
+        2,
+      ),
+    ).toBeNull();
   });
 });
