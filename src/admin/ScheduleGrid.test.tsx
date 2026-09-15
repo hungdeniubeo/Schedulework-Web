@@ -124,6 +124,13 @@ describe("Admin scheduler availability guidance", () => {
     expect(render({}, shift.id)).toContain("Đang chọn để xếp nhanh");
   });
 
+  it("shows the desktop-style weekly overview in the shift palette", () => {
+    const html = render();
+    expect(html).toContain("Tổng quan tuần");
+    expect(html).toContain("1</strong><span>ca đã xếp");
+    expect(html).toContain("1/1</strong><span>nhân viên có ca");
+  });
+
   it("keeps staffing controls aligned inside the schedule table footer", () => {
     const html = renderToStaticMarkup(
       <ScheduleGrid
