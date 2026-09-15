@@ -123,4 +123,40 @@ describe("Admin scheduler availability guidance", () => {
   it("makes the shift selected for quick assignment explicit", () => {
     expect(render({}, shift.id)).toContain("Đang chọn để xếp nhanh");
   });
+
+  it("keeps staffing controls aligned inside the schedule table footer", () => {
+    const html = renderToStaticMarkup(
+      <ScheduleGrid
+        groups={[{ id: "group-1", name: "Bếp nóng", sortOrder: 0 }]}
+        employees={[employee]}
+        entries={[entry]}
+        shifts={[shift]}
+        weekStart="2026-09-21"
+        editable
+        selectedShiftId={null}
+        onSelectShift={() => undefined}
+        onAssign={() => undefined}
+        onMove={() => undefined}
+        onEdit={() => undefined}
+        onDelete={() => undefined}
+        countOverrides={{ "1:Đ": 4 }}
+        onSetCountOverride={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("<tfoot>");
+    expect(html).toContain(
+      '<tr class="schedule-staffing-row"><th>Sáng</th>',
+    );
+    expect(html).toContain(
+      '<tr class="schedule-staffing-row"><th>Trưa</th>',
+    );
+    expect(html).toContain(
+      '<tr class="schedule-staffing-row"><th>Tối</th>',
+    );
+    expect(html.match(/class="staffing-count-input"/g)).toHaveLength(21);
+    expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
+    expect(html).toContain('value="4"');
+    expect(html).not.toContain('class="staffing-summary"');
+  });
 });

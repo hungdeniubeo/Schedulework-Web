@@ -1,10 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { RegistrationWeek } from "../types/domain";
-import type { ScheduleEntry, ShiftType } from "../scheduling/types";
+import type {
+  ScheduleEntry,
+  ScheduleWeek,
+  ShiftType,
+} from "../scheduling/types";
 import {
   AdminScheduler,
   EntryEditor,
+  prepareScheduleWeekForEditing,
   selectScheduleWeekId,
   scheduleWeekStatusLabel,
 } from "./AdminScheduler";
@@ -250,6 +255,36 @@ describe("Admin scheduler confirmations", () => {
     expect(scheduleWeekStatusLabel("archived")).toBe("Đã lưu trữ");
     expect(adminSchedulerSource).not.toContain(">Archive<");
     expect(adminSchedulerSource).not.toContain("label: `${formatWeekRange(item.weekStart)} · ${item.status}`");
+  });
+
+  it("lets the first edit reopen a published schedule as a draft", async () => {
+    const publishedWeek: ScheduleWeek = {
+      id: "schedule-published",
+      weekStart: "2026-09-21",
+      status: "published",
+      publishedAt: "2026-09-20T10:00:00.000Z",
+      countOverrides: {},
+    };
+    const updateStatus = vi.fn(async () => undefined);
+
+    await expect(
+      prepareScheduleWeekForEditing(publishedWeek, updateStatus),
+    ).resolves.toEqual({ ...publishedWeek, status: "draft" });
+    expect(updateStatus).toHaveBeenCalledWith(publishedWeek.id, "draft");
+  });
+
+  it("keeps archived schedules read-only", async () => {
+    const archivedWeek: ScheduleWeek = {
+      id: "schedule-archived",
+      weekStart: "2026-09-21",
+      status: "archived",
+      publishedAt: null,
+      countOverrides: {},
+    };
+
+    await expect(
+      prepareScheduleWeekForEditing(archivedWeek, async () => undefined),
+    ).rejects.toThrow("Lịch đã lưu trữ nên không thể chỉnh sửa.");
   });
 
   it("does not fall back to a browser-native confirmation dialog", () => {

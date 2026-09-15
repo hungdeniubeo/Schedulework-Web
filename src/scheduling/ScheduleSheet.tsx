@@ -39,6 +39,11 @@ type Props = {
     day: number,
     entries: ScheduleEntry[],
   ) => ReactNode;
+  renderStaffingCell?: (
+    day: number,
+    period: StaffingPeriod,
+    value: number,
+  ) => ReactNode;
 };
 
 function ReadOnlyCell({
@@ -82,9 +87,12 @@ export function ScheduleSheet({
   showStaffing = false,
   highlightEmployeeId,
   renderCell,
+  renderStaffingCell,
 }: Props) {
   const sections = buildScheduleGroups(groups, employees);
-  const counts = showStaffing ? periodCounts(entries, shifts) : [];
+  const counts = showStaffing || renderStaffingCell
+    ? periodCounts(entries, shifts)
+    : [];
   const areaClassByGroupId = new Map<string, string>(
     [...groups]
       .sort((first, second) => first.sortOrder - second.sortOrder)
@@ -135,14 +143,21 @@ export function ScheduleSheet({
             />
           ))}
         </tbody>
-        {showStaffing && (
+        {(showStaffing || renderStaffingCell) && (
           <tfoot>
             {(["S", "T", "Đ"] as StaffingPeriod[]).map((period) => (
               <tr className="schedule-staffing-row" key={period}>
                 <th>{STAFFING_PERIOD_LABELS[period]}</th>
                 {counts.map((count, index) => (
                   <td key={index}>
-                    {countOverrides[`${index + 1}:${period}`] ?? count[period]}
+                    {renderStaffingCell
+                      ? renderStaffingCell(
+                          index + 1,
+                          period,
+                          countOverrides[`${index + 1}:${period}`] ??
+                            count[period],
+                        )
+                      : countOverrides[`${index + 1}:${period}`] ?? count[period]}
                   </td>
                 ))}
               </tr>

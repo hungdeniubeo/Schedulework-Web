@@ -40,8 +40,6 @@ import { exportScheduleJpg } from "../scheduling/exportJpg";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
 import { consolidateCellEntry } from "../scheduling/merge";
 import {
-  periodCounts,
-  staffingStatusForShiftCount,
   type StaffingPeriod,
 } from "../scheduling/staffing";
 import type {
@@ -60,6 +58,17 @@ export function scheduleWeekStatusLabel(status: ScheduleWeekStatus): string {
   if (status === "published") return "Đã công bố";
   if (status === "archived") return "Đã lưu trữ";
   return "Bản nháp";
+}
+
+export async function prepareScheduleWeekForEditing(
+  week: ScheduleWeek,
+  updateStatus: (id: string, status: ScheduleWeekStatus) => Promise<void>,
+): Promise<ScheduleWeek> {
+  if (week.status === "archived")
+    throw new Error("Lịch đã lưu trữ nên không thể chỉnh sửa.");
+  if (week.status === "draft") return week;
+  await updateStatus(week.id, "draft");
+  return { ...week, status: "draft" };
 }
 
 type EntryEditorProps = {
@@ -311,7 +320,9 @@ export function AdminScheduler({
     };
   }, [loadAvailability, loadEntries]);
 
-  const editable = week?.status === "draft" && !weekDataLoading;
+  const editable = Boolean(
+    week && week.status !== "archived" && !weekDataLoading,
+  );
   const filteredEmployees = useMemo(
     () =>
       employees.filter(
@@ -339,7 +350,17 @@ export function AdminScheduler({
   const hasRegistrationWeek = week
     ? registrationWeekStarts.includes(week.weekStart)
     : false;
-  const counts = periodCounts(entries, shifts);
+  async function ensureDraftWeek(): Promise<void> {
+    if (!week) throw new Error("Chưa chọn tuần xếp lịch.");
+    const nextWeek = await prepareScheduleWeekForEditing(
+      week,
+      (id, status) => patchScheduleWeek(id, { status }),
+    );
+    if (nextWeek === week) return;
+    setWeeks((current) =>
+      current.map((item) => (item.id === nextWeek.id ? nextWeek : item)),
+    );
+  }
 
   function issueMessage(candidate: ScheduleEntry): string | null {
     const issue = getEntryIssue(candidate, entries, shifts);
@@ -394,6 +415,7 @@ export function AdminScheduler({
     setBusy(true);
     setError(null);
     try {
+      await ensureDraftWeek();
       if (inCell.length > 0) {
         await consolidateScheduleEntry(
           optimisticEntry,
@@ -451,6 +473,7 @@ export function AdminScheduler({
     setBusy(true);
     setError(null);
     try {
+      await ensureDraftWeek();
       if (inTargetCell.length > 0) {
         await consolidateScheduleEntry(
           optimisticEntry,
@@ -471,22 +494,31 @@ export function AdminScheduler({
   }
 
   async function saveEntry(entry: ScheduleEntry) {
+    if (!week || !editable || busy) return;
     setBusy(true);
+    setError(null);
     try {
+      await ensureDraftWeek();
       await patchScheduleEntry(entry);
       await loadEntries();
       setEditing(null);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Không lưu được ca.",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   async function deleteEntry(id: string) {
+    if (!week || !editable || busy) return;
     const previousEntries = entries;
     setEntries((current) => current.filter((entry) => entry.id !== id));
     setBusy(true);
     setError(null);
     try {
+      await ensureDraftWeek();
       await removeScheduleEntry(id);
       await loadEntries();
       setEditing(null);
@@ -503,6 +535,7 @@ export function AdminScheduler({
     setBusy(true);
     setError(null);
     try {
+      await ensureDraftWeek();
       await clearScheduleWeek(week.id);
       await loadEntries();
       setConfirmingClear(false);
@@ -564,18 +597,29 @@ export function AdminScheduler({
   }
 
   async function setOverride(day: number, period: StaffingPeriod, raw: string) {
-    if (!week || !editable) return;
+    if (!week || !editable || busy) return;
     const next = { ...week.countOverrides };
     const key = `${day}:${period}`;
     if (raw.trim() === "") delete next[key];
     else next[key] = Math.max(0, Number(raw) || 0);
+    setBusy(true);
+    setError(null);
     try {
+      await ensureDraftWeek();
       await patchScheduleWeek(week.id, { countOverrides: next });
-      await loadBase();
+      setWeeks((current) =>
+        current.map((item) =>
+          item.id === week.id
+            ? { ...item, status: "draft", countOverrides: next }
+            : item,
+        ),
+      );
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Không lưu được tổng ca.",
       );
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -598,15 +642,6 @@ export function AdminScheduler({
               >
                 {scheduleWeekStatusLabel(week.status)}
               </span>
-              {week.status === "published" && (
-                <button
-                  className="button secondary"
-                  disabled={busy || weekDataLoading}
-                  onClick={() => void setStatus("draft")}
-                >
-                  Bắt đầu chỉnh sửa
-                </button>
-              )}
               {week.status === "draft" && (
                 <button
                   className="button primary"
@@ -797,10 +832,15 @@ export function AdminScheduler({
             onEdit={(entry) => editable && setEditing(entry)}
             onDelete={(entry) => void deleteEntry(entry.id)}
             availabilityByEmployee={availabilityByEmployee}
+            countOverrides={week.countOverrides}
+            onSetCountOverride={(day, period, value) =>
+              void setOverride(day, period, value)
+            }
           />
           <div className="schedule-export-stage" aria-hidden="true">
             <ScheduleSheet
               id="cloud-schedule-export"
+              className="schedule-export-sheet"
               groups={groups}
               employees={scheduleEmployees}
               entries={entries}
@@ -810,39 +850,6 @@ export function AdminScheduler({
               showStaffing
             />
           </div>
-          <section className="staffing-summary">
-            {counts.map((automatic, index) => {
-              const total = entries.filter(
-                (entry) => entry.dayOfWeek === index + 1,
-              ).length;
-              const status = staffingStatusForShiftCount(total);
-              return (
-                <article key={index}>
-                  <strong>{index === 6 ? "CN" : `T${index + 2}`}</strong>
-                  {(["S", "T", "Đ"] as StaffingPeriod[]).map((period) => (
-                    <label key={period}>
-                      {period}
-                      <input
-                        type="number"
-                        min="0"
-                        disabled={!editable}
-                        defaultValue={
-                          week.countOverrides[`${index + 1}:${period}`] ??
-                          automatic[period]
-                        }
-                        onBlur={(e) =>
-                          void setOverride(index + 1, period, e.target.value)
-                        }
-                      />
-                    </label>
-                  ))}
-                  <span className={`staffing-indicator ${status}`}>
-                    {total} ca
-                  </span>
-                </article>
-              );
-            })}
-          </section>
         </>
       ) : (
         <div className="panel empty-panel">

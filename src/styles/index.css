@@ -3633,50 +3633,6 @@ select:disabled {
   align-content: center;
   gap: 4px;
 }
-.staffing-summary {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(115px, 1fr));
-  gap: 8px;
-  overflow-x: auto;
-}
-.staffing-summary article {
-  min-width: 115px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  padding: 10px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-.staffing-summary article > strong,
-.staffing-indicator {
-  grid-column: 1 / -1;
-}
-.staffing-summary label {
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-.staffing-summary input {
-  min-height: 31px;
-  padding: 4px;
-  text-align: center;
-}
-.staffing-indicator {
-  padding-top: 6px;
-  border-top: 3px solid #d5dddb;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-.staffing-indicator.critical {
-  border-color: #d67b77;
-}
-.staffing-indicator.warning {
-  border-color: #e7c25a;
-}
-.staffing-indicator.good {
-  border-color: #69ba89;
-}
 .entry-dialog {
   width: min(520px, 100%);
   max-height: calc(100vh - 36px);

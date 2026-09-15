@@ -1,11 +1,14 @@
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragCancelEvent,
   type DragEndEvent,
   type DragStartEvent,
@@ -33,6 +36,7 @@ import type {
   ShiftType,
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
+import type { StaffingPeriod } from "../scheduling/staffing";
 
 function PaletteShift({
   shift,
@@ -269,6 +273,12 @@ type ActiveDrag =
   | { kind: "palette"; shiftId: string }
   | { kind: "entry"; entry: ScheduleEntry };
 
+const scheduleCollisionDetection: CollisionDetection = (args) =>
+  pointerWithin(args).filter((collision) => {
+    const id = String(collision.id);
+    return id.startsWith("cell:") || id === "schedule-trash";
+  });
+
 function DragPreview({
   active,
   shifts,
@@ -310,6 +320,12 @@ type Props = {
   onEdit: (entry: ScheduleEntry) => void;
   onDelete?: (entry: ScheduleEntry) => void;
   availabilityByEmployee?: Record<string, Availability>;
+  countOverrides?: Record<string, number>;
+  onSetCountOverride?: (
+    day: number,
+    period: StaffingPeriod,
+    value: string,
+  ) => void;
 };
 
 export function ScheduleGrid(props: Props) {
@@ -318,7 +334,7 @@ export function ScheduleGrid(props: Props) {
     (shift) => shift.id === props.selectedShiftId,
   );
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 7 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
   function dragStart(event: DragStartEvent) {
@@ -353,6 +369,10 @@ export function ScheduleGrid(props: Props) {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={scheduleCollisionDetection}
+      measuring={{
+        droppable: { strategy: MeasuringStrategy.BeforeDragging },
+      }}
       onDragStart={dragStart}
       onDragCancel={dragCancel}
       onDragEnd={dragEnd}
@@ -417,6 +437,28 @@ export function ScheduleGrid(props: Props) {
             entries={props.entries}
             shifts={props.shifts}
             weekStart={props.weekStart}
+            countOverrides={props.countOverrides}
+            renderStaffingCell={props.onSetCountOverride
+              ? (day, period, value) => (
+                  <input
+                    key={`${day}:${period}:${value}`}
+                    className="staffing-count-input"
+                    type="number"
+                    min="0"
+                    disabled={!props.editable}
+                    defaultValue={value}
+                    aria-label={`Tổng ca ${period === "S" ? "Sáng" : period === "T" ? "Trưa" : "Tối"} ngày ${day}`}
+                    title="Nhập số để chỉnh tay; xóa trắng để dùng số tự động"
+                    onBlur={(event) =>
+                      props.onSetCountOverride?.(
+                        day,
+                        period,
+                        event.currentTarget.value,
+                      )
+                    }
+                  />
+                )
+              : undefined}
             renderCell={(employee, day, entries) => (
               <ScheduleCell
                 key={day}

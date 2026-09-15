@@ -306,6 +306,7 @@ export function TeamScheduleContent({
       <div className="schedule-export-stage" aria-hidden="true">
         <ScheduleSheet
           id="employee-published-schedule-export"
+          className="schedule-export-sheet"
           groups={data.groups}
           employees={scheduleEmployees}
           entries={data.entries}

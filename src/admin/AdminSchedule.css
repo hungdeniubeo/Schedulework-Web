@@ -71,3 +71,65 @@
     font-size: 0.68rem;
   }
 }
+
+.scheduler-layout .cloud-schedule-table .schedule-staffing-row th,
+.scheduler-layout .cloud-schedule-table .schedule-staffing-row td {
+  height: 38px;
+  padding: 4px 7px;
+  color: #46504b;
+  background: #f3f5f4;
+  border-color: #dce2df;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.scheduler-layout .cloud-schedule-table .schedule-staffing-row:first-child th,
+.scheduler-layout .cloud-schedule-table .schedule-staffing-row:first-child td {
+  border-top: 2px solid #bfc9c4;
+}
+
+.scheduler-layout .cloud-schedule-table .schedule-staffing-row th:first-child {
+  position: sticky;
+  z-index: 4;
+  left: 0;
+  color: #3f4944;
+  background: #edf1ef;
+  box-shadow: 8px 0 12px -12px rgba(31, 36, 34, 0.5);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.scheduler-layout .staffing-count-input {
+  width: 100%;
+  max-width: 52px;
+  height: 28px;
+  margin: 0 auto;
+  padding: 0 4px;
+  color: #34423b;
+  background: #fff;
+  border: 1px solid #d4dbd7;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.scheduler-layout .staffing-count-input:focus {
+  border-color: #7f9188;
+  outline: 2px solid rgba(95, 116, 105, 0.16);
+  outline-offset: 1px;
+}
+
+.scheduler-layout .staffing-count-input:disabled {
+  color: #777f7b;
+  background: transparent;
+  border-color: transparent;
+}
+
+.scheduler-layout .staffing-count-input::-webkit-inner-spin-button,
+.scheduler-layout .staffing-count-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}

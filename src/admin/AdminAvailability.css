@@ -61,12 +61,13 @@
 
 .admin-availability-matrix .cloud-schedule-table th:first-child {
   width: 180px;
-  text-align: left;
+  text-align: center;
 }
 
 .admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th {
-  padding-left: 20px;
+  padding-inline: 12px;
   background: #fff;
+  text-align: center;
 }
 
 .admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th strong,
@@ -79,6 +80,12 @@
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 650;
+}
+
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th strong,
+.admin-availability-matrix .cloud-schedule-table tbody .schedule-area-row > th small {
+  width: 100%;
+  text-align: center;
 }
 
 .admin-availability-matrix .schedule-group-row th {

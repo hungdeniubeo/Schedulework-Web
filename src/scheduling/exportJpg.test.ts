@@ -35,5 +35,38 @@ describe("exportScheduleJpg", () => {
 
     expect(anchor.download).toBe("lich-lam-viec-2026-09-14.jpg");
     expect(anchor.click).toHaveBeenCalledOnce();
+    expect(html2canvas).toHaveBeenCalledWith(
+      element,
+      expect.objectContaining({
+        width: 400,
+        height: 300,
+        windowWidth: 1280,
+        windowHeight: 720,
+        scrollX: 0,
+        scrollY: 0,
+      }),
+    );
+
+    const options = html2canvas.mock.calls[0][1];
+    const stage = { style: {} };
+    const clonedElement = {
+      style: {},
+      closest: () => stage,
+    };
+    options.onclone({
+      getElementById: () => clonedElement,
+    } as unknown as Document);
+
+    expect(stage.style).toMatchObject({
+      position: "absolute",
+      left: "0",
+      top: "0",
+      width: "400px",
+      transform: "none",
+    });
+    expect(clonedElement.style).toMatchObject({
+      width: "400px",
+      maxWidth: "none",
+    });
   });
 });
