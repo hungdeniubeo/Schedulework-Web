@@ -14,7 +14,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import "./AdminSchedule.css";
 import { CloseIcon, TrashIcon } from "../components/Icons";
 import {
@@ -37,6 +37,11 @@ import type {
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
 import type { StaffingPeriod } from "../scheduling/staffing";
+import {
+  resolveSchedulerDrop,
+  type SchedulerDragData,
+  type SchedulerDropData,
+} from "./schedulerDnd";
 
 function PaletteShift({
   shift,
@@ -51,7 +56,7 @@ function PaletteShift({
 }) {
   const drag = useDraggable({
     id: `palette:${shift.id}`,
-    data: { kind: "palette", shiftId: shift.id },
+    data: { kind: "palette", shiftId: shift.id } satisfies SchedulerDragData,
     disabled,
   });
   const color = resolvedShiftColor(shift.label, shift.color);
@@ -70,19 +75,18 @@ function PaletteShift({
       {...drag.attributes}
       aria-pressed={selected}
     >
-<span className="scheduler-shift-dot" aria-hidden="true" />
-
-<span className="scheduler-shift-label">
-  {formatShiftLabel(shift.label)
-    .split(" / ")
-    .map((part, index, parts) => (
-      <span key={`${part}-${index}`}>
-        {part}
-        {index < parts.length - 1 && " /"}
-        {index < parts.length - 1 && <br />}
+      <span className="scheduler-shift-dot" aria-hidden="true" />
+      <span className="scheduler-shift-label">
+        {formatShiftLabel(shift.label)
+          .split(" / ")
+          .map((part, index, parts) => (
+            <span key={`${part}-${index}`}>
+              {part}
+              {index < parts.length - 1 && " /"}
+              {index < parts.length - 1 && <br />}
+            </span>
+          ))}
       </span>
-    ))}
-</span>
     </button>
   );
 }
@@ -106,16 +110,14 @@ function EntryChip({
   const label = entryLabel(entry, shifts);
   const drag = useDraggable({
     id: `entry:${entry.id}`,
-    data: { kind: "entry", entry },
+    data: { kind: "entry", entry } satisfies SchedulerDragData,
     disabled: !editable,
   });
   return (
     <div
       ref={drag.setNodeRef}
       className={`schedule-entry-wrap ${drag.isDragging ? "dragging" : ""}`}
-      style={{
-        transform: CSS.Translate.toString(drag.transform),
-      }}
+      style={{ transform: CSS.Translate.toString(drag.transform) }}
     >
       <button
         type="button"
@@ -124,9 +126,7 @@ function EntryChip({
           resolvedShiftColor(
             label,
             shift?.color ?? "#A6A6A6",
-            Boolean(
-              entry.customLabel || entry.customStart || entry.customEnd,
-            ),
+            Boolean(entry.customLabel || entry.customStart || entry.customEnd),
           ),
         )}
         onClick={(event) => {
@@ -147,7 +147,7 @@ function EntryChip({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
-            onDelete?.();
+            onDelete();
           }}
         >
           <CloseIcon />
@@ -182,13 +182,15 @@ function ScheduleCell({
 }) {
   const drop = useDroppable({
     id: `cell:${employee.id}:${day}`,
-    data: { employeeId: employee.id, day },
+    data: {
+      kind: "cell",
+      employeeId: employee.id,
+      day,
+    } satisfies SchedulerDropData,
     disabled: !editable,
   });
   const assignable = Boolean(selectedShiftId && editable);
-  const availabilityLabel = availability
-    ? formatAvailabilityCell(availability)
-    : "";
+  const availabilityLabel = availability ? formatAvailabilityCell(availability) : "";
   const offReason = availability ? getOffReason(availability) : "";
   return (
     <td
@@ -243,20 +245,14 @@ function ScheduleCell({
   );
 }
 
-function ScheduleTrash({
-  enabled,
-  active,
-}: {
-  enabled: boolean;
-  active: boolean;
-}) {
+function ScheduleTrash({ enabled, active }: { enabled: boolean; active: boolean }) {
   const drop = useDroppable({
     id: "schedule-trash",
+    data: { kind: "trash" } satisfies SchedulerDropData,
     disabled: !enabled,
   });
 
   if (!enabled) return null;
-
   return (
     <div
       ref={drop.setNodeRef}
@@ -269,27 +265,135 @@ function ScheduleTrash({
   );
 }
 
-type ActiveDrag =
-  | { kind: "palette"; shiftId: string }
-  | { kind: "entry"; entry: ScheduleEntry };
-
-const scheduleCollisionDetection: CollisionDetection = (args) =>
-  pointerWithin(args).filter((collision) => {
-    const id = String(collision.id);
-    return id.startsWith("cell:") || id === "schedule-trash";
+function EmployeeDragHeader({
+  employee,
+  groupId,
+  editable,
+}: {
+  employee: CloudEmployee;
+  groupId: string;
+  editable: boolean;
+}) {
+  const drag = useDraggable({
+    id: `employee:${employee.id}`,
+    data: {
+      kind: "employee",
+      employeeId: employee.id,
+      employeeName: employee.name,
+      groupId,
+    } satisfies SchedulerDragData,
+    disabled: !editable,
   });
+
+  return (
+    <div className="schedule-employee-identity">
+      <button
+        ref={drag.setNodeRef}
+        type="button"
+        className="schedule-employee-drag-handle"
+        disabled={!editable}
+        title={editable ? "Kéo để sắp xếp nhân viên" : undefined}
+        aria-label={`Kéo ${employee.name} để sắp xếp`}
+        {...drag.listeners}
+        {...drag.attributes}
+      >
+        <span aria-hidden="true">⠿</span>
+      </button>
+      <span className="schedule-employee-copy">
+        <strong>{employee.name}</strong>
+        {employee.positionName && <small>{employee.positionName}</small>}
+        {employee.isNew && <small className="schedule-new-badge">NEW</small>}
+      </span>
+    </div>
+  );
+}
+
+function EmployeeDropRow({
+  employee,
+  group,
+  areaClass,
+  editable,
+  children,
+}: {
+  employee: CloudEmployee;
+  group: Group;
+  areaClass: string;
+  editable: boolean;
+  children: ReactNode;
+}) {
+  const drop = useDroppable({
+    id: `employee-target:${employee.id}`,
+    data: {
+      kind: "employee",
+      employeeId: employee.id,
+      groupId: group.id,
+    } satisfies SchedulerDropData,
+    disabled: !editable,
+  });
+  return (
+    <tr
+      ref={drop.setNodeRef}
+      className={`schedule-area-row ${areaClass} ${drop.isOver ? "employee-drop-target" : ""}`}
+    >
+      {children}
+    </tr>
+  );
+}
+
+function GroupDropRow({
+  group,
+  areaClass,
+  editable,
+  children,
+}: {
+  group: Group;
+  areaClass: string;
+  editable: boolean;
+  children: ReactNode;
+}) {
+  const drop = useDroppable({
+    id: `employee-group-target:${group.id}`,
+    data: { kind: "group", groupId: group.id } satisfies SchedulerDropData,
+    disabled: !editable,
+  });
+  return (
+    <tr
+      ref={drop.setNodeRef}
+      className={`schedule-group-row ${areaClass} ${drop.isOver ? "employee-group-drop-target" : ""}`}
+    >
+      {children}
+    </tr>
+  );
+}
+
+const scheduleCollisionDetection: CollisionDetection = (args) => {
+  const employeeDrag = args.active.data.current?.kind === "employee";
+  return pointerWithin(args).filter((collision) => {
+    const id = String(collision.id);
+    return employeeDrag
+      ? id.startsWith("employee-target:") || id.startsWith("employee-group-target:")
+      : id.startsWith("cell:") || id === "schedule-trash";
+  });
+};
 
 function DragPreview({
   active,
   shifts,
 }: {
-  active: ActiveDrag | null;
+  active: SchedulerDragData | null;
   shifts: ShiftType[];
 }) {
   if (!active) return null;
+  if (active.kind === "employee") {
+    return (
+      <div className="employee-drag-preview">
+        <span aria-hidden="true">⠿</span>
+        <strong>{active.employeeName}</strong>
+      </div>
+    );
+  }
   const entry = active.kind === "entry" ? active.entry : null;
-  const shiftId =
-    entry?.shiftTypeId ?? (active.kind === "palette" ? active.shiftId : "");
+  const shiftId = entry?.shiftTypeId ?? (active.kind === "palette" ? active.shiftId : "");
   const shift = shifts.find((item) => item.id === shiftId);
   const label = entry ? entryLabel(entry, shifts) : (shift?.label ?? "");
   const color = resolvedShiftColor(
@@ -317,6 +421,11 @@ type Props = {
   onSelectShift: (id: string | null) => void;
   onAssign: (employeeId: string, day: number, shiftId?: string) => void;
   onMove: (entry: ScheduleEntry, employeeId: string, day: number) => void;
+  onMoveEmployee?: (
+    employeeId: string,
+    targetGroupId: string,
+    beforeEmployeeId?: string,
+  ) => void;
   onEdit: (entry: ScheduleEntry) => void;
   onDelete?: (entry: ScheduleEntry) => void;
   availabilityByEmployee?: Record<string, Availability>;
@@ -329,7 +438,7 @@ type Props = {
 };
 
 export function ScheduleGrid(props: Props) {
-  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const [activeDrag, setActiveDrag] = useState<SchedulerDragData | null>(null);
   const selectedShift = props.shifts.find(
     (shift) => shift.id === props.selectedShiftId,
   );
@@ -337,8 +446,16 @@ export function ScheduleGrid(props: Props) {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
+  useEffect(() => {
+    const clearSelection = (event: KeyboardEvent) => {
+      if (event.key === "Escape") props.onSelectShift(null);
+    };
+    window.addEventListener("keydown", clearSelection);
+    return () => window.removeEventListener("keydown", clearSelection);
+  }, [props.onSelectShift]);
+
   function dragStart(event: DragStartEvent) {
-    const source = event.active.data.current as ActiveDrag | undefined;
+    const source = event.active.data.current as SchedulerDragData | undefined;
     setActiveDrag(source ?? null);
   }
 
@@ -347,39 +464,41 @@ export function ScheduleGrid(props: Props) {
   }
 
   function dragEnd(event: DragEndEvent) {
-    const target = event.over?.data.current as
-      | { employeeId?: string; day?: number }
-      | undefined;
-    const source = event.active.data.current as
-      | { kind?: string; shiftId?: string; entry?: ScheduleEntry }
-      | undefined;
+    const source = event.active.data.current as SchedulerDragData | undefined;
+    const target = event.over?.data.current as SchedulerDropData | undefined;
     setActiveDrag(null);
-    if (event.over?.id === "schedule-trash") {
-      if (source?.kind === "entry" && source.entry)
-        props.onDelete?.(source.entry);
+    const action = resolveSchedulerDrop(source, target);
+    if (!action) return;
+
+    if (action.kind === "assign") {
+      props.onAssign(action.employeeId, action.day, action.shiftId);
       return;
     }
-    if (!target?.employeeId || !target.day || !source) return;
-    if (source.kind === "palette" && source.shiftId)
-      props.onAssign(target.employeeId, target.day, source.shiftId);
-    if (source.kind === "entry" && source.entry)
-      props.onMove(source.entry, target.employeeId, target.day);
+    if (action.kind === "moveEntry") {
+      props.onMove(action.entry, action.employeeId, action.day);
+      return;
+    }
+    if (action.kind === "deleteEntry") {
+      props.onDelete?.(action.entry);
+      return;
+    }
+    props.onMoveEmployee?.(
+      action.employeeId,
+      action.targetGroupId,
+      action.beforeEmployeeId,
+    );
   }
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={scheduleCollisionDetection}
-      measuring={{
-        droppable: { strategy: MeasuringStrategy.BeforeDragging },
-      }}
+      measuring={{ droppable: { strategy: MeasuringStrategy.BeforeDragging } }}
       onDragStart={dragStart}
       onDragCancel={dragCancel}
       onDragEnd={dragEnd}
     >
-      <div
-        className={`scheduler-layout ${activeDrag ? "is-dragging" : ""}`}
-      >
+      <div className={`scheduler-layout ${activeDrag ? "is-dragging" : ""}`}>
         <aside className="scheduler-palette">
           <header className="scheduler-palette-heading">
             <span className="scheduler-palette-kicker">Công cụ xếp lịch</span>
@@ -438,27 +557,59 @@ export function ScheduleGrid(props: Props) {
             shifts={props.shifts}
             weekStart={props.weekStart}
             countOverrides={props.countOverrides}
-            renderStaffingCell={props.onSetCountOverride
-              ? (day, period, value) => (
-                  <input
-                    key={`${day}:${period}:${value}`}
-                    className="staffing-count-input"
-                    type="number"
-                    min="0"
-                    disabled={!props.editable}
-                    defaultValue={value}
-                    aria-label={`Tổng ca ${period === "S" ? "Sáng" : period === "T" ? "Trưa" : "Tối"} ngày ${day}`}
-                    title="Nhập số để chỉnh tay; xóa trắng để dùng số tự động"
-                    onBlur={(event) =>
-                      props.onSetCountOverride?.(
-                        day,
-                        period,
-                        event.currentTarget.value,
-                      )
-                    }
-                  />
-                )
-              : undefined}
+            renderGroupRow={(group, areaClass, children) => (
+              <GroupDropRow
+                group={group}
+                areaClass={areaClass}
+                editable={props.editable && Boolean(props.onMoveEmployee)}
+              >
+                {children}
+              </GroupDropRow>
+            )}
+            renderEmployeeRow={(employee, group, areaClass, children) => (
+              <EmployeeDropRow
+                employee={employee}
+                group={group}
+                areaClass={areaClass}
+                editable={props.editable && Boolean(props.onMoveEmployee)}
+              >
+                {children}
+              </EmployeeDropRow>
+            )}
+            renderEmployeeHeader={(employee) => (
+              <EmployeeDragHeader
+                employee={employee}
+                groupId={employee.groupId ?? ""}
+                editable={
+                  props.editable &&
+                  Boolean(props.onMoveEmployee) &&
+                  Boolean(employee.groupId)
+                }
+              />
+            )}
+            renderStaffingCell={
+              props.onSetCountOverride
+                ? (day, period, value) => (
+                    <input
+                      key={`${day}:${period}:${value}`}
+                      className="staffing-count-input"
+                      type="number"
+                      min="0"
+                      disabled={!props.editable}
+                      defaultValue={value}
+                      aria-label={`Tổng ca ${period === "S" ? "Sáng" : period === "T" ? "Trưa" : "Tối"} ngày ${day}`}
+                      title="Nhập số để chỉnh tay; xóa trắng để dùng số tự động"
+                      onBlur={(event) =>
+                        props.onSetCountOverride?.(
+                          day,
+                          period,
+                          event.currentTarget.value,
+                        )
+                      }
+                    />
+                  )
+                : undefined
+            }
             renderCell={(employee, day, entries) => (
               <ScheduleCell
                 key={day}
