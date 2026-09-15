@@ -19,6 +19,11 @@ const MySchedulePage = lazy(() =>
     default: MySchedulePage,
   })),
 );
+const TeamSchedulePage = lazy(() =>
+  import("./ScheduleViews").then(({ TeamSchedulePage }) => ({
+    default: TeamSchedulePage,
+  })),
+);
 
 const sectionFallback = (
   <AppState title="Một chút thôi…" message="Đang tải nội dung." />
@@ -26,7 +31,7 @@ const sectionFallback = (
 
 type Props = {
   loginRoute: boolean;
-  section: "availability" | "my-schedule";
+  section: "availability" | "my-schedule" | "team-schedule";
   navigate: (path: string) => void;
 };
 
@@ -42,14 +47,13 @@ export function EmployeeHeader({
   const tabs: Array<{ section: Props["section"]; label: string; path: string }> = [
     { section: "availability", label: "Đăng ký lịch", path: "/app/availability" },
     { section: "my-schedule", label: "Lịch của tôi", path: "/app/my-schedule" },
+    { section: "team-schedule", label: "Lịch tổng", path: "/app/team-schedule" },
   ];
   return (
     <header className="employee-header">
       <div className="employee-header-top">
         <div className="employee-brand">
-          <BrandLogo
-            mobileHome={{ path: "/app/availability", navigate }}
-          />
+          <BrandLogo mobileHome={{ path: "/app/availability", navigate }} />
           <div>
             <strong>ScheduleWork</strong>
             <small>Cổng nhân viên</small>
@@ -185,6 +189,30 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         message="Đang chuyển đến trang đổi mật khẩu bắt buộc."
       />
     );
+
+  let page;
+  if (section === "availability") {
+    page = (
+      <EmployeeRegistrationPage
+        onLogout={logout}
+        onSubmissionSaved={() =>
+          setSubmissionRevision((current) => current + 1)
+        }
+        employee={employee!}
+      />
+    );
+  } else if (section === "team-schedule") {
+    page = <TeamSchedulePage employeeId={employee!.id} />;
+  } else {
+    page = (
+      <MySchedulePage
+        employeeId={employee!.id}
+        submissionRevision={submissionRevision}
+        onRegister={() => navigate("/app/availability")}
+      />
+    );
+  }
+
   return (
     <div className="employee-app">
       <EmployeeHeader
@@ -192,23 +220,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         navigate={navigate}
         onLogout={() => void logout()}
       />
-      <Suspense fallback={sectionFallback}>
-  {section === "availability" ? (
-    <EmployeeRegistrationPage
-      onLogout={logout}
-      onSubmissionSaved={() =>
-        setSubmissionRevision((current) => current + 1)
-      }
-      employee={employee!}
-    />
-  ) : (
-    <MySchedulePage
-      employeeId={employee!.id}
-      submissionRevision={submissionRevision}
-      onRegister={() => navigate("/app/availability")}
-    />
-  )}
-</Suspense>
+      <Suspense fallback={sectionFallback}>{page}</Suspense>
     </div>
   );
 }
