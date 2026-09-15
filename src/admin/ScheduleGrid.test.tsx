@@ -166,4 +166,12 @@ describe("Admin scheduler availability guidance", () => {
     expect(html).toContain('value="4"');
     expect(html).not.toContain('class="staffing-summary"');
   });
+
+  it("exposes readable employee name and position hooks", () => {
+    const html = render();
+    expect(html).toContain('class="schedule-employee-name"');
+    expect(html).toContain('class="schedule-employee-position"');
+    expect(html).toContain("Nguyễn Phi Hùng");
+    expect(html).toContain("Bếp trưởng");
+  });
 });
