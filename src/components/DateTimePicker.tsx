@@ -129,6 +129,15 @@ export function DateTimePicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const parts = splitDateTime(value);
+
+const [hourInput, setHourInput] = useState(parts.hour);
+const [minuteInput, setMinuteInput] = useState(parts.minute);
+
+useEffect(() => {
+  setHourInput(parts.hour);
+  setMinuteInput(parts.minute);
+}, [parts.hour, parts.minute]);
+
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(parts.date));
   const today = localDateInputValue();
   const dates = calendarDates(visibleMonth);
@@ -187,6 +196,37 @@ export function DateTimePicker({
       minute: String(totalMinutes % 60).padStart(2, "0"),
     });
   }
+
+  function commitTimeInput(part: "hour" | "minute", rawValue: string) {
+  const current = part === "hour" ? parts.hour : parts.minute;
+  const max = part === "hour" ? 23 : 59;
+
+  if (rawValue.trim() === "") {
+    if (part === "hour") setHourInput(current);
+    else setMinuteInput(current);
+    return;
+  }
+
+  const number = Number(rawValue);
+
+  if (!Number.isFinite(number)) {
+    if (part === "hour") setHourInput(current);
+    else setMinuteInput(current);
+    return;
+  }
+
+  const normalized = String(
+    Math.min(max, Math.max(0, Math.trunc(number))),
+  ).padStart(2, "0");
+
+  if (part === "hour") {
+    setHourInput(normalized);
+    update({ hour: normalized });
+  } else {
+    setMinuteInput(normalized);
+    update({ minute: normalized });
+  }
+}
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape" && open) {
@@ -296,20 +336,96 @@ export function DateTimePicker({
             </div>
 
             <div className="date-time-picker-steppers" aria-label="Thời gian">
-              <div className="date-time-picker-stepper">
-                <button type="button" aria-label="Tăng giờ" onClick={() => adjustTime("hour", 1)}><ChevronUpIcon /></button>
-                <strong>{parts.hour}</strong>
-                <button type="button" aria-label="Giảm giờ" onClick={() => adjustTime("hour", -1)}><ChevronDownIcon /></button>
-                <small>Giờ</small>
-              </div>
-              <span aria-hidden="true">:</span>
-              <div className="date-time-picker-stepper">
-                <button type="button" aria-label="Tăng phút" onClick={() => adjustTime("minute", 5)}><ChevronUpIcon /></button>
-                <strong>{parts.minute}</strong>
-                <button type="button" aria-label="Giảm phút" onClick={() => adjustTime("minute", -5)}><ChevronDownIcon /></button>
-                <small>Phút</small>
-              </div>
-            </div>
+  <div className="date-time-picker-stepper">
+    <button
+      type="button"
+      aria-label="Tăng giờ"
+      onClick={() => adjustTime("hour", 1)}
+    >
+      <ChevronUpIcon />
+    </button>
+
+    <input
+      className="date-time-picker-time-input"
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      maxLength={2}
+      value={hourInput}
+      aria-label="Nhập giờ"
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => {
+        const next = event.target.value
+          .replace(/\D/g, "")
+          .slice(0, 2);
+
+        setHourInput(next);
+      }}
+      onBlur={() => commitTimeInput("hour", hourInput)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
+    />
+
+    <button
+      type="button"
+      aria-label="Giảm giờ"
+      onClick={() => adjustTime("hour", -1)}
+    >
+      <ChevronDownIcon />
+    </button>
+
+    <small>Giờ</small>
+  </div>
+
+  <span aria-hidden="true">:</span>
+
+  <div className="date-time-picker-stepper">
+    <button
+      type="button"
+      aria-label="Tăng phút"
+      onClick={() => adjustTime("minute", 5)}
+    >
+      <ChevronUpIcon />
+    </button>
+
+    <input
+      className="date-time-picker-time-input"
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      maxLength={2}
+      value={minuteInput}
+      aria-label="Nhập phút"
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => {
+        const next = event.target.value
+          .replace(/\D/g, "")
+          .slice(0, 2);
+
+        setMinuteInput(next);
+      }}
+      onBlur={() => commitTimeInput("minute", minuteInput)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
+    />
+
+    <button
+      type="button"
+      aria-label="Giảm phút"
+      onClick={() => adjustTime("minute", -5)}
+    >
+      <ChevronDownIcon />
+    </button>
+
+    <small>Phút</small>
+  </div>
+</div>
 
             <p>Múi giờ UTC+7</p>
           </aside>}

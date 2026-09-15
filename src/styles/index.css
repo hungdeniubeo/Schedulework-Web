@@ -2572,16 +2572,36 @@ select:disabled {
   border-color: var(--primary);
 }
 
-.date-time-picker-stepper strong {
-  width: 46px;
-  padding: 8px 4px;
+.date-time-picker-time-input {
+  width: 48px;
+  height: 38px;
+  min-height: 38px;
+
+  padding: 0 4px;
+
   color: #104f48;
   background: #fff;
+
   border: 1px solid #d7dcda;
-  border-radius: 9px;
-  font-size: 1.12rem;
+  border-radius: 8px;
+
+  outline: none;
+
+  font-size: 1.08rem;
+  font-weight: 800;
   line-height: 1;
   text-align: center;
+
+  font-variant-numeric: tabular-nums;
+}
+
+.date-time-picker-time-input:hover {
+  border-color: #b6c2bd;
+}
+
+.date-time-picker-time-input:focus {
+  border-color: #668d84;
+  box-shadow: 0 0 0 3px rgba(74, 122, 111, 0.14);
 }
 
 .date-time-picker-stepper small,
