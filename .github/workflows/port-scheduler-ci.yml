@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,4 +33,11 @@ jobs:
       - name: Full test suite (baseline has two unrelated employee-app failures)
         continue-on-error: true
         run: npm test
-      - run: npm run build
+      - name: Build
+        run: npm run build
+      - name: Deno shared tests
+        run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/_shared/*_test.ts
+      - name: Deno admin-users typecheck
+        run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/admin-users/index.ts
+      - name: Diff whitespace check
+        run: git diff --check origin/main...HEAD
