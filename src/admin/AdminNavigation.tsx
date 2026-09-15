@@ -24,7 +24,7 @@ const tabs = [
   ["employees", "/admin/employees", "Nhân viên"],
   ["groups", "/admin/groups", "Nhóm"],
   ["shifts", "/admin/shifts", "Ca làm"],
-] as const satisfies readonly [AdminSection, string, string][];
+] as const satisfies readonly (readonly [AdminSection, string, string])[];
 
 const weekSensitiveSections = new Set<AdminSection>([
   "availability",
