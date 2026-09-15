@@ -20,14 +20,16 @@ type Props = {
   section:
     | "dashboard"
     | "availability"
+    | "registration-weeks"
     | "schedule"
     | "employees"
     | "groups"
     | "shifts";
+  search: string;
   navigate: (path: string) => void;
 };
 
-export function AdminApp({ loginRoute, section, navigate }: Props) {
+export function AdminApp({ loginRoute, section, search, navigate }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -114,6 +116,7 @@ export function AdminApp({ loginRoute, section, navigate }: Props) {
       <AdminDashboard
         session={session}
         section={section}
+        search={search}
         navigate={navigate}
         onLogout={logout}
       />
