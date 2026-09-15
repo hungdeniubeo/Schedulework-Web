@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { DAY_KEYS } from "../types/domain";
 import {
   addDateOnlyDays,
@@ -44,6 +44,18 @@ type Props = {
     period: StaffingPeriod,
     value: number,
   ) => ReactNode;
+  renderGroupRow?: (
+    group: Group,
+    areaClass: string,
+    children: ReactNode,
+  ) => ReactNode;
+  renderEmployeeRow?: (
+    employee: CloudEmployee,
+    group: Group,
+    areaClass: string,
+    children: ReactNode,
+  ) => ReactNode;
+  renderEmployeeHeader?: (employee: CloudEmployee) => ReactNode;
 };
 
 function ReadOnlyCell({
@@ -88,6 +100,9 @@ export function ScheduleSheet({
   highlightEmployeeId,
   renderCell,
   renderStaffingCell,
+  renderGroupRow,
+  renderEmployeeRow,
+  renderEmployeeHeader,
 }: Props) {
   const sections = buildScheduleGroups(groups, employees);
   const counts = showStaffing || renderStaffingCell
@@ -131,7 +146,7 @@ export function ScheduleSheet({
           {sections.map(({ group, employees: groupEmployees }) => (
             <ScheduleSection
               key={group.id}
-              groupName={group.name}
+              group={group}
               areaClass={
                 areaClassByGroupId.get(group.id) ?? "schedule-area-neutral"
               }
@@ -140,6 +155,9 @@ export function ScheduleSheet({
               shifts={shifts}
               highlightEmployeeId={highlightEmployeeId}
               renderCell={renderCell}
+              renderGroupRow={renderGroupRow}
+              renderEmployeeRow={renderEmployeeRow}
+              renderEmployeeHeader={renderEmployeeHeader}
             />
           ))}
         </tbody>
@@ -170,70 +188,97 @@ export function ScheduleSheet({
 }
 
 function ScheduleSection({
-  groupName,
+  group,
   areaClass,
   employees,
   entries,
   shifts,
   highlightEmployeeId,
   renderCell,
+  renderGroupRow,
+  renderEmployeeRow,
+  renderEmployeeHeader,
 }: {
-  groupName: string;
+  group: Group;
   areaClass: string;
   employees: CloudEmployee[];
   entries: ScheduleEntry[];
   shifts: ShiftType[];
   highlightEmployeeId?: string;
   renderCell?: Props["renderCell"];
+  renderGroupRow?: Props["renderGroupRow"];
+  renderEmployeeRow?: Props["renderEmployeeRow"];
+  renderEmployeeHeader?: Props["renderEmployeeHeader"];
 }) {
+  const groupChildren = (
+    <th colSpan={8}>
+      <span className="schedule-group-label">{group.name}</span>
+    </th>
+  );
+
   return (
     <>
-      <tr className={`schedule-group-row ${areaClass}`}>
-        <th colSpan={8}>
-          <span className="schedule-group-label">{groupName}</span>
-        </th>
-      </tr>
-      {employees.map((employee) => (
-        <tr
-          className={[
-            "schedule-area-row",
-            areaClass,
-            employee.id === highlightEmployeeId
-              ? "current-employee-row"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          key={employee.id}
-        >
-          <th>
+      <Fragment key={`group-${group.id}`}>
+        {renderGroupRow ? (
+          renderGroupRow(group, areaClass, groupChildren)
+        ) : (
+          <tr className={`schedule-group-row ${areaClass}`}>{groupChildren}</tr>
+        )}
+      </Fragment>
+      {employees.map((employee) => {
+        const employeeHeader = renderEmployeeHeader ? (
+          renderEmployeeHeader(employee)
+        ) : (
+          <>
             <strong>{employee.name}</strong>
             {employee.positionName && <small>{employee.positionName}</small>}
             {employee.id === highlightEmployeeId && (
               <small className="current-employee-badge">Bạn</small>
             )}
-          </th>
-          {DAY_KEYS.map((key) => {
-            const day = Number(key);
-            const cellEntries = entries
-              .filter(
-                (entry) =>
-                  entry.employeeId === employee.id && entry.dayOfWeek === day,
-              )
-              .sort(
-                (first, second) =>
-                  first.sortOrderInCell - second.sortOrderInCell,
+          </>
+        );
+        const rowChildren = (
+          <>
+            <th>{employeeHeader}</th>
+            {DAY_KEYS.map((key) => {
+              const day = Number(key);
+              const cellEntries = entries
+                .filter(
+                  (entry) =>
+                    entry.employeeId === employee.id && entry.dayOfWeek === day,
+                )
+                .sort(
+                  (first, second) =>
+                    first.sortOrderInCell - second.sortOrderInCell,
+                );
+              return renderCell ? (
+                renderCell(employee, day, cellEntries)
+              ) : (
+                <td key={key}>
+                  <ReadOnlyCell entries={cellEntries} shifts={shifts} />
+                </td>
               );
-            return renderCell ? (
-              renderCell(employee, day, cellEntries)
+            })}
+          </>
+        );
+        const rowClassName = [
+          "schedule-area-row",
+          areaClass,
+          employee.id === highlightEmployeeId ? "current-employee-row" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <Fragment key={employee.id}>
+            {renderEmployeeRow ? (
+              renderEmployeeRow(employee, group, areaClass, rowChildren)
             ) : (
-              <td key={key}>
-                <ReadOnlyCell entries={cellEntries} shifts={shifts} />
-              </td>
-            );
-          })}
-        </tr>
-      ))}
+              <tr className={rowClassName}>{rowChildren}</tr>
+            )}
+          </Fragment>
+        );
+      })}
     </>
   );
 }
