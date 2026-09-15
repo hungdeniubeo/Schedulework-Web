@@ -22,7 +22,7 @@ import {
   getOffReason,
 } from "../lib/availability";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
-import { entryLabel } from "../scheduling/overlap";
+import { entryLabel, getEntryIssue } from "../scheduling/overlap";
 import {
   formatShiftLabel,
   resolvedShiftColor,
@@ -38,6 +38,7 @@ import type {
 import type { Availability } from "../types/domain";
 import type { StaffingPeriod } from "../scheduling/staffing";
 import {
+  previewEntryForCell,
   resolveSchedulerDrop,
   type SchedulerDragData,
   type SchedulerDropData,
@@ -164,6 +165,7 @@ function ScheduleCell({
   shifts,
   editable,
   selectedShiftId,
+  activeDrag,
   onAssign,
   onEdit,
   onDelete,
@@ -175,6 +177,7 @@ function ScheduleCell({
   shifts: ShiftType[];
   editable: boolean;
   selectedShiftId: string | null;
+  activeDrag: SchedulerDragData | null;
   onAssign: (employeeId: string, day: number) => void;
   onEdit: (entry: ScheduleEntry) => void;
   onDelete?: (entry: ScheduleEntry) => void;
@@ -192,12 +195,30 @@ function ScheduleCell({
   const assignable = Boolean(selectedShiftId && editable);
   const availabilityLabel = availability ? formatAvailabilityCell(availability) : "";
   const offReason = availability ? getOffReason(availability) : "";
+  const previewEntry = drop.isOver
+    ? previewEntryForCell(activeDrag ?? undefined, employee.id, day)
+    : null;
+  const blocked = previewEntry
+    ? getEntryIssue(previewEntry, entries, shifts)
+    : null;
+  const dropStateClass = drop.isOver
+    ? blocked
+      ? "drop-blocked"
+      : "drag-over"
+    : "";
+  const blockedLabel = blocked
+    ? blocked.kind === "overlap"
+      ? "Trùng giờ"
+      : "Giờ chưa hợp lệ"
+    : "";
+
   return (
     <td
       ref={drop.setNodeRef}
-      className={`${drop.isOver ? "drag-over" : ""} ${assignable ? "assignable" : ""} ${availability ? "has-availability" : ""} ${entries.length > 0 ? "has-official-shift" : ""}`}
+      className={`${dropStateClass} ${assignable ? "assignable" : ""} ${availability ? "has-availability" : ""} ${entries.length > 0 ? "has-official-shift" : ""}`}
       role={assignable ? "button" : undefined}
       tabIndex={assignable ? 0 : undefined}
+      title={blocked ? blockedLabel : undefined}
       aria-label={assignable ? `Xếp ca cho ${employee.name}, ngày ${day}` : undefined}
       onClick={() => {
         if (assignable) onAssign(employee.id, day);
@@ -241,6 +262,9 @@ function ScheduleCell({
           ))}
         </div>
       </div>
+      {drop.isOver && blocked && (
+        <span className="schedule-drop-message">{blockedLabel}</span>
+      )}
     </td>
   );
 }
@@ -393,7 +417,8 @@ function DragPreview({
     );
   }
   const entry = active.kind === "entry" ? active.entry : null;
-  const shiftId = entry?.shiftTypeId ?? (active.kind === "palette" ? active.shiftId : "");
+  const shiftId =
+    entry?.shiftTypeId ?? (active.kind === "palette" ? active.shiftId : "");
   const shift = shifts.find((item) => item.id === shiftId);
   const label = entry ? entryLabel(entry, shifts) : (shift?.label ?? "");
   const color = resolvedShiftColor(
@@ -442,6 +467,9 @@ export function ScheduleGrid(props: Props) {
   const selectedShift = props.shifts.find(
     (shift) => shift.id === props.selectedShiftId,
   );
+  const scheduledEmployeeCount = new Set(
+    props.entries.map((entry) => entry.employeeId),
+  ).size;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
@@ -547,6 +575,21 @@ export function ScheduleGrid(props: Props) {
             enabled={props.editable && Boolean(props.onDelete)}
             active={activeDrag?.kind === "entry"}
           />
+          <section className="scheduler-week-overview" aria-label="Tổng quan tuần">
+            <strong className="scheduler-week-overview-title">Tổng quan tuần</strong>
+            <div className="scheduler-week-overview-stats">
+              <div>
+                <strong>{props.entries.length}</strong>
+                <span>ca đã xếp</span>
+              </div>
+              <div>
+                <strong>
+                  {scheduledEmployeeCount}/{props.employees.length}
+                </strong>
+                <span>nhân viên có ca</span>
+              </div>
+            </div>
+          </section>
         </aside>
         <div className="schedule-table-scroll">
           <ScheduleSheet
@@ -619,6 +662,7 @@ export function ScheduleGrid(props: Props) {
                 shifts={props.shifts}
                 editable={props.editable}
                 selectedShiftId={props.selectedShiftId}
+                activeDrag={activeDrag}
                 onAssign={(employeeId, nextDay) =>
                   props.onAssign(employeeId, nextDay)
                 }
