@@ -4,7 +4,7 @@
 
 **Goal:** Split registration-week management from employee availability viewing, synchronize the selected week through the URL, polish admin navigation, and make the scheduler table easier to read without changing established scheduling behavior.
 
-**Architecture:** Keep the existing `AdminDashboard` as the coordinator, but make the `week` query parameter the source of truth for the selected registration week. Reuse `WeekManager` on a dedicated registration-weeks page and `AdminMatrix` as the sole availability content. `AdminScheduler` receives the resolved week start and explicitly handles the case where no schedule draft exists yet. Styling stays component/page-scoped.
+**Architecture:** Keep `AdminDashboard` as the data coordinator, but move page-specific rendering into small components: `AdminNavigation`, `RegistrationWeeksPage`, and `AdminAvailabilityPage`. The `week` query parameter is the cross-page source of truth. `AdminScheduler` receives the resolved week start and explicitly handles a missing schedule draft. Existing business components (`WeekManager`, `AdminMatrix`, scheduler APIs) remain the single implementation of their rules.
 
 **Tech Stack:** React 19, TypeScript 5.8, Vite 7, Vitest 3, Supabase JS 2, existing custom routing and `dnd-kit` scheduler.
 
@@ -33,12 +33,12 @@
 
 **Interfaces:**
 - Produces admin section `"registration-weeks"`.
-- Produces `search: string` passed from `App` -> `AdminApp` -> later `AdminDashboard` work.
+- Produces `search: string` passed from `App` -> `AdminApp` -> `AdminDashboard`.
 - Preserves `navigate(path: string): void` while making query-only navigation rerender correctly.
 
 - [ ] **Step 1: Write the failing route test**
 
-Add this assertion in the admin route test:
+Add:
 
 ```ts
 expect(matchRoute("/admin/registration-weeks")).toEqual({
@@ -47,44 +47,31 @@ expect(matchRoute("/admin/registration-weeks")).toEqual({
 });
 ```
 
-Keep the existing assertion that `/app/team-schedule` returns `not-found`.
+Keep:
+
+```ts
+expect(matchRoute("/app/team-schedule")).toEqual({ name: "not-found" });
+```
 
 - [ ] **Step 2: Run the route test and confirm red**
-
-Run:
 
 ```bash
 npm test -- src/app/router.test.ts
 ```
 
-Expected: FAIL because `registration-weeks` is not currently recognized.
+Expected: FAIL because `registration-weeks` is not recognized.
 
 - [ ] **Step 3: Add the new admin section to routing/types**
 
-Update the admin route union and regex:
-
-```ts
-section:
-  | "dashboard"
-  | "availability"
-  | "registration-weeks"
-  | "schedule"
-  | "employees"
-  | "groups"
-  | "shifts";
-```
-
-and:
+Add `"registration-weeks"` to the admin section union in `router.ts` and `AdminApp.tsx`, and update the route regex to:
 
 ```ts
 /^\/admin\/(availability|registration-weeks|schedule|employees|groups|shifts)$/
 ```
 
-Mirror the same section union in `AdminApp.tsx`.
+- [ ] **Step 4: Track pathname and search in `App.tsx`**
 
-- [ ] **Step 4: Make `App.tsx` track both pathname and search**
-
-Replace pathname-only state with browser-location state:
+Use:
 
 ```ts
 type BrowserLocation = { pathname: string; search: string };
@@ -99,7 +86,7 @@ function readLocation(): BrowserLocation {
 const [location, setLocation] = useState(readLocation);
 ```
 
-Update `popstate` to call `setLocation(readLocation())`. Update navigation to push the URL then read the actual browser location:
+Update `popstate` to call `setLocation(readLocation())` and navigation to:
 
 ```ts
 const navigate = useCallback((path: string) => {
@@ -108,13 +95,13 @@ const navigate = useCallback((path: string) => {
 }, []);
 ```
 
-Route only on `location.pathname`:
+Route with:
 
 ```ts
 const route = matchRoute(location.pathname);
 ```
 
-Pass query text into admin:
+Pass:
 
 ```tsx
 <AdminApp
@@ -125,11 +112,9 @@ Pass query text into admin:
 />
 ```
 
-Add `search: string` to `AdminApp` props and pass it to `AdminDashboard`.
+Add `search: string` to `AdminApp` and pass it to `AdminDashboard`.
 
-- [ ] **Step 5: Run route tests and build**
-
-Run:
+- [ ] **Step 5: Run route test and build**
 
 ```bash
 npm test -- src/app/router.test.ts
@@ -147,21 +132,18 @@ git commit -m "feat: add query-aware admin week routing"
 
 ---
 
-### Task 2: Add pure helpers for selected registration week and week-preserving URLs
+### Task 2: Add pure selected-week helpers
 
 **Files:**
 - Create: `src/admin/adminWeekSelection.ts`
 - Create: `src/admin/adminWeekSelection.test.ts`
 
 **Interfaces:**
-- Produces `weekStartFromSearch(search: string): string | null`.
-- Produces `resolveAdminRegistrationWeek(weeks, requestedWeekStart)` returning `{ week, invalidRequestedWeek }`.
-- Produces `adminWeekPath(path: string, weekStart: string): string`.
-- Reuses `selectEmployeeRegistrationWeek` for no-query fallback semantics.
+- `weekStartFromSearch(search: string): string | null`
+- `resolveAdminRegistrationWeek(weeks: RegistrationWeek[], requestedWeekStart: string | null): { week: RegistrationWeek | null; invalidRequestedWeek: boolean }`
+- `adminWeekPath(path: string, weekStart: string): string`
 
-- [ ] **Step 1: Write failing helper tests**
-
-Create tests covering explicit selection, default selection, invalid selection, no weeks, and path encoding:
+- [ ] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -197,32 +179,39 @@ describe("admin week selection", () => {
     expect(weekStartFromSearch("")).toBeNull();
   });
 
-  it("uses an explicitly requested existing registration week", () => {
+  it("uses an explicitly requested existing week", () => {
     expect(resolveAdminRegistrationWeek(weeks, "2026-09-14")).toEqual({
       week: weeks[1],
       invalidRequestedWeek: false,
     });
   });
 
-  it("falls back to the current relevant week only when no week was requested", () => {
+  it("falls back only when no week was requested", () => {
     expect(resolveAdminRegistrationWeek(weeks, null).week?.id).toBe("week-open");
   });
 
-  it("marks an unknown requested week invalid instead of falling back", () => {
+  it("marks an unknown requested week invalid", () => {
     expect(resolveAdminRegistrationWeek(weeks, "2026-10-05")).toEqual({
       week: null,
       invalidRequestedWeek: true,
     });
   });
 
-  it("builds a week-preserving admin path", () => {
+  it("handles an empty week list", () => {
+    expect(resolveAdminRegistrationWeek([], null)).toEqual({
+      week: null,
+      invalidRequestedWeek: false,
+    });
+  });
+
+  it("builds a week-preserving path", () => {
     expect(adminWeekPath("/admin/schedule", "2026-09-21"))
       .toBe("/admin/schedule?week=2026-09-21");
   });
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm red**
+- [ ] **Step 2: Run and confirm red**
 
 ```bash
 npm test -- src/admin/adminWeekSelection.test.ts
@@ -230,9 +219,7 @@ npm test -- src/admin/adminWeekSelection.test.ts
 
 Expected: FAIL because the module does not exist.
 
-- [ ] **Step 3: Implement helpers**
-
-Use the existing registration-week default-selection policy:
+- [ ] **Step 3: Implement the helpers**
 
 ```ts
 import { selectEmployeeRegistrationWeek } from "../employee/registrationWeekSelection";
@@ -262,7 +249,7 @@ export function adminWeekPath(path: string, weekStart: string): string {
 }
 ```
 
-- [ ] **Step 4: Run helper tests**
+- [ ] **Step 4: Run the tests**
 
 ```bash
 npm test -- src/admin/adminWeekSelection.test.ts
@@ -279,46 +266,280 @@ git commit -m "feat: centralize admin registration week selection"
 
 ---
 
-### Task 3: Create the dedicated registration-weeks page and simplify availability to the matrix only
+### Task 3: Extract and redesign admin navigation
+
+**Files:**
+- Create: `src/admin/AdminNavigation.tsx`
+- Create: `src/admin/AdminNavigation.test.tsx`
+- Create: `src/admin/AdminNavigation.css`
+- Modify: `src/admin/AdminDashboard.tsx`
+
+**Interfaces:**
+
+```ts
+type AdminSection =
+  | "dashboard"
+  | "availability"
+  | "registration-weeks"
+  | "schedule"
+  | "employees"
+  | "groups"
+  | "shifts";
+
+type Props = {
+  section: AdminSection;
+  selectedWeekStart: string | null;
+  navigate: (path: string) => void;
+};
+```
+
+`AdminNavigation` is presentation/navigation only; it owns no week data.
+
+- [ ] **Step 1: Write the failing navigation test**
+
+Create:
+
+```tsx
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { AdminNavigation } from "./AdminNavigation";
+
+describe("AdminNavigation", () => {
+  it("renders the registration week tab in the requested order", () => {
+    const html = renderToStaticMarkup(
+      <AdminNavigation
+        section="registration-weeks"
+        selectedWeekStart="2026-09-21"
+        navigate={vi.fn()}
+      />,
+    );
+    const labels = [
+      "Trang chủ",
+      "Đăng ký nhân viên",
+      "Tuần đăng ký",
+      "Xếp lịch",
+      "Nhân viên",
+      "Nhóm",
+      "Ca làm",
+    ];
+    let previous = -1;
+    for (const label of labels) {
+      const index = html.indexOf(label);
+      expect(index).toBeGreaterThan(previous);
+      previous = index;
+    }
+    expect(html).toContain('aria-current="page"');
+  });
+});
+```
+
+- [ ] **Step 2: Run and confirm red**
+
+```bash
+npm test -- src/admin/AdminNavigation.test.tsx
+```
+
+Expected: FAIL because the component does not exist.
+
+- [ ] **Step 3: Implement `AdminNavigation`**
+
+Use this tab data:
+
+```ts
+const tabs = [
+  ["dashboard", "/admin", "Trang chủ"],
+  ["availability", "/admin/availability", "Đăng ký nhân viên"],
+  ["registration-weeks", "/admin/registration-weeks", "Tuần đăng ký"],
+  ["schedule", "/admin/schedule", "Xếp lịch"],
+  ["employees", "/admin/employees", "Nhân viên"],
+  ["groups", "/admin/groups", "Nhóm"],
+  ["shifts", "/admin/shifts", "Ca làm"],
+] as const;
+```
+
+For `availability`, `registration-weeks`, and `schedule`, build the target with `adminWeekPath` when `selectedWeekStart` exists; use plain paths otherwise. Render the existing `<nav className="admin-tabs">` semantics and active `aria-current` behavior.
+
+- [ ] **Step 4: Add `AdminNavigation.css`**
+
+Use focused overrides:
+
+```css
+.admin-tabs {
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(76, 92, 84, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 8px 24px rgba(42, 55, 48, 0.06);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-tabs button {
+  flex: 0 0 auto;
+  border-radius: 11px;
+  transition: background 160ms ease, color 160ms ease,
+    transform 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-tabs button.active {
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(42, 55, 48, 0.12),
+    inset 0 -2px 0 rgba(95, 122, 107, 0.72);
+}
+
+.admin-tabs button:focus-visible {
+  outline: 2px solid rgba(82, 112, 96, 0.55);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .admin-tabs button:not(.active):hover {
+    transform: translateY(-1px);
+  }
+}
+```
+
+Retain existing global colors unless an override is needed; do not alter the admin header markup.
+
+- [ ] **Step 5: Replace the inline nav map in `AdminDashboard`**
+
+Import and render:
+
+```tsx
+<AdminNavigation
+  section={section}
+  selectedWeekStart={selectedWeek?.week_start ?? null}
+  navigate={navigate}
+/>
+```
+
+Task 4 supplies `selectedWeek` from URL state.
+
+- [ ] **Step 6: Run the navigation test and build**
+
+```bash
+npm test -- src/admin/AdminNavigation.test.tsx
+npm run build
+```
+
+Expected: PASS after Task 4 wiring is complete; if Task 3 is committed before Task 4, temporarily pass `null` in `AdminDashboard` and update that call in Task 4.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/admin/AdminNavigation.tsx src/admin/AdminNavigation.test.tsx src/admin/AdminNavigation.css src/admin/AdminDashboard.tsx
+git commit -m "style: redesign admin navigation"
+```
+
+---
+
+### Task 4: Create the dedicated registration-weeks page and matrix-only availability page
 
 **Files:**
 - Create: `src/admin/RegistrationWeeksPage.tsx`
 - Create: `src/admin/RegistrationWeeks.css`
-- Create: `src/admin/AdminNavigation.css`
+- Create: `src/admin/AdminAvailabilityPage.tsx`
+- Create: `src/admin/AdminAvailabilityPage.test.tsx`
 - Modify: `src/admin/AdminDashboard.tsx`
-- Modify: `src/admin/AdminDashboard.test.tsx`
 - Modify: `src/admin/AdminAvailability.css`
+- Modify: `src/admin/AdminDashboard.test.tsx`
 
 **Interfaces:**
-- `AdminDashboard` consumes `search: string` from `AdminApp`.
-- `RegistrationWeeksPage` consumes existing `WeekManager` props without reimplementing week business rules.
-- `AdminMatrix.onOpenScheduler` navigates to `/admin/schedule?week=<selected-week>`.
-- Admin tabs preserve the selected week for `registration-weeks`, `availability`, and `schedule`.
+- `RegistrationWeeksPage` is a thin wrapper around existing `WeekManager`.
+- `AdminAvailabilityPage` is a pure view over `selectedWeek`, `invalidRequestedWeek`, employees/groups/submissions, and navigation.
+- `AdminDashboard` remains responsible for API loading/mutations.
 
-- [ ] **Step 1: Add failing navigation/page-responsibility tests**
+- [ ] **Step 1: Write the failing availability-page tests**
 
-Extend `AdminDashboard.test.tsx` with static-render tests that assert:
+Create:
 
-```ts
-expect(markup).toContain("Tuần đăng ký");
-expect(markup).toContain('/admin/registration-weeks');
+```tsx
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import type { RegistrationWeek } from "../types/domain";
+import { AdminAvailabilityPage } from "./AdminAvailabilityPage";
+
+const week: RegistrationWeek = {
+  id: "week-1",
+  week_start: "2026-09-21",
+  lock_at: "2099-09-18T15:00:00.000Z",
+  status: "open",
+  created_at: "",
+  updated_at: "",
+};
+
+const employee = {
+  id: "employee-1",
+  name: "Nguyễn Phi Hùng",
+  active: true,
+  groupId: "group-1",
+  positionId: null,
+  positionName: null,
+  sortOrder: 0,
+  isNew: false,
+};
+
+describe("AdminAvailabilityPage", () => {
+  it("renders only the registration matrix for a valid week", () => {
+    const html = renderToStaticMarkup(
+      <AdminAvailabilityPage
+        selectedWeek={week}
+        invalidRequestedWeek={false}
+        employees={[employee]}
+        groups={[{ id: "group-1", name: "MEAT", sortOrder: 0 }]}
+        submissions={[]}
+        navigate={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Lịch nhân viên đăng ký");
+    expect(html).toContain("Xếp lịch tuần này");
+    expect(html).not.toContain("Quản lý tuần đăng ký");
+    expect(html).not.toContain("Tạo tuần mới");
+    expect(html).not.toContain("Tiến độ tuần");
+    expect(html).not.toContain("Tổng quan tuần");
+  });
+
+  it("shows a management link when no registration week exists", () => {
+    const html = renderToStaticMarkup(
+      <AdminAvailabilityPage
+        selectedWeek={null}
+        invalidRequestedWeek={false}
+        employees={[]}
+        groups={[]}
+        submissions={[]}
+        navigate={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Chưa có tuần đăng ký");
+    expect(html).toContain("Tạo tuần đăng ký");
+  });
+
+  it("does not silently fall back for an invalid requested week", () => {
+    const html = renderToStaticMarkup(
+      <AdminAvailabilityPage
+        selectedWeek={null}
+        invalidRequestedWeek
+        employees={[]}
+        groups={[]}
+        submissions={[]}
+        navigate={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Không tìm thấy tuần đăng ký");
+  });
+});
 ```
 
-For an availability-page render with preloaded/purely-renderable props or an extracted page renderer, assert the source/markup no longer includes week-management copy such as `Quản lý tuần đăng ký`, `Tạo tuần mới`, `Tiến độ tuần`, or `Tổng quan tuần`, while it still includes `Lịch nhân viên đăng ký` and `Xếp lịch tuần này`.
-
-If `AdminDashboard` is too stateful to static-render a loaded availability state cleanly, extract only the view selection into a small exported `AdminAvailabilityPage` component in `AdminDashboard.tsx` or a focused `AdminAvailabilityPage.tsx`; do not mock Supabase to test presentation.
-
-- [ ] **Step 2: Run the targeted admin tests and confirm red**
+- [ ] **Step 2: Run and confirm red**
 
 ```bash
-npm test -- src/admin/AdminDashboard.test.tsx src/app/router.test.ts
+npm test -- src/admin/AdminAvailabilityPage.test.tsx
 ```
 
-Expected: FAIL because the new tab/page is not wired yet.
+Expected: FAIL because the component does not exist.
 
-- [ ] **Step 3: Add `RegistrationWeeksPage` as a thin wrapper around `WeekManager`**
-
-Use a page shell, not duplicated actions:
+- [ ] **Step 3: Implement `RegistrationWeeksPage`**
 
 ```tsx
 import "./RegistrationWeeks.css";
@@ -352,11 +573,53 @@ export function RegistrationWeeksPage(props: Props) {
 }
 ```
 
-`RegistrationWeeks.css` should style only this page shell and WeekManager placement.
+Style only this page shell in `RegistrationWeeks.css`, with a readable max-width, centered page placement, and responsive padding; reuse global WeekManager/button/status styles.
 
-- [ ] **Step 4: Refactor `AdminDashboard` selection to use URL state**
+- [ ] **Step 4: Implement `AdminAvailabilityPage`**
 
-Add `search: string` to props and derive:
+Use explicit states:
+
+```tsx
+if (invalidRequestedWeek) {
+  return (
+    <section className="panel availability-empty-state">
+      <h2>Không tìm thấy tuần đăng ký</h2>
+      <p>Tuần được yêu cầu không tồn tại hoặc đã bị xóa.</p>
+      <button className="button primary" onClick={() => navigate("/admin/registration-weeks")}>
+        Quản lý tuần đăng ký
+      </button>
+    </section>
+  );
+}
+
+if (!selectedWeek) {
+  return (
+    <section className="panel availability-empty-state">
+      <h2>Chưa có tuần đăng ký</h2>
+      <p>Hãy tạo tuần đăng ký trước khi xem lịch nhân viên.</p>
+      <button className="button primary" onClick={() => navigate("/admin/registration-weeks")}>
+        Tạo tuần đăng ký
+      </button>
+    </section>
+  );
+}
+
+return (
+  <AdminMatrix
+    employees={employees}
+    groups={groups}
+    submissions={submissions}
+    weekStart={selectedWeek.week_start}
+    onOpenScheduler={() =>
+      navigate(adminWeekPath("/admin/schedule", selectedWeek.week_start))
+    }
+  />
+);
+```
+
+- [ ] **Step 5: Refactor `AdminDashboard` to derive week selection from the URL**
+
+Add `search: string` to props. Derive:
 
 ```ts
 const requestedWeekStart = weekStartFromSearch(search);
@@ -365,83 +628,79 @@ const { week: selectedWeek, invalidRequestedWeek } =
 const selectedWeekId = selectedWeek?.id ?? "";
 ```
 
-Remove `selectedWeekId` as independent React state. After creating a week, refresh and navigate to:
+Remove `selectedWeekId` React state. Include `registration-weeks` in base-data loading. Continue submission refresh/polling only for `dashboard` and `availability`.
+
+After creating a registration week:
 
 ```ts
-adminWeekPath("/admin/registration-weeks", created.week_start)
+const created = await createWeek(weekStart, lockAt);
+await refreshBase();
+navigate(adminWeekPath("/admin/registration-weeks", created.week_start));
+return created;
 ```
 
-When WeekManager selects an ID, look up its week and navigate to its `week_start` query instead of storing the ID only.
-
-Include `registration-weeks` in base-data loading. Continue submission polling only for `dashboard` and `availability`.
-
-- [ ] **Step 5: Add the new admin tab and preserve week across week-sensitive tabs**
-
-Import `./AdminNavigation.css` from `AdminDashboard.tsx`.
-
-Use nav entries in this order:
+For WeekManager selection:
 
 ```ts
-[
-  ["dashboard", "/admin", "Trang chủ"],
-  ["availability", "/admin/availability", "Đăng ký nhân viên"],
-  ["registration-weeks", "/admin/registration-weeks", "Tuần đăng ký"],
-  ["schedule", "/admin/schedule", "Xếp lịch"],
-  ["employees", "/admin/employees", "Nhân viên"],
-  ["groups", "/admin/groups", "Nhóm"],
-  ["shifts", "/admin/shifts", "Ca làm"],
-]
+onSelect={(id) => {
+  const next = weeks.find((week) => week.id === id);
+  if (next) navigate(adminWeekPath("/admin/registration-weeks", next.week_start));
+}}
 ```
 
-For `availability`, `registration-weeks`, and `schedule`, append the selected week query when `selectedWeek` exists. Keep other tabs query-free.
+After deleting the selected week, refresh weeks, resolve the next default using `resolveAdminRegistrationWeek(nextWeeks, null)`, then navigate to either its query URL or `/admin/registration-weeks`.
 
-Style `.admin-tabs` in `AdminNavigation.css` with:
-- a rounded containing surface;
-- rounded tab buttons;
-- an elevated active tab with a subtle bottom/inner indicator;
-- `transform: translateY(-1px)` only on hover-capable devices;
-- `transition` for background, transform, color, and box-shadow;
-- visible `:focus-visible` outline;
-- horizontal overflow on small screens rather than wrapped/overlapping tabs.
+- [ ] **Step 6: Render the two dedicated pages**
 
-Do not modify the admin header structure.
+For `section === "registration-weeks"`, render `RegistrationWeeksPage` with existing create/update/delete handlers.
 
-- [ ] **Step 6: Make `/admin/availability` matrix-only**
-
-Delete the availability hero, progress card, WeekManager block, and weekly summary from this route.
-
-Rendering rules:
+For `section === "availability"`, render only:
 
 ```tsx
-if (invalidRequestedWeek) {
-  // clear state: requested week does not exist
-} else if (!selectedWeek) {
-  // clear state: no registration weeks; button -> /admin/registration-weeks
-} else {
-  return (
-    <AdminMatrix
-      employees={employees}
-      groups={groups}
-      submissions={submissions}
-      weekStart={selectedWeek.week_start}
-      onOpenScheduler={() =>
-        navigate(adminWeekPath("/admin/schedule", selectedWeek.week_start))
-      }
-    />
-  );
+<AdminAvailabilityPage
+  selectedWeek={selectedWeek}
+  invalidRequestedWeek={invalidRequestedWeek}
+  employees={employees}
+  groups={groups}
+  submissions={submissions}
+  navigate={navigate}
+/>
+```
+
+Delete the old availability hero, progress card, `dashboard-grid` WeekManager block, and weekly summary from this route.
+
+- [ ] **Step 7: Finish matrix-only CSS**
+
+In `AdminAvailability.css` center area rows:
+
+```css
+.admin-availability-matrix .schedule-group-row th,
+.admin-availability-matrix .schedule-group-label {
+  text-align: center;
+}
+
+.availability-empty-state {
+  max-width: 620px;
+  margin: 32px auto;
+  text-align: center;
 }
 ```
 
-Keep `AdminMatrix` itself intact except CSS alignment changes. In `AdminAvailability.css`, center `.schedule-group-row th` and `.schedule-group-label`, and add a small matrix-only page spacing rule if necessary.
+Keep existing matrix horizontal scrolling and day-cell sizing.
 
-- [ ] **Step 7: Render `/admin/registration-weeks` using the wrapper**
+- [ ] **Step 8: Update the footer test props and run page tests**
 
-Pass existing `weeks`, `weekBusy`, `addWeek`, `patchWeek`, and `removeWeek`. On selection, update the URL query. On deletion of the selected week, after refresh navigate to the newly resolved default week if one exists; otherwise navigate to `/admin/registration-weeks` with no query.
+Update `AdminDashboard.test.tsx` renders to include `search=""`.
 
-- [ ] **Step 8: Run admin tests and build**
+Run:
 
 ```bash
-npm test -- src/admin/AdminDashboard.test.tsx src/admin/AdminSelects.test.tsx src/admin/adminWeekSelection.test.ts src/app/router.test.ts
+npm test -- \
+  src/admin/AdminAvailabilityPage.test.tsx \
+  src/admin/AdminNavigation.test.tsx \
+  src/admin/AdminDashboard.test.tsx \
+  src/admin/adminWeekSelection.test.ts \
+  src/app/router.test.ts
 npm run build
 ```
 
@@ -450,13 +709,13 @@ Expected: PASS.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/admin/AdminDashboard.tsx src/admin/AdminDashboard.test.tsx src/admin/RegistrationWeeksPage.tsx src/admin/RegistrationWeeks.css src/admin/AdminNavigation.css src/admin/AdminAvailability.css
+git add src/admin/RegistrationWeeksPage.tsx src/admin/RegistrationWeeks.css src/admin/AdminAvailabilityPage.tsx src/admin/AdminAvailabilityPage.test.tsx src/admin/AdminDashboard.tsx src/admin/AdminDashboard.test.tsx src/admin/AdminAvailability.css
 git commit -m "feat: split registration week management from availability"
 ```
 
 ---
 
-### Task 4: Make `/admin/schedule?week=` open the requested week and show an explicit create state when missing
+### Task 5: Make `/admin/schedule?week=` show an explicit missing-schedule state
 
 **Files:**
 - Modify: `src/admin/AdminDashboard.tsx`
@@ -465,46 +724,41 @@ git commit -m "feat: split registration week management from availability"
 - Modify: `src/admin/AdminSchedule.css`
 
 **Interfaces:**
-- `AdminScheduler.preferredWeekStart` remains the selected registration-week start.
-- `selectScheduleWeekId` continues returning `""` if the preferred week has no schedule week.
-- Add an explicit helper/state boundary so the empty state is rendered only after base schedule data loads.
-- Explicit creation calls existing `addScheduleWeek(preferredWeekStart)` and then reloads/selects the created week.
+- `AdminScheduler.preferredWeekStart` is the selected registration-week start.
+- `selectScheduleWeekId` keeps returning `""` when that exact week has no schedule week.
+- Explicit creation uses existing `addScheduleWeek(preferredWeekStart)`.
 
-- [ ] **Step 1: Write failing tests for missing selected schedule week**
+- [ ] **Step 1: Write failing source tests**
 
-Keep the existing pure test:
+Keep the existing helper assertion:
 
 ```ts
 expect(selectScheduleWeekId(scheduleWeeks, "schedule-a", "2026-09-28"))
   .toBe("");
 ```
 
-Add a source/markup test that requires the exact empty-state copy and explicit create button:
+Add:
 
 ```ts
 expect(adminSchedulerSource).toContain("Tuần này chưa có lịch xếp");
 expect(adminSchedulerSource).toContain("Tạo lịch tuần này");
 ```
 
-Also assert there is no effect that calls `addScheduleWeek(preferredWeekStart)` automatically during load.
-
-- [ ] **Step 2: Run scheduler select tests and confirm red**
+- [ ] **Step 2: Run and confirm red**
 
 ```bash
 npm test -- src/admin/AdminSelects.test.tsx
 ```
 
-Expected: FAIL on missing empty-state copy.
+Expected: FAIL on the new copy assertions.
 
-- [ ] **Step 3: Add base-loading state so missing-week UI never flashes before load**
-
-In `AdminScheduler`:
+- [ ] **Step 3: Add base-loading state**
 
 ```ts
 const [baseLoading, setBaseLoading] = useState(true);
 ```
 
-Wrap `loadBase` use with true/false lifecycle:
+Replace the current base-load effect with:
 
 ```ts
 useEffect(() => {
@@ -513,13 +767,15 @@ useEffect(() => {
   loadBase()
     .catch((reason) => active && setError(reason.message))
     .finally(() => active && setBaseLoading(false));
-  return () => { active = false; };
+  return () => {
+    active = false;
+  };
 }, [loadBase]);
 ```
 
-- [ ] **Step 4: Add explicit preferred-week creation action**
+This prevents a missing-week panel from flashing before schedule weeks load.
 
-Implement:
+- [ ] **Step 4: Add explicit create action**
 
 ```ts
 async function createPreferredScheduleWeek() {
@@ -537,7 +793,7 @@ async function createPreferredScheduleWeek() {
 }
 ```
 
-After `baseLoading` ends, if `preferredWeekStart` exists but `week` is null, render a focused `.schedule-missing-week` panel:
+After base loading and before the normal scheduler workspace, if `preferredWeekStart` exists and `week` is null, render:
 
 ```tsx
 <section className="panel schedule-missing-week">
@@ -555,36 +811,51 @@ After `baseLoading` ends, if `preferredWeekStart` exists but `week` is null, ren
 </section>
 ```
 
-Keep the existing generic manual “create schedule week” modal for other workflows; this direct button is only for the selected registration week.
+Do not call `addScheduleWeek` from an effect.
 
-- [ ] **Step 5: Wire schedule navigation to preserve the selected registration week**
+- [ ] **Step 5: Wire selected-week navigation in `AdminDashboard`**
 
-In `AdminDashboard`, pass:
+If `invalidRequestedWeek` is true, render a clear schedule-page state rather than mounting an unrelated schedule.
+
+If no registration week exists, render a state linking to `/admin/registration-weeks`.
+
+Otherwise mount:
 
 ```tsx
 <AdminScheduler
-  preferredWeekStart={selectedWeek?.week_start ?? ""}
+  preferredWeekStart={selectedWeek.week_start}
   registrationWeekStarts={weeks.map((week) => week.week_start)}
   onWeekStartChange={(weekStart) => {
     if (weeks.some((week) => week.week_start === weekStart)) {
       navigate(adminWeekPath("/admin/schedule", weekStart));
     }
   }}
-  onOpenAvailability={() => {
-    if (selectedWeek) {
-      navigate(adminWeekPath("/admin/availability", selectedWeek.week_start));
-    }
-  }}
+  onOpenAvailability={() =>
+    navigate(adminWeekPath("/admin/availability", selectedWeek.week_start))
+  }
 />
 ```
 
-If `invalidRequestedWeek` is true or no registration weeks exist, render the same clear admin-level states used by availability rather than mounting a scheduler for an unrelated week.
+- [ ] **Step 6: Style the missing-week state**
 
-- [ ] **Step 6: Style the empty state**
+```css
+.schedule-missing-week {
+  max-width: 620px;
+  margin: 28px auto;
+  padding: 32px;
+  text-align: center;
+}
 
-Add only focused `.schedule-missing-week` styles to `AdminSchedule.css`: centered copy, restrained max-width, clear action hierarchy, no modal.
+.schedule-missing-week h2 {
+  margin: 8px 0 6px;
+}
 
-- [ ] **Step 7: Run scheduler tests and build**
+.schedule-missing-week .button {
+  margin-top: 16px;
+}
+```
+
+- [ ] **Step 7: Run tests and build**
 
 ```bash
 npm test -- src/admin/AdminSelects.test.tsx src/admin/adminWeekSelection.test.ts
@@ -602,25 +873,23 @@ git commit -m "feat: handle missing schedule weeks explicitly"
 
 ---
 
-### Task 5: Improve schedule-table readability and reclaim horizontal space
+### Task 6: Improve schedule-table readability and horizontal balance
 
 **Files:**
 - Modify: `src/admin/ScheduleGrid.tsx`
 - Modify: `src/admin/ScheduleGrid.test.tsx`
 - Modify: `src/admin/AdminSchedule.css`
-- Modify if needed: `src/admin/SchedulePortExtras.css`
 
 **Interfaces:**
-- Add presentational hooks only; do not change `dnd-kit` IDs/data or drag/drop behavior.
-- Employee header gains `.schedule-employee-name` and `.schedule-employee-position` hooks.
-- Existing `.schedule-entry-chip` remains the interactive drag/edit target.
+- Add only presentational hooks; all `dnd-kit` IDs/data and drag behavior remain unchanged.
+- `.schedule-entry-chip` remains the interactive drag/edit target.
 
-- [ ] **Step 1: Write failing markup tests for employee-name hooks**
+- [ ] **Step 1: Write the failing markup test**
 
-Extend `ScheduleGrid.test.tsx`:
+Append to the existing `describe` in `ScheduleGrid.test.tsx`:
 
 ```ts
-it("exposes readable employee-name and position hooks", () => {
+it("exposes readable employee name and position hooks", () => {
   const html = render();
   expect(html).toContain('class="schedule-employee-name"');
   expect(html).toContain('class="schedule-employee-position"');
@@ -629,7 +898,7 @@ it("exposes readable employee-name and position hooks", () => {
 });
 ```
 
-- [ ] **Step 2: Run focused grid test and confirm red**
+- [ ] **Step 2: Run and confirm red**
 
 ```bash
 npm test -- src/admin/ScheduleGrid.test.tsx
@@ -637,9 +906,9 @@ npm test -- src/admin/ScheduleGrid.test.tsx
 
 Expected: FAIL because the classes do not exist.
 
-- [ ] **Step 3: Add the markup hooks without changing DnD**
+- [ ] **Step 3: Add markup hooks without changing DnD**
 
-Change only the inner copy:
+Replace only the employee copy markup with:
 
 ```tsx
 <span className="schedule-employee-copy">
@@ -651,11 +920,11 @@ Change only the inner copy:
 </span>
 ```
 
-Keep the drag handle, `useDraggable`, row drop targets, and all IDs unchanged.
+Keep the drag handle and all `useDraggable` / `useDroppable` data unchanged.
 
-- [ ] **Step 4: Rebalance the desktop layout in `AdminSchedule.css`**
+- [ ] **Step 4: Rebalance desktop widths**
 
-Use these concrete targets as the starting implementation:
+In `AdminSchedule.css`:
 
 ```css
 @media (min-width: 821px) {
@@ -669,9 +938,11 @@ Use these concrete targets as the starting implementation:
 }
 ```
 
-This reduces the left shift palette from 172px to 148px, giving the main table 24px more width, while the employee column becomes wide enough for names.
+This reduces the left “Ca làm” palette from 172px to 148px, returning 24px to the main schedule workspace, while widening the employee column for names.
 
-Make table content consistently centered:
+- [ ] **Step 5: Center table content and remove name truncation**
+
+Add/replace with:
 
 ```css
 .scheduler-layout .cloud-schedule-table th,
@@ -686,11 +957,7 @@ Make table content consistently centered:
   width: 100%;
   text-align: center;
 }
-```
 
-Replace the current ellipsis rule with readable wrapping:
-
-```css
 .schedule-employee-copy {
   width: 100%;
   justify-items: center;
@@ -704,6 +971,7 @@ Replace the current ellipsis rule with readable wrapping:
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
+  text-align: center;
 }
 
 .schedule-employee-position {
@@ -714,7 +982,9 @@ Replace the current ellipsis rule with readable wrapping:
 }
 ```
 
-Make official shift chips compact instead of visually filling the cell:
+Delete the current rule that forces all `.schedule-employee-copy strong, small` to `overflow:hidden; text-overflow:ellipsis; white-space:nowrap`.
+
+- [ ] **Step 6: Make shift chips visually compact**
 
 ```css
 .scheduler-layout .official-shifts {
@@ -738,13 +1008,13 @@ Make official shift chips compact instead of visually filling the cell:
 }
 ```
 
-Preserve right padding needed for the delete icon on editable chips; reduce only unnecessary horizontal padding. Split-shift labels may wrap at the existing slash/space boundary.
+Keep enough right padding for the existing delete icon on editable chips; reduce only unnecessary left/right padding. Preserve split-shift wrapping.
 
-- [ ] **Step 5: Keep mobile/responsive behavior safe**
+- [ ] **Step 7: Preserve responsive behavior**
 
-Do not apply the 205px employee column or 148px palette rule below 821px. Preserve horizontal scrolling where the existing shared schedule CSS needs it. Keep drag handles at least 24px and focusable.
+Apply the palette/employee-column width targets only at `min-width: 821px`. Keep existing horizontal table scrolling on smaller viewports and keep the drag handle at least 24px.
 
-- [ ] **Step 6: Run grid/sheet tests and build**
+- [ ] **Step 8: Run grid/sheet tests and build**
 
 ```bash
 npm test -- src/admin/ScheduleGrid.test.tsx src/scheduling/ScheduleSheet.test.tsx
@@ -753,68 +1023,48 @@ npm run build
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/admin/ScheduleGrid.tsx src/admin/ScheduleGrid.test.tsx src/admin/AdminSchedule.css src/admin/SchedulePortExtras.css
+git add src/admin/ScheduleGrid.tsx src/admin/ScheduleGrid.test.tsx src/admin/AdminSchedule.css
 git commit -m "style: improve scheduler table readability"
 ```
 
 ---
 
-### Task 6: Finalize availability/registration-week styling and verification
+### Task 7: Update CI and perform final verification
 
 **Files:**
-- Modify: `src/admin/AdminAvailability.css`
-- Modify: `src/admin/RegistrationWeeks.css`
-- Modify: `src/admin/AdminNavigation.css`
 - Modify: `.github/workflows/port-scheduler-ci.yml`
-- Tests: existing and new admin/scheduler tests from prior tasks
+- Tests: all existing and newly added admin/scheduler tests
 
 **Interfaces:**
-- No data-model changes.
-- CI must exercise the new query/week-flow tests in addition to the existing scheduler tests.
+- No production interface changes.
+- Final HEAD must be green before completion or PR creation.
 
-- [ ] **Step 1: Polish the availability matrix only within its CSS boundary**
+- [ ] **Step 1: Add new tests to focused CI**
 
-Keep the matrix block visually self-contained. Ensure:
-
-```css
-.admin-availability-matrix .schedule-group-row th,
-.admin-availability-matrix .schedule-group-label {
-  text-align: center;
-}
-```
-
-Employee labels and day cells remain centered, matrix scroll remains available on narrow screens, and the `Xếp lịch tuần này` action stays visible in the panel heading.
-
-- [ ] **Step 2: Polish the registration-weeks page without changing WeekManager logic**
-
-`RegistrationWeeks.css` should provide:
-- a page header with balanced spacing;
-- a max-width suitable for management controls;
-- responsive padding;
-- no duplicated button/status styles already provided globally.
-
-- [ ] **Step 3: Update focused CI test list**
-
-Add these tests to the `Scheduler focused tests` command in `.github/workflows/port-scheduler-ci.yml`:
+Add these paths to the existing focused test command:
 
 ```text
 src/app/router.test.ts
 src/admin/adminWeekSelection.test.ts
+src/admin/AdminNavigation.test.tsx
+src/admin/AdminAvailabilityPage.test.tsx
 src/admin/AdminDashboard.test.tsx
 src/admin/AdminSelects.test.tsx
 ```
 
 Keep all existing focused scheduler tests.
 
-- [ ] **Step 4: Run fresh focused tests**
+- [ ] **Step 2: Run fresh focused tests**
 
 ```bash
 npm test -- \
   src/app/router.test.ts \
   src/admin/adminWeekSelection.test.ts \
+  src/admin/AdminNavigation.test.tsx \
+  src/admin/AdminAvailabilityPage.test.tsx \
   src/admin/AdminDashboard.test.tsx \
   src/admin/AdminSelects.test.tsx \
   src/admin/ScheduleGrid.test.tsx \
@@ -825,9 +1075,9 @@ npm test -- \
   src/scheduling/publication.test.ts
 ```
 
-Expected: all tests PASS.
+Expected: all PASS.
 
-- [ ] **Step 5: Run full repository verification**
+- [ ] **Step 3: Run full repository verification**
 
 ```bash
 npm test
@@ -837,9 +1087,9 @@ npx --yes deno@latest check --config supabase/functions/deno.json supabase/funct
 git diff --check origin/main...HEAD
 ```
 
-Expected: every command exits successfully with zero test failures and no whitespace errors.
+Expected: every command exits successfully with zero failures and no whitespace errors.
 
-- [ ] **Step 6: Manual browser acceptance test**
+- [ ] **Step 4: Manual browser acceptance test**
 
 Run:
 
@@ -847,26 +1097,27 @@ Run:
 npm run dev
 ```
 
-Verify in the browser:
+Verify:
 
-1. `/admin/registration-weeks` shows the new tab/page and all existing week actions.
+1. `/admin/registration-weeks` shows `Tuần đăng ký` and all existing WeekManager actions.
 2. Selecting a week changes the URL to `?week=YYYY-MM-DD`.
-3. `/admin/availability?week=...` shows only the matrix block plus `Xếp lịch tuần này`.
+3. `/admin/availability?week=...` contains only the registration matrix block and `Xếp lịch tuần này`.
 4. `Xếp lịch tuần này` opens `/admin/schedule?week=<same week>`.
-5. If the schedule exists, the table opens immediately.
-6. If it does not exist, the page shows `Tuần này chưa có lịch xếp` and does not create anything until `Tạo lịch tuần này` is clicked.
-7. A long employee name wraps visibly instead of disappearing behind ellipsis.
-8. Employee names, groups, shifts, day headings, and staffing rows are centered/aligned.
-9. The left shift palette is narrower and the schedule table has more horizontal room.
-10. `/app/team-schedule` remains unavailable/not-found.
+5. Existing schedule week: table opens immediately.
+6. Missing schedule week: `Tuần này chưa có lịch xếp` is shown; nothing is created until `Tạo lịch tuần này` is clicked.
+7. Invalid `?week=` never silently switches to another week.
+8. Long employee names wrap visibly and remain centered.
+9. Employee names, positions, area headings, day headings, shift chips, and staffing rows are centered/aligned.
+10. The left shift palette is narrower and the main schedule workspace is wider.
+11. `/app/team-schedule` remains not-found.
 
-- [ ] **Step 7: Commit final CSS/CI changes**
+- [ ] **Step 5: Commit CI changes**
 
 ```bash
-git add src/admin/AdminAvailability.css src/admin/RegistrationWeeks.css src/admin/AdminNavigation.css .github/workflows/port-scheduler-ci.yml
-git commit -m "style: finish admin registration workflow redesign"
+git add .github/workflows/port-scheduler-ci.yml
+git commit -m "ci: cover admin registration redesign"
 ```
 
-- [ ] **Step 8: Verify the final HEAD again after the last commit**
+- [ ] **Step 6: Verify final HEAD again after the last commit**
 
-Run the same full repository verification commands from Step 5 and inspect the GitHub Actions run for the final commit before claiming completion or opening a PR.
+Run the same commands from Step 3 again. Then inspect the GitHub Actions run for the final commit. Do not claim completion and do not open a PR until both local/CI evidence are green.
