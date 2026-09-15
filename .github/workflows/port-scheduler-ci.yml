@@ -20,6 +20,13 @@ jobs:
       - name: Scheduler focused tests
         run: >-
           npm test --
+          src/app/router.test.ts
+          src/admin/adminWeekSelection.test.ts
+          src/admin/AdminNavigation.test.tsx
+          src/admin/AdminAvailabilityPage.test.tsx
+          src/admin/AdminSchedulePage.test.tsx
+          src/admin/AdminDashboard.test.tsx
+          src/admin/AdminSelects.test.tsx
           src/scheduling/employeeOrder.test.ts
           src/scheduling/reorderApi.test.ts
           src/scheduling/availabilityNotice.test.ts
