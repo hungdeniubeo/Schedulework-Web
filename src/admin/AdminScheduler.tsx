@@ -120,10 +120,29 @@ export function AdminScheduler({
     setEmployees(nextEmployees);
     setShifts(nextShifts);
     setWeeks(nextWeeks);
+    setGroupFilter((current) =>
+      current === "all" || nextGroups.some((group) => group.id === current)
+        ? current
+        : "all",
+    );
     setWeekId((current) =>
       selectScheduleWeekId(nextWeeks, current, preferredWeekStart),
     );
   }, [preferredWeekStart]);
+
+  const loadStructure = useCallback(async () => {
+    const [nextGroups, nextEmployees] = await Promise.all([
+      listGroups(),
+      listSchedulerEmployees(),
+    ]);
+    setGroups(nextGroups);
+    setEmployees(nextEmployees);
+    setGroupFilter((current) =>
+      current === "all" || nextGroups.some((group) => group.id === current)
+        ? current
+        : "all",
+    );
+  }, []);
 
   useEffect(() => {
     loadBase().catch((reason) =>
@@ -132,6 +151,20 @@ export function AdminScheduler({
       ),
     );
   }, [loadBase]);
+
+  useEffect(() => {
+    return subscribePageRefresh(() => {
+      if (busy) return;
+      void loadStructure().catch((reason) => {
+        console.error(reason);
+        setNotice(
+          reason instanceof Error
+            ? `Không làm mới được nhóm và nhân viên: ${reason.message}`
+            : "Không làm mới được nhóm và nhân viên. Lịch đang xếp vẫn được giữ nguyên.",
+        );
+      });
+    });
+  }, [busy, loadStructure]);
 
   const week = weeks.find((item) => item.id === weekId) ?? null;
   const weekStart = week?.weekStart ?? "";
