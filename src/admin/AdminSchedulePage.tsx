@@ -5,21 +5,15 @@ import { adminWeekPath } from "./adminWeekSelection";
 type Props = {
   selectedWeek: RegistrationWeek | null;
   invalidRequestedWeek: boolean;
-  scheduleWeekStarts: string[];
   registrationWeekStarts: string[];
-  busy: boolean;
   navigate: (path: string) => void;
-  onCreate: () => Promise<void>;
 };
 
 export function AdminSchedulePage({
   selectedWeek,
   invalidRequestedWeek,
-  scheduleWeekStarts,
   registrationWeekStarts,
-  busy,
   navigate,
-  onCreate,
 }: Props) {
   if (invalidRequestedWeek) {
     return (
@@ -42,32 +36,16 @@ export function AdminSchedulePage({
     return (
       <section className="panel schedule-missing-week">
         <span className="eyebrow">Xếp lịch</span>
-        <h2>Chưa có tuần đăng ký</h2>
-        <p>Hãy tạo tuần đăng ký trước khi bắt đầu xếp lịch.</p>
+        <h2>Chưa có tuần để xếp lịch</h2>
+        <p>
+          Hãy tạo tuần đăng ký trước. Lịch xếp sẽ được tạo tự động cùng tuần.
+        </p>
         <button
           type="button"
           className="button primary"
           onClick={() => navigate("/admin/registration-weeks")}
         >
-          Tạo tuần đăng ký
-        </button>
-      </section>
-    );
-  }
-
-  if (!scheduleWeekStarts.includes(selectedWeek.week_start)) {
-    return (
-      <section className="panel schedule-missing-week">
-        <span className="eyebrow">Xếp lịch chính thức</span>
-        <h2>Tuần này chưa có lịch xếp</h2>
-        <p>Hãy tạo lịch tuần này để bắt đầu xếp ca.</p>
-        <button
-          type="button"
-          className="button primary"
-          disabled={busy}
-          onClick={() => void onCreate()}
-        >
-          {busy ? "Đang tạo..." : "Tạo lịch tuần này"}
+          Tạo tuần mới
         </button>
       </section>
     );
