@@ -12,7 +12,10 @@ export function resolveAdminRegistrationWeek(
 ): { week: RegistrationWeek | null; invalidRequestedWeek: boolean } {
   if (requestedWeekStart) {
     const week =
-      weeks.find((item) => item.week_start === requestedWeekStart) ?? null;
+      weeks.find(
+        (item) =>
+          item.week_start === requestedWeekStart && item.status !== "archived",
+      ) ?? null;
     return { week, invalidRequestedWeek: week === null };
   }
   return {
