@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { AuthLoginPage } from "../components/AuthLoginPage";
 import { configurationError, getSupabase } from "../lib/config";
+import "./AdminScheduleLegacy.css";
 import { isAdmin } from "./api";
 
 const AdminDashboard = lazy(() =>
