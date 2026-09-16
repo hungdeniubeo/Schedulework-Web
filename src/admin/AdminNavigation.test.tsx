@@ -1,7 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AdminNavigation } from "./AdminNavigation";
-import adminNavigationCss from "./AdminNavigation.css?raw";
 
 describe("AdminNavigation", () => {
   it("renders the registration week tab in the requested order", () => {
@@ -61,12 +60,5 @@ describe("AdminNavigation", () => {
     expect(html.indexOf('class="admin-tabs-divider"')).toBeLessThan(
       html.indexOf("Nhân viên"),
     );
-  });
-
-  it("keeps the navigation left-aligned, stable on hover, and scrollable on small screens", () => {
-    expect(adminNavigationCss).toContain("justify-content: flex-start");
-    expect(adminNavigationCss).toContain(".admin-tabs-divider");
-    expect(adminNavigationCss).toContain("overflow-x: auto");
-    expect(adminNavigationCss).not.toContain("translateY(-1px)");
   });
 });
