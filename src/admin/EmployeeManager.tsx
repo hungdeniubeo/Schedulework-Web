@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { CustomSelect } from "../components/CustomSelect";
 import {
   ArrowDownIcon,
@@ -8,6 +14,7 @@ import {
   PlusIcon,
 } from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import type { TemporaryCredentials } from "../lib/serverApi";
 import {
   addPosition,
@@ -374,18 +381,38 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
   const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CloudEmployee | null>(null);
 
-  useEffect(() => {
-    Promise.all([listSchedulerEmployees(), listGroups(), listPositions()])
-      .then(([nextEmployees, nextGroups, nextPositions]) => {
-        setEmployees(nextEmployees);
-        setGroups(nextGroups);
-        setPositions(nextPositions);
-      })
-      .catch((reason) => setError(
-        reason instanceof Error ? reason.message : "Không tải được nhân viên.",
-      ))
-      .finally(() => setInitialLoading(false));
+  const refreshStructure = useCallback(async () => {
+    const [nextEmployees, nextGroups] = await Promise.all([
+      listSchedulerEmployees(),
+      listGroups(),
+    ]);
+    setEmployees(nextEmployees);
+    setGroups(nextGroups);
   }, []);
+
+  useEffect(() => {
+    Promise.all([refreshStructure(), listPositions().then(setPositions)])
+      .catch((reason) =>
+        setError(
+          reason instanceof Error ? reason.message : "Không tải được nhân viên.",
+        ),
+      )
+      .finally(() => setInitialLoading(false));
+  }, [refreshStructure]);
+
+  useEffect(() => {
+    return subscribePageRefresh(() => {
+      if (adding || busyId !== null || positionBusy) return;
+      void refreshStructure().catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Không làm mới được nhóm và nhân viên.",
+        );
+      });
+    });
+  }, [adding, busyId, positionBusy, refreshStructure]);
 
   async function add(event: FormEvent) {
     event.preventDefault();
