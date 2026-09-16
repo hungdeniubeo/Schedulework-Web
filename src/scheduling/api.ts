@@ -87,7 +87,10 @@ export async function patchGroup(
 }
 
 export async function removeGroup(id: string): Promise<void> {
-  const { error } = await getSupabase().from("groups").delete().eq("id", id);
+  const { error } = await getSupabase().rpc(
+    "delete_group_and_unassign_employees",
+    { target_group_id: id },
+  );
   fail(error, "Không xóa được nhóm.");
 }
 
