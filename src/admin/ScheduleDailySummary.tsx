@@ -5,6 +5,7 @@ import {
   type StaffingPeriod,
 } from "../scheduling/staffing";
 import type { ScheduleEntry, ShiftType } from "../scheduling/types";
+import "./ScheduleDailySummaryCompact.css";
 
 const WEEKDAY_LABELS = [
   "Thứ hai",
@@ -48,7 +49,10 @@ export function ScheduleDailySummary({
   );
 
   return (
-    <section className="schedule-daily-summary" aria-label="Tổng ca theo ngày">
+    <section
+      className="schedule-daily-summary compact-summary"
+      aria-label="Tổng ca theo ngày"
+    >
       <header className="schedule-daily-summary-heading">
         <span className="schedule-summary-icon" aria-hidden="true">▦</span>
         <span>
