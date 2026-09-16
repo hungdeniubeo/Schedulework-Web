@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-
-const source = readFileSync("src/admin/AdminScheduler.tsx", "utf8");
+import source from "./AdminScheduler.tsx?raw";
 
 describe("AdminScheduler workflow", () => {
   it("does not expose publication controls or publication status copy", () => {
