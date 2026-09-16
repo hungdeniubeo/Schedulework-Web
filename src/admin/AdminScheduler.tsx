@@ -13,6 +13,8 @@ import {
   RefreshIcon,
 } from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
+import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import { formatWeekDisplay } from "../lib/week";
 import {
   addScheduleEntry,
@@ -44,17 +46,10 @@ import type {
   ShiftType,
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
-import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
 import { ScheduleGrid } from "./ScheduleGrid";
 import { EntryEditor } from "./ScheduleEntryEditor";
 
 export { EntryEditor } from "./ScheduleEntryEditor";
-
-export function scheduleWeekStatusLabel(status: ScheduleWeekStatus): string {
-  if (status === "published") return "Đã công bố";
-  if (status === "archived") return "Đã lưu trữ";
-  return "Bản nháp";
-}
 
 export async function prepareScheduleWeekForEditing(
   week: ScheduleWeek,
@@ -153,7 +148,9 @@ export function AdminScheduler({
 
   const loadAvailability = useCallback(async () => {
     const request = ++availabilityRequest.current;
-    const submissions = weekStart ? await listScheduleAvailability(weekStart) : [];
+    const submissions = weekStart
+      ? await listScheduleAvailability(weekStart)
+      : [];
     if (request === availabilityRequest.current) {
       setAvailabilityByEmployee(mapAvailabilityByEmployee(submissions));
     }
@@ -182,6 +179,21 @@ export function AdminScheduler({
       availabilityRequest.current += 1;
     };
   }, [loadAvailability, loadEntries, weekId]);
+
+  useEffect(() => {
+    if (!weekStart) return;
+    return subscribePageRefresh(
+      () => {
+        void loadAvailability().catch((reason) => {
+          console.error(reason);
+          setNotice(
+            "Không làm mới được lịch đăng ký. Lịch đang xếp vẫn được giữ nguyên.",
+          );
+        });
+      },
+      { intervalMs: 15_000 },
+    );
+  }, [loadAvailability, weekStart]);
 
   const editable = Boolean(week && !weekDataLoading);
   const filteredEmployees = useMemo(
@@ -377,7 +389,9 @@ export function AdminScheduler({
       updateAvailabilityNotice(optimisticEntry);
     } catch (reason) {
       setEntries(previousEntries);
-      setError(reason instanceof Error ? reason.message : "Không di chuyển được ca.");
+      setError(
+        reason instanceof Error ? reason.message : "Không di chuyển được ca.",
+      );
     } finally {
       setBusy(false);
     }
@@ -474,29 +488,6 @@ export function AdminScheduler({
     }
   }
 
-  async function publishSchedule() {
-    if (!week) return;
-    if (findScheduleIssues(entries, shifts).length > 0) {
-      setError(
-        "Không thể công bố vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.",
-      );
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await patchScheduleWeek(week.id, {
-        status: "published",
-        publishedAt: new Date().toISOString(),
-      });
-      await loadBase();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không cập nhật được lịch.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function exportCurrentSchedule() {
     if (!week) return;
     if (findScheduleIssues(entries, shifts).length > 0) {
@@ -542,7 +533,7 @@ export function AdminScheduler({
     <div className="scheduler-page route-scoped">
       <section className="panel scheduler-toolbar">
         <div>
-          <span className="eyebrow">Xếp lịch chính thức</span>
+          <span className="eyebrow">Xếp lịch làm việc</span>
           <h2>
             {week
               ? formatWeekDisplay(week.weekStart)
@@ -554,26 +545,6 @@ export function AdminScheduler({
         <div className="schedule-actions">
           {week && (
             <>
-              <span
-                className={`status-badge ${
-                  week.status === "published"
-                    ? "open"
-                    : week.status === "draft"
-                      ? "draft"
-                      : "archived"
-                }`}
-              >
-                {scheduleWeekStatusLabel(week.status)}
-              </span>
-              {week.status === "draft" && (
-                <button
-                  className="button primary"
-                  disabled={busy || weekDataLoading || entries.length === 0}
-                  onClick={() => void publishSchedule()}
-                >
-                  Công bố lịch
-                </button>
-              )}
               <button
                 className="button secondary"
                 disabled={busy || weekDataLoading}
