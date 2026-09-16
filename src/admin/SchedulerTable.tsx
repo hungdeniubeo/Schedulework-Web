@@ -234,11 +234,15 @@ export function SchedulerTable({
                   const employeeHeader = renderEmployeeHeader ? (
                     renderEmployeeHeader(employee, areaClass)
                   ) : (
-                    <div className="scheduler-employee-identity">
+                    <div className="schedule-employee-identity">
                       <span className={`scheduler-employee-dot ${areaClass}`} />
-                      <span className="scheduler-employee-copy">
-                        <strong>{employee.name}</strong>
-                        {employee.positionName && <small>{employee.positionName}</small>}
+                      <span className="schedule-employee-copy">
+                        <strong className="schedule-employee-name">{employee.name}</strong>
+                        {employee.positionName && (
+                          <small className="schedule-employee-position">
+                            {employee.positionName}
+                          </small>
+                        )}
                       </span>
                       {employee.isNew && <span className="scheduler-new-badge">NEW</span>}
                     </div>
