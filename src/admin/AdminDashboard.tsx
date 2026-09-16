@@ -234,8 +234,18 @@ export function AdminDashboard({
   ) {
     setWeekBusy(true);
     try {
+      const archivingSelected =
+        changes.status === "archived" && selectedWeekId === id;
       await updateWeek(id, changes);
-      await refreshBase();
+      const { nextWeeks } = await refreshBase();
+      if (archivingSelected) {
+        const next = resolveAdminRegistrationWeek(nextWeeks, null).week;
+        navigate(
+          next
+            ? adminWeekPath("/admin/registration-weeks", next.week_start)
+            : "/admin/registration-weeks",
+        );
+      }
     } finally {
       setWeekBusy(false);
     }
