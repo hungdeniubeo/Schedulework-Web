@@ -4,6 +4,7 @@ import type { RegistrationWeek } from "../types/domain";
 import type { ScheduleWeek } from "../scheduling/types";
 import { AdminScheduler, prepareScheduleWeekForEditing } from "./AdminScheduler";
 import { WeekManager } from "./WeekManager";
+import adminSchedulerSource from "./AdminScheduler.tsx?raw";
 
 const registrationWeek = (
   id: string,
@@ -35,7 +36,7 @@ describe("weekly workflow regression coverage", () => {
     expect(updateStatus).toHaveBeenCalledWith(archivedWeek.id, "draft");
   });
 
-  it("keeps a route-scoped scheduler on the URL week instead of exposing a second week picker", () => {
+  it("keeps scheduling on the registration-week route with no second week lifecycle", () => {
     const html = renderToStaticMarkup(
       <AdminScheduler
         preferredWeekStart="2026-09-21"
@@ -45,8 +46,16 @@ describe("weekly workflow regression coverage", () => {
 
     expect(html).not.toContain('aria-label="Tuần xếp lịch"');
     expect(html).not.toContain('aria-label="Tạo lịch tuần mới"');
+    expect(html).not.toContain("Tạo lịch tuần");
+    expect(html).not.toContain("Tuần bắt đầu từ Thứ Hai");
     expect(html).toContain('aria-label="Tìm nhân viên"');
     expect(html).toContain('aria-label="Lọc theo nhóm"');
+
+    expect(adminSchedulerSource).not.toContain("addScheduleWeek");
+    expect(adminSchedulerSource).not.toContain("creatingWeek");
+    expect(adminSchedulerSource).not.toContain("newWeekStart");
+    expect(adminSchedulerSource).not.toContain("Tạo lịch tuần mới");
+    expect(adminSchedulerSource).not.toContain("Tuần xếp lịch");
   });
 
   it("gives every archived-week delete action an explicit target label", () => {
