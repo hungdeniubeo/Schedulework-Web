@@ -38,7 +38,10 @@ describe("AdminSchedulePage", () => {
       />,
     );
 
-    expect(html).toContain("Xếp lịch chính thức");
+    expect(html).toContain("Xếp lịch làm việc");
+    expect(html).not.toContain("Công bố lịch");
+    expect(html).not.toContain("Bản nháp");
+    expect(html).not.toContain("Đã công bố");
     expect(html).not.toContain("Tuần này chưa có lịch xếp");
     expect(html).not.toContain("Tạo lịch tuần này");
   });
