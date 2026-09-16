@@ -10,6 +10,29 @@ function resolveScheduleExportElement(
   return sourceDocument.getElementById(elementId);
 }
 
+function prepareScheduleExportClone(element: HTMLElement): void {
+  for (const selector of [
+    ".schedule-entry-delete",
+    ".schedule-employee-drag-handle",
+    ".schedule-drop-message",
+  ]) {
+    element.querySelectorAll<HTMLElement>(selector).forEach((control) => {
+      control.style.display = "none";
+    });
+  }
+
+  element.querySelectorAll<HTMLDetailsElement>(".availability-detail").forEach((detail) => {
+    detail.removeAttribute("open");
+  });
+
+  element.querySelectorAll<HTMLInputElement>(".staffing-count-input").forEach((input) => {
+    input.style.pointerEvents = "none";
+    input.style.border = "0px";
+    input.style.background = "transparent";
+    input.style.boxShadow = "none";
+  });
+}
+
 export async function exportScheduleJpg(
   elementId: string,
   weekStart: string,
@@ -53,6 +76,7 @@ export async function exportScheduleJpg(
       clonedElement.style.width = `${width}px`;
       clonedElement.style.maxWidth = "none";
       clonedElement.style.overflow = "visible";
+      prepareScheduleExportClone(clonedElement);
     },
   });
   const blob = await new Promise<Blob | null>((resolve) =>
