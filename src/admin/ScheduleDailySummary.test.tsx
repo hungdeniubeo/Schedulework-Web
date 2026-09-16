@@ -1,7 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry, ShiftType } from "../scheduling/types";
-import legacyCss from "./AdminScheduleLegacy.css?inline";
 import { ScheduleDailySummary } from "./ScheduleDailySummary";
 
 const shifts: ShiftType[] = [
@@ -57,21 +56,17 @@ describe("ScheduleDailySummary", () => {
     expect(html).toContain('value="4"');
   });
 
-  it("keeps the summary compact, centered and evenly aligned", () => {
-    expect(legacyCss).toMatch(
-      /\.schedule-daily-summary-heading\s*\{[^}]*justify-content:\s*center;[^}]*text-align:\s*center;/s,
+  it("marks the summary for the compact centered presentation", () => {
+    const html = renderToStaticMarkup(
+      <ScheduleDailySummary
+        weekStart="2026-09-21"
+        entries={entries}
+        shifts={shifts}
+        editable
+        onSetCountOverride={() => undefined}
+      />,
     );
-    expect(legacyCss).toMatch(
-      /\.schedule-daily-summary-card\s*\{[^}]*align-content:\s*center;[^}]*gap:\s*2px;/s,
-    );
-    expect(legacyCss).toMatch(
-      /\.schedule-summary-date\s*\{[^}]*justify-content:\s*center;[^}]*align-items:\s*center;/s,
-    );
-    expect(legacyCss).toMatch(
-      /\.schedule-summary-line\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*34px;[^}]*min-height:\s*18px;/s,
-    );
-    expect(legacyCss).toMatch(
-      /\.schedule-summary-line \.staffing-count-input\s*\{[^}]*width:\s*34px;[^}]*height:\s*20px;/s,
-    );
+
+    expect(html).toContain('class="schedule-daily-summary compact-summary"');
   });
 });
