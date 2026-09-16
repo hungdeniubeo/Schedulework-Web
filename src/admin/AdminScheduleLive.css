@@ -1,35 +1,72 @@
 /* Live scheduler parity layer: keep the visible table aligned with the approved reference layout. */
 
 .scheduler-workspace .schedule-table-scroll {
-  --scheduler-employee-width: 360px;
+  --scheduler-employee-width: 220px;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface {
-  --scheduler-employee-width: 360px !important;
-  min-width: 1340px;
+  --scheduler-employee-width: 220px !important;
+  min-width: 1120px;
 }
 
 .scheduler-workspace .schedule-daily-summary {
   grid-template-columns: var(--scheduler-employee-width) repeat(7, minmax(0, 1fr));
-  min-width: 1340px;
+  min-width: 1120px;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface .scheduler-name-cell {
-  text-align: left;
+  padding: 4px 6px;
+  text-align: center;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-identity {
-  justify-content: flex-start;
+  position: relative;
+  width: 100%;
+  min-height: 24px;
+  justify-content: center;
+  gap: 5px;
+  padding-inline: 24px;
+}
+
+.scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-drag-handle {
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 0.68rem;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-copy {
-  justify-items: start;
-  text-align: left;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 150px;
+  justify-items: center;
+  gap: 1px;
+  text-align: center;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-name,
 .scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-position {
-  text-align: left;
+  max-width: 100%;
+  text-align: center;
+}
+
+.scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-name {
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.scheduler-workspace .legacy-scheduler-live-surface .schedule-employee-position {
+  font-size: 0.58rem;
+  line-height: 1.1;
+}
+
+.scheduler-workspace .legacy-scheduler-live-surface .schedule-new-badge {
+  position: absolute;
+  right: 0;
+  padding: 1px 4px;
+  font-size: 0.52rem;
 }
 
 .scheduler-workspace .legacy-scheduler-live-surface .schedule-entry-wrap {
@@ -52,6 +89,6 @@
 @media (max-width: 1100px) {
   .scheduler-workspace .legacy-scheduler-live-surface,
   .scheduler-workspace .schedule-daily-summary {
-    min-width: 1180px;
+    min-width: 1040px;
   }
 }
