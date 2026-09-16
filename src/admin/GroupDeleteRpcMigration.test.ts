@@ -6,7 +6,11 @@ const migrations = import.meta.glob("../../supabase/migrations/*.sql", {
   import: "default",
 }) as Record<string, string>;
 
-const migrationSql = Object.values(migrations).join("\n").toLocaleLowerCase("en");
+const migrationSql = (
+  Object.entries(migrations).find(([path]) =>
+    path.endsWith("202609160005_delete_group_and_unassign_employees.sql"),
+  )?.[1] ?? ""
+).toLocaleLowerCase("en");
 
 describe("atomic group delete migration", () => {
   it("unassigns employees before deleting the group record", () => {
