@@ -21,9 +21,7 @@ import type {
   RegistrationWeekStatus,
 } from "../types/domain";
 import {
-  addScheduleWeek,
   listGroups,
-  listScheduleWeeks,
   listSchedulerEmployees,
 } from "../scheduling/api";
 import type { CloudEmployee, Group } from "../scheduling/types";
@@ -91,14 +89,10 @@ export function AdminDashboard({
   const [employees, setEmployees] = useState<CloudEmployee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [weeks, setWeeks] = useState<Awaited<ReturnType<typeof listWeeks>>>([]);
-  const [scheduleWeeks, setScheduleWeeks] = useState<
-    Awaited<ReturnType<typeof listScheduleWeeks>>
-  >([]);
   const [submissions, setSubmissions] = useState<AvailabilitySubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekBusy, setWeekBusy] = useState(false);
-  const [scheduleBusy, setScheduleBusy] = useState(false);
   const submissionsRequest = useRef(0);
 
   const requestedWeekStart = weekStartFromSearch(search);
@@ -107,18 +101,15 @@ export function AdminDashboard({
   const selectedWeekId = selectedWeek?.id ?? "";
 
   const refreshBase = useCallback(async () => {
-    const [nextEmployees, nextGroups, nextWeeks, nextScheduleWeeks] =
-      await Promise.all([
-        listSchedulerEmployees(),
-        listGroups(),
-        listWeeks(),
-        listScheduleWeeks(),
-      ]);
+    const [nextEmployees, nextGroups, nextWeeks] = await Promise.all([
+      listSchedulerEmployees(),
+      listGroups(),
+      listWeeks(),
+    ]);
     setEmployees(nextEmployees);
     setGroups(nextGroups);
     setWeeks(nextWeeks);
-    setScheduleWeeks(nextScheduleWeeks);
-    return { nextWeeks, nextScheduleWeeks };
+    return { nextWeeks };
   }, []);
 
   useEffect(() => {
@@ -271,22 +262,6 @@ export function AdminDashboard({
     }
   }
 
-  async function createSelectedScheduleWeek() {
-    if (!selectedWeek || scheduleBusy) return;
-    setScheduleBusy(true);
-    setError(null);
-    try {
-      await addScheduleWeek(selectedWeek.week_start);
-      await refreshBase();
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không tạo được lịch tuần.",
-      );
-    } finally {
-      setScheduleBusy(false);
-    }
-  }
-
   const availabilityPath = selectedWeek
     ? adminWeekPath("/admin/availability", selectedWeek.week_start)
     : "/admin/availability";
@@ -371,11 +346,8 @@ export function AdminDashboard({
             <AdminSchedulePage
               selectedWeek={selectedWeek}
               invalidRequestedWeek={invalidRequestedWeek}
-              scheduleWeekStarts={scheduleWeeks.map((week) => week.weekStart)}
               registrationWeekStarts={weeks.map((week) => week.week_start)}
-              busy={scheduleBusy}
               navigate={navigate}
-              onCreate={createSelectedScheduleWeek}
             />
           </Suspense>
         ) : section === "dashboard" ? (
