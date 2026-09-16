@@ -70,7 +70,7 @@ describe("SchedulerTable legacy parity", () => {
     expect(html).toContain("Nguyễn Phi Hùng");
     expect(html).toContain("Bếp trưởng");
     expect(html).toContain("NEW");
-    expect(html).toContain('colspan="8"');
+    expect(html).toContain('colSpan="8"');
     expect(html).toContain("MEAT");
     expect(html.indexOf("10:00 – 14:00")).toBeLessThan(
       html.indexOf("17:00 – 23:00"),
