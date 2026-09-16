@@ -11,6 +11,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { BrandLogo } from "../components/BrandLogo";
 import { CowMascot } from "../components/CowMascot";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   createEmployeeAccount,
   resetEmployeePassword,
@@ -134,6 +135,20 @@ export function AdminDashboard({
         );
       })
       .finally(() => setLoading(false));
+  }, [refreshBase, section]);
+
+  useEffect(() => {
+    if (section !== "availability" && section !== "dashboard") return;
+    return subscribePageRefresh(() => {
+      void refreshBase().catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Không làm mới được nhóm và nhân viên.",
+        );
+      });
+    });
   }, [refreshBase, section]);
 
   const refreshSubmissions = useCallback(async () => {
