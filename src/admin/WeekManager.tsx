@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CustomSelect } from "../components/CustomSelect";
 import { PlusIcon } from "../components/Icons";
 import {
   formatAdminDeadline,
   formatDateShort,
   formatWeekDisplay,
+  formatWeekRange,
   isoToVietnamDateTimeInput,
   isRegistrationLocked,
 } from "../lib/week";
@@ -15,6 +16,7 @@ import {
   EditWeekDialog,
 } from "./WeekDialogs";
 import {
+  partitionRegistrationWeeks,
   registrationWeekActionState,
   registrationWeekStatusLabel,
   registrationWeekStatusTone,
@@ -65,16 +67,25 @@ export function WeekManager({
   onUpdate,
   onDelete,
 }: Props) {
-  const selected = weeks.find((week) => week.id === selectedId) ?? null;
-  const [dialog, setDialog] =
-    useState<"create" | "edit" | "delete" | null>(null);
+  const { active: activeWeeks, archived: archivedWeeks } =
+    partitionRegistrationWeeks(weeks);
+  const selected = activeWeeks.find((week) => week.id === selectedId) ?? null;
+  const [dialog, setDialog] = useState<"create" | "edit" | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RegistrationWeek | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const effectivelyLocked = selected
     ? isRegistrationLocked(selected.status, selected.lock_at)
     : false;
   const actions = selected
     ? registrationWeekActionState(selected.status, effectivelyLocked)
     : null;
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = window.setTimeout(() => setSuccessMessage(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [successMessage]);
 
   async function runAction(changes: {
     status?: RegistrationWeekStatus;
@@ -109,7 +120,7 @@ export function WeekManager({
         </button>
       </div>
 
-      {weeks.length > 0 ? (
+      {activeWeeks.length > 0 ? (
         <>
           <div className="week-picker-field">
             <span>Tuần đang quản lý</span>
@@ -118,12 +129,12 @@ export function WeekManager({
               className="week-picker"
               value={selectedId}
               disabled={busy}
-              options={weeks.map((week) => ({
+              options={activeWeeks.map((week) => ({
                 value: week.id,
                 label: formatWeekDisplay(week.week_start),
               }))}
               renderValue={(option) => {
-                const week = weeks.find((item) => item.id === option.value);
+                const week = activeWeeks.find((item) => item.id === option.value);
                 return week ? (
                   <>
                     <strong>{option.label}</strong>
@@ -134,7 +145,7 @@ export function WeekManager({
                 );
               }}
               renderOption={(option) => {
-                const week = weeks.find((item) => item.id === option.value);
+                const week = activeWeeks.find((item) => item.id === option.value);
                 return week ? (
                   <span className="week-picker-option">
                     <span className="week-picker-option-heading">
@@ -244,7 +255,7 @@ export function WeekManager({
                       className="button ghost danger"
                       type="button"
                       disabled={busy}
-                      onClick={() => setDialog("delete")}
+                      onClick={() => setDeleteTarget(selected)}
                     >
                       Xóa tuần
                     </button>
@@ -256,9 +267,36 @@ export function WeekManager({
         </>
       ) : (
         <div className="week-manager-empty">
-          <strong>Chưa có tuần đăng ký</strong>
-          <p>Tạo tuần đầu tiên để bắt đầu nhận lịch từ nhân viên.</p>
+          <strong>Chưa có tuần đăng ký đang hoạt động</strong>
+          <p>Tạo tuần mới để bắt đầu nhận lịch từ nhân viên.</p>
         </div>
+      )}
+
+      {archivedWeeks.length > 0 && (
+        <details className="archived-weeks">
+          <summary>
+            <span>Tuần đã lưu trữ</span>
+            <small>{archivedWeeks.length} tuần</small>
+          </summary>
+          <div className="archived-week-list">
+            {archivedWeeks.map((week) => (
+              <div className="archived-week-row" key={week.id}>
+                <div>
+                  <strong>{formatWeekDisplay(week.week_start)}</strong>
+                  <span className="status-badge archived">Đã lưu trữ</span>
+                </div>
+                <button
+                  type="button"
+                  className="button ghost danger compact"
+                  disabled={busy}
+                  onClick={() => setDeleteTarget(week)}
+                >
+                  Xóa
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {error && <div className="inline-error" role="alert">{error}</div>}
@@ -280,14 +318,28 @@ export function WeekManager({
           onSave={(lockAt) => onUpdate(selected.id, { lock_at: lockAt })}
         />
       )}
-      {dialog === "delete" && selected && actions?.canDelete && (
+      {deleteTarget && (
         <DeleteWeekDialog
-          week={selected}
+          week={deleteTarget}
           busy={busy}
-          onClose={() => setDialog(null)}
-          onDelete={onDelete}
+          onClose={() => setDeleteTarget(null)}
+          onDelete={async (id) => {
+            const range = formatWeekRange(deleteTarget.week_start);
+            await onDelete(id);
+            setDeleteTarget(null);
+            setSuccessMessage(
+              `Đã xóa tuần ${range} và toàn bộ dữ liệu liên quan.`,
+            );
+          }}
         />
       )}
+      <div className="admin-toast-region" aria-live="polite" aria-atomic="true">
+        {successMessage && (
+          <div className="admin-success-toast" role="status">
+            {successMessage}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
