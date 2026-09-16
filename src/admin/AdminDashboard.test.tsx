@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Session } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
+import source from "./AdminDashboard.tsx?raw";
 import { AdminDashboard } from "./AdminDashboard";
 
 describe("AdminDashboard", () => {
@@ -23,5 +24,12 @@ describe("AdminDashboard", () => {
     expect(markup.replace(/<[^>]*>/g, "")).toContain(
       "I love Gyu-kaku ❤️❤️❤️",
     );
+  });
+
+  it("refreshes dashboard and availability structure on focus or visibility", () => {
+    expect(source).toContain("subscribePageRefresh");
+    expect(source).toContain("refreshBase");
+    expect(source).toContain('section === "availability"');
+    expect(source).toContain('section === "dashboard"');
   });
 });
