@@ -22,6 +22,7 @@ jobs:
           npm test --
           src/app/router.test.ts
           src/admin/api.test.ts
+          src/admin/UnifiedWeekWorkflowMigration.test.ts
           src/admin/DeleteWeekDiagnostics.test.ts
           src/admin/WeeklyFlowRegression.test.tsx
           src/admin/adminWeekSelection.test.ts
