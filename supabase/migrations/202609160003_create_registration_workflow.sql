@@ -11,7 +11,7 @@ create or replace function public.create_registration_workflow(
   target_week_start date,
   target_lock_at timestamptz
 )
-returns public.registration_weeks
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
@@ -32,7 +32,7 @@ begin
   insert into public.schedule_weeks (week_start, status)
   values (target_week_start, 'draft');
 
-  return created_week;
+  return to_jsonb(created_week);
 end;
 $$;
 
