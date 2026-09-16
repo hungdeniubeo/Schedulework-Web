@@ -16,15 +16,20 @@ type Props = {
   navigate: (path: string) => void;
 };
 
-const tabs = [
+type AdminTab = readonly [AdminSection, string, string];
+
+const primaryTabs = [
   ["dashboard", "/admin", "Trang chủ"],
   ["availability", "/admin/availability", "Đăng ký nhân viên"],
   ["registration-weeks", "/admin/registration-weeks", "Tuần đăng ký"],
   ["schedule", "/admin/schedule", "Xếp lịch"],
+] as const satisfies readonly AdminTab[];
+
+const managementTabs = [
   ["employees", "/admin/employees", "Nhân viên"],
   ["groups", "/admin/groups", "Nhóm"],
   ["shifts", "/admin/shifts", "Ca làm"],
-] as const satisfies readonly (readonly [AdminSection, string, string])[];
+] as const satisfies readonly AdminTab[];
 
 const weekSensitiveSections = new Set<AdminSection>([
   "availability",
@@ -37,26 +42,35 @@ export function AdminNavigation({
   selectedWeekStart,
   navigate,
 }: Props) {
+  const renderTab = ([key, path, label]: AdminTab) => {
+    const target =
+      selectedWeekStart && weekSensitiveSections.has(key)
+        ? adminWeekPath(path, selectedWeekStart)
+        : path;
+
+    return (
+      <button
+        key={key}
+        type="button"
+        className={section === key ? "active" : ""}
+        aria-current={section === key ? "page" : undefined}
+        data-target={target}
+        onClick={() => navigate(target)}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     <nav className="admin-tabs" aria-label="Điều hướng quản trị">
-      {tabs.map(([key, path, label]) => {
-        const target =
-          selectedWeekStart && weekSensitiveSections.has(key)
-            ? adminWeekPath(path, selectedWeekStart)
-            : path;
-        return (
-          <button
-            key={key}
-            type="button"
-            className={section === key ? "active" : ""}
-            aria-current={section === key ? "page" : undefined}
-            data-target={target}
-            onClick={() => navigate(target)}
-          >
-            {label}
-          </button>
-        );
-      })}
+      <div className="admin-tabs-inner">
+        <div className="admin-tabs-primary">{primaryTabs.map(renderTab)}</div>
+        <span className="admin-tabs-divider" aria-hidden="true" />
+        <div className="admin-tabs-management">
+          {managementTabs.map(renderTab)}
+        </div>
+      </div>
     </nav>
   );
 }
