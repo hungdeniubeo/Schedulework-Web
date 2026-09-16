@@ -127,23 +127,23 @@ describe("Admin scheduler availability guidance", () => {
 
   it("offers direct deletion only for an editable official shift", () => {
     const editableHtml = render();
-    const publishedHtml = render({}, null, false);
+    const readOnlyHtml = render({}, null, false);
 
     expect(editableHtml).toContain(
       'aria-label="Xóa ca 17:00 – 23:00 của Nguyễn Phi Hùng"',
     );
     expect(editableHtml).not.toContain("Xóa đăng ký");
-    expect(publishedHtml).not.toContain('aria-label="Xóa ca');
+    expect(readOnlyHtml).not.toContain('aria-label="Xóa ca');
   });
 
   it("provides a trash target only for editable official shifts", () => {
     const editableHtml = render();
-    const publishedHtml = render({}, null, false);
+    const readOnlyHtml = render({}, null, false);
 
     expect(editableHtml).toContain(
       'aria-label="Thả ca chính thức vào đây để xóa"',
     );
-    expect(publishedHtml).not.toContain(
+    expect(readOnlyHtml).not.toContain(
       'aria-label="Thả ca chính thức vào đây để xóa"',
     );
   });
@@ -164,7 +164,7 @@ describe("Admin scheduler availability guidance", () => {
     expect(html).toContain("1/1</strong><span>nhân viên có ca");
   });
 
-  it("keeps staffing controls aligned inside the schedule table footer", () => {
+  it("renders the legacy table and separate daily staffing summary", () => {
     const html = renderToStaticMarkup(
       <ScheduleGrid
         groups={[{ id: "group-1", name: "Bếp nóng", sortOrder: 0 }]}
@@ -184,26 +184,20 @@ describe("Admin scheduler availability guidance", () => {
       />,
     );
 
-    expect(html).toContain("<tfoot>");
-    expect(html).toContain(
-      '<tr class="schedule-staffing-row"><th>Sáng</th>',
-    );
-    expect(html).toContain(
-      '<tr class="schedule-staffing-row"><th>Trưa</th>',
-    );
-    expect(html).toContain(
-      '<tr class="schedule-staffing-row"><th>Tối</th>',
-    );
+    expect(html).toContain("legacy-scheduler-table");
+    expect(html).not.toContain("<tfoot>");
+    expect(html).toContain("schedule-daily-summary");
+    expect(html).toContain("TỔNG CA");
     expect(html.match(/class="staffing-count-input"/g)).toHaveLength(21);
     expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
     expect(html).toContain('value="4"');
-    expect(html).not.toContain('class="staffing-summary"');
   });
 
-  it("exposes readable employee name and position hooks", () => {
+  it("exposes readable employee identity with group dot and position", () => {
     const html = render();
     expect(html).toContain('class="schedule-employee-name"');
     expect(html).toContain('class="schedule-employee-position"');
+    expect(html).toContain("scheduler-employee-dot");
     expect(html).toContain("Nguyễn Phi Hùng");
     expect(html).toContain("Bếp trưởng");
   });
