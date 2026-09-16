@@ -4,7 +4,7 @@
 
 **Goal:** Harden the existing weekly scheduling flow so employee/position data stays consistent, registration dates and deadlines remain exact, employee submissions flow through all views, scheduler guidance is low-noise and synchronized with configured shifts, and deleting a week atomically removes the entire online workflow.
 
-**Architecture:** Keep the existing Supabase-backed domain model and treat `registration_weeks` and `schedule_weeks` with the same `week_start` as one lifecycle without merging their tables. Add one Admin-only PostgreSQL RPC for atomic deletion, keep `availability_submissions` as the shared registration source of truth, add a small pure helper for exact availability-to-shift matching, and make targeted UI changes in week management and scheduler cells. Preserve already-correct behavior rather than refactoring it.
+**Architecture:** Keep the existing Supabase-backed domain model and treat `registration_weeks` and `schedule_weeks` with the same `week_start` as one lifecycle without merging their tables. Add one Admin-only PostgreSQL RPC for atomic deletion, keep `availability_submissions` as the shared registration source of truth, add a pure exact-match helper for availability versus configured shifts, and make targeted UI changes in week management and scheduler cells. Preserve already-correct behavior rather than refactoring it.
 
 **Tech Stack:** React 19, TypeScript 5.8, Vite 7, Vitest 3, Supabase/PostgreSQL, `@supabase/supabase-js`, `@dnd-kit/core`.
 
@@ -35,165 +35,107 @@
 
 ## File Structure
 
-### New files
+### Create
 
 - `supabase/migrations/202609160001_delete_registration_workflow.sql` — Admin-only transactional RPC that removes the matching schedule workflow and registration workflow by registration-week id.
 - `src/scheduling/availabilityShiftMatch.ts` — pure exact-match helper between employee availability intervals and configured `ShiftType` ranges.
 - `src/scheduling/availabilityShiftMatch.test.ts` — exact, split, unmatched, invalid, and OFF matching coverage.
-- `src/admin/WeekDialogs.test.tsx` — destructive week-delete dialog copy/structure regression coverage.
+- `src/admin/WeekDialogs.test.tsx` — destructive week-delete dialog copy/structure coverage.
 
-### Existing files to modify
+### Modify
 
-- `src/admin/api.ts` — replace direct `registration_weeks.delete()` with `delete_registration_workflow` RPC.
-- `src/admin/api.test.ts` — assert deletion uses the RPC and not a direct table delete.
-- `src/admin/AdminDashboard.tsx` — after archive/delete, resolve navigation to a valid non-archived week; preserve current selected-week/query behavior.
-- `src/admin/AdminDashboard.test.tsx` — regression coverage for fallback selection after lifecycle changes where practical through extracted pure helper coverage or existing page behavior.
-- `src/admin/WeekManager.tsx` — separate active and archived weeks, target deletion to any week row, show success toast.
-- `src/admin/RegistrationWeeks.css` — style archived section, destructive dialog emphasis, and success toast.
-- `src/admin/WeekDialogs.tsx` — styled destructive confirmation copy and action label `Xóa toàn bộ tuần`.
-- `src/admin/RegistrationWeeksPage.tsx` — keep page shell simple; only adjust composition if required by archive section/toast layout.
-- `src/admin/registrationWeekUi.ts` / `src/admin/registrationWeekUi.test.ts` — preserve action rules and add any pure active/archive partition helper only if it keeps `WeekManager` simpler.
-- `src/admin/ScheduleGrid.tsx` — official shifts first; interactive registration pill below; exact configured-shift color/label reuse; OFF and neutral fallbacks.
-- `src/admin/ScheduleGrid.test.tsx` — assert DOM ordering and all registration visual cases.
-- `src/admin/AdminSchedule.css` — muted registration pill and read-only detail popover styling.
-- `src/employee/registrationWeekSelection.test.ts` — lock in create/delete/archived selection behavior.
-- `src/employee/scheduleApi.test.ts` — lock in same-week employee `my-schedule` behavior.
-- `src/admin/AdminAvailabilityPage.test.tsx` — lock in same-week navigation to scheduler.
-- `src/admin/AdminSchedulePage.test.tsx` — lock in explicit schedule creation and same-week scheduler behavior.
-- `src/admin/employeePositions.test.ts` if present; otherwise create it only when helper behavior is not already directly covered — position rename/assignment source-of-truth regression.
-- `.github/workflows/port-scheduler-ci.yml` — add new focused tests so the branch workflow protects the new lifecycle/matching behavior.
+- `src/admin/api.ts`
+- `src/admin/api.test.ts`
+- `src/admin/AdminDashboard.tsx`
+- `src/admin/adminWeekSelection.ts`
+- `src/admin/adminWeekSelection.test.ts`
+- `src/admin/WeekManager.tsx`
+- `src/admin/WeekDialogs.tsx`
+- `src/admin/RegistrationWeeks.css`
+- `src/admin/registrationWeekUi.ts`
+- `src/admin/registrationWeekUi.test.ts`
+- `src/admin/ScheduleGrid.tsx`
+- `src/admin/ScheduleGrid.test.tsx`
+- `src/admin/AdminSchedule.css`
+- `.github/workflows/port-scheduler-ci.yml`
+
+### Audit without unnecessary production changes
+
+The following already contain meaningful coverage and should remain unchanged unless the audit exposes a real bug:
+
+- `src/admin/employeePositions.test.ts`
+- `src/admin/EmployeeManager.test.tsx`
+- `src/scheduling/api.test.ts`
+- `src/lib/week.test.ts`
+- `src/employee/registrationWeekSelection.test.ts`
+- `src/employee/scheduleApi.test.ts`
+- `src/employee/EmployeeRegistrationPage.test.ts`
+- `src/admin/AdminAvailabilityPage.test.tsx`
+- `src/admin/AdminSchedulePage.test.tsx`
+- `src/admin/AdminMatrix.test.tsx`
+- `src/app/router.test.ts`
 
 ---
 
-### Task 1: Lock Down the Already-Correct Flow Before Changing Production Code
+### Task 1: Baseline Audit Gate — Prove Existing Flow Before Changing It
 
 **Files:**
-- Test: `src/admin/employeePositions.test.ts` (create if absent)
-- Modify: `src/employee/registrationWeekSelection.test.ts`
-- Modify: `src/employee/scheduleApi.test.ts`
-- Modify: `src/admin/AdminAvailabilityPage.test.tsx`
-- Modify: `src/admin/AdminSchedulePage.test.tsx`
-- Reference only: `src/lib/week.test.ts`
-- Reference only: `src/scheduling/api.test.ts`
+- Test only: existing audit files listed above
+- No production modifications in this task
 
 **Interfaces:**
-- Consumes: `employeesWithRenamedPosition`, `employeesWithUpdatedPosition`, `selectEmployeeRegistrationWeek`, `selectSubmittedAvailability`, `adminWeekPath` behavior already present in the codebase.
-- Produces: regression coverage proving the baseline flow is already correct before lifecycle/UI changes begin.
+- Consumes: existing employee/position helpers, soft-delete API, week helpers, employee schedule loaders, admin availability/schedule page behavior.
+- Produces: evidence that the already-correct parts of the spec do not need refactoring.
 
-- [ ] **Step 1: Add employee-position linkage regression tests**
-
-Create or extend `src/admin/employeePositions.test.ts` with direct pure-helper assertions:
-
-```ts
-import { describe, expect, it } from "vitest";
-import type { CloudEmployee, Position } from "../scheduling/types";
-import {
-  employeesWithRenamedPosition,
-  employeesWithUpdatedPosition,
-} from "./employeePositions";
-
-const positions: Position[] = [
-  { id: "position-a", name: "Bếp trưởng", sortOrder: 0 },
-  { id: "position-b", name: "Phụ bếp", sortOrder: 1 },
-];
-
-const employee: CloudEmployee = {
-  id: "employee-1",
-  name: "Nguyễn Phi Hùng",
-  active: true,
-  groupId: "group-1",
-  positionId: "position-a",
-  positionName: "Bếp trưởng",
-  sortOrder: 0,
-  isNew: false,
-};
-
-describe("employee position linkage", () => {
-  it("updates the employee position id and visible position name together", () => {
-    expect(
-      employeesWithUpdatedPosition([employee], employee.id, "position-b", positions)[0],
-    ).toMatchObject({ positionId: "position-b", positionName: "Phụ bếp" });
-  });
-
-  it("propagates a renamed position to assigned employees only", () => {
-    const renamed = { ...positions[0], name: "Bếp chính" };
-    const result = employeesWithRenamedPosition([employee], renamed);
-    expect(result[0]).toMatchObject({
-      positionId: "position-a",
-      positionName: "Bếp chính",
-    });
-  });
-});
-```
-
-- [ ] **Step 2: Extend week-selection regression coverage for exact lifecycle behavior**
-
-Add assertions to `src/employee/registrationWeekSelection.test.ts` proving:
-
-```ts
-it("never selects a deleted week because it is no longer present in the source list", () => {
-  const remaining = [week("week-next", "2026-09-28")];
-  expect(selectEmployeeRegistrationWeek(remaining, now)?.id).toBe("week-next");
-});
-
-it("prefers the nearest still-open week instead of a later open week", () => {
-  expect(
-    selectEmployeeRegistrationWeek(
-      [week("later", "2026-10-05"), week("near", "2026-09-28")],
-      now,
-    )?.id,
-  ).toBe("near");
-});
-```
-
-Keep the existing archived-week assertion.
-
-- [ ] **Step 3: Extend same-week employee/admin flow tests without changing implementation**
-
-In `src/employee/scheduleApi.test.ts`, retain the existing `selectedWeek.week_start` assertion and add a case where a submission exists only for another week; with a preferred/current open week, expected result is `null` rather than leaking another week's submission.
-
-In `src/admin/AdminAvailabilityPage.test.tsx`, assert the `Xếp lịch tuần này` callback navigates to exactly:
-
-```ts
-expect(navigate).toHaveBeenCalledWith(
-  "/admin/schedule?week=2026-09-21",
-);
-```
-
-In `src/admin/AdminSchedulePage.test.tsx`, assert a selected registration week without a schedule week renders `Tạo lịch tuần này` and does not render `AdminScheduler` implicitly.
-
-- [ ] **Step 4: Run the baseline regression set**
-
-Run:
+- [ ] **Step 1: Run employee/position and soft-delete coverage**
 
 ```bash
 npm test -- \
   src/admin/employeePositions.test.ts \
-  src/employee/registrationWeekSelection.test.ts \
-  src/employee/scheduleApi.test.ts \
-  src/admin/AdminAvailabilityPage.test.tsx \
-  src/admin/AdminSchedulePage.test.tsx \
-  src/lib/week.test.ts \
+  src/admin/EmployeeManager.test.tsx \
   src/scheduling/api.test.ts
 ```
 
-Expected: PASS. These tests describe behavior intentionally preserved by the spec. If one fails, stop and fix the discovered baseline bug before starting Task 2; do not weaken the assertion.
+Expected: PASS, including position rename/assignment propagation, assigned-position delete protection, operational exclusion of soft-deleted employees, and history-aware published employee loading.
 
-- [ ] **Step 5: Commit baseline regression coverage**
+- [ ] **Step 2: Run week/date/time coverage**
 
 ```bash
-git add \
-  src/admin/employeePositions.test.ts \
-  src/employee/registrationWeekSelection.test.ts \
-  src/employee/scheduleApi.test.ts \
-  src/admin/AdminAvailabilityPage.test.tsx \
-  src/admin/AdminSchedulePage.test.tsx
-git commit -m "test: lock down scheduling flow baseline"
+npm test -- \
+  src/lib/week.test.ts \
+  src/employee/registrationWeekSelection.test.ts
 ```
+
+Expected: PASS, including Monday validation, Monday-Sunday display, Friday 22:00 default deadline, exact lock boundary, and `Asia/Ho_Chi_Minh` conversion.
+
+- [ ] **Step 3: Run employee-registration shared-data coverage**
+
+```bash
+npm test -- \
+  src/employee/EmployeeRegistrationPage.test.ts \
+  src/employee/scheduleApi.test.ts \
+  src/admin/AdminMatrix.test.tsx
+```
+
+Expected: PASS, including notify-after-save sequencing, same-week `my-schedule` selection, and admin matrix rendering from `AvailabilitySubmission` data.
+
+- [ ] **Step 4: Run admin route/explicit schedule creation coverage**
+
+```bash
+npm test -- \
+  src/admin/AdminAvailabilityPage.test.tsx \
+  src/admin/AdminSchedulePage.test.tsx \
+  src/admin/adminWeekSelection.test.ts \
+  src/app/router.test.ts
+```
+
+Expected: PASS, including explicit `Tạo lịch tuần này` behavior and continued absence of `/app/team-schedule`.
+
+If any baseline test fails, stop implementation and fix that concrete bug first with TDD. Do not rewrite passing flows merely for consistency.
 
 ---
 
-### Task 2: Add Atomic Full-Week Deletion in Supabase and Route the Admin API Through It
+### Task 2: Add Atomic Full-Week Deletion and Route Admin Delete Through It
 
 **Files:**
 - Create: `supabase/migrations/202609160001_delete_registration_workflow.sql`
@@ -201,15 +143,15 @@ git commit -m "test: lock down scheduling flow baseline"
 - Modify/Test: `src/admin/api.test.ts`
 
 **Interfaces:**
-- Consumes: existing `private.is_admin()`, `registration_weeks.week_start`, cascade from `schedule_weeks -> schedule_entries`, cascade from `registration_weeks -> availability_submissions`.
-- Produces: `public.delete_registration_workflow(target_registration_week_id uuid) returns date`; frontend `deleteWeek(id: string): Promise<void>` continues to expose the same TypeScript signature.
+- Consumes: existing `private.is_admin()`, `registration_weeks.week_start`, `schedule_weeks -> schedule_entries` cascade, `registration_weeks -> availability_submissions` cascade.
+- Produces: `public.delete_registration_workflow(target_registration_week_id uuid) returns date`; `deleteWeek(id: string): Promise<void>` keeps its current TypeScript signature.
 
-- [ ] **Step 1: Write the failing frontend API test**
+- [ ] **Step 1: Replace the old direct-delete test with a failing RPC contract test**
 
-Add a test to `src/admin/api.test.ts` that stubs `supabase.rpc` and proves `deleteWeek` calls the transactional RPC instead of `.from("registration_weeks").delete()`:
+In `src/admin/api.test.ts`, replace the current `deletes a registration week by id` test with:
 
 ```ts
-it("deletes a registration workflow through the transactional RPC", async () => {
+it("deletes the complete weekly workflow through the transactional RPC", async () => {
   const rpc = vi.fn(async () => ({ data: "2026-09-21", error: null }));
   const from = vi.fn(() => {
     throw new Error("direct table delete must not be used");
@@ -217,6 +159,7 @@ it("deletes a registration workflow through the transactional RPC", async () => 
   supabase.client = { rpc, from };
 
   await expect(deleteWeek("week-1")).resolves.toBeUndefined();
+
   expect(rpc).toHaveBeenCalledWith("delete_registration_workflow", {
     target_registration_week_id: "week-1",
   });
@@ -224,10 +167,10 @@ it("deletes a registration workflow through the transactional RPC", async () => 
 });
 ```
 
-Also add an RPC-error assertion:
+Add error coverage:
 
 ```ts
-it("surfaces an atomic delete failure without falling back to direct deletes", async () => {
+it("surfaces atomic delete failure without falling back to direct deletes", async () => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   supabase.client = {
     rpc: vi.fn(async () => ({
@@ -242,17 +185,15 @@ it("surfaces an atomic delete failure without falling back to direct deletes", a
 });
 ```
 
-- [ ] **Step 2: Run the API test to verify RED**
-
-Run:
+- [ ] **Step 2: Run the API test and verify RED**
 
 ```bash
 npm test -- src/admin/api.test.ts
 ```
 
-Expected: FAIL because `deleteWeek` still performs a direct table delete.
+Expected: FAIL because `deleteWeek` still calls `.from("registration_weeks").delete()`.
 
-- [ ] **Step 3: Add the PostgreSQL migration with one atomic Admin-only function**
+- [ ] **Step 3: Add the transactional Admin-only PostgreSQL function**
 
 Create `supabase/migrations/202609160001_delete_registration_workflow.sql`:
 
@@ -285,11 +226,9 @@ begin
       message = 'REGISTRATION_WEEK_NOT_FOUND';
   end if;
 
-  -- schedule_entries are removed by schedule_weeks ON DELETE CASCADE.
   delete from public.schedule_weeks
   where week_start = target_week_start;
 
-  -- availability_submissions are removed by registration_weeks ON DELETE CASCADE.
   delete from public.registration_weeks
   where id = target_registration_week_id;
 
@@ -304,11 +243,11 @@ grant execute on function public.delete_registration_workflow(uuid)
 to authenticated;
 ```
 
-The PostgreSQL function call is one transaction; an exception rolls back both deletes.
+The function call is one PostgreSQL transaction. Deleting `schedule_weeks` cascades to `schedule_entries`; deleting `registration_weeks` cascades to `availability_submissions`. Any exception rolls back both deletes.
 
-- [ ] **Step 4: Replace the direct frontend delete with the RPC**
+- [ ] **Step 4: Replace the frontend direct delete with the RPC**
 
-Change `src/admin/api.ts` to:
+Change `src/admin/api.ts`:
 
 ```ts
 export async function deleteWeek(id: string): Promise<void> {
@@ -319,31 +258,18 @@ export async function deleteWeek(id: string): Promise<void> {
 }
 ```
 
-Do not add a fallback direct delete.
+Do not add a direct-delete fallback.
 
-- [ ] **Step 5: Run the API tests to verify GREEN**
-
-Run:
+- [ ] **Step 5: Run API tests and SQL lint**
 
 ```bash
 npm test -- src/admin/api.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 6: Verify migration syntax against the local Supabase CLI if Docker/local stack is available**
-
-Run:
-
-```bash
 npx supabase db lint
 ```
 
-Expected: no new SQL errors from `202609160001_delete_registration_workflow.sql`.
+Expected: frontend test PASS; SQL lint reports no new migration error. If local Supabase services are unavailable, record that the SQL lint step could not connect; do not apply the migration to a remote database during this implementation task.
 
-If the repository environment does not have a running local Supabase stack, do not mutate a remote database from this task; keep the migration committed and rely on repository SQL review plus the frontend RPC contract test.
-
-- [ ] **Step 7: Commit the atomic delete backend/API change**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add \
@@ -355,52 +281,81 @@ git commit -m "feat: delete complete weekly workflow atomically"
 
 ---
 
-### Task 3: Redesign Registration-Week Lifecycle UI, Archive Area, Delete Dialog, and Success Toast
+### Task 3: Separate Archived Weeks and Redesign Full-Delete Confirmation/Toast
 
 **Files:**
+- Modify: `src/admin/registrationWeekUi.ts`
+- Modify/Test: `src/admin/registrationWeekUi.test.ts`
+- Modify: `src/admin/adminWeekSelection.ts`
+- Modify/Test: `src/admin/adminWeekSelection.test.ts`
 - Modify: `src/admin/WeekManager.tsx`
 - Modify: `src/admin/WeekDialogs.tsx`
 - Create/Test: `src/admin/WeekDialogs.test.tsx`
 - Modify: `src/admin/RegistrationWeeks.css`
 - Modify: `src/admin/AdminDashboard.tsx`
-- Modify: `src/admin/registrationWeekUi.ts`
-- Modify/Test: `src/admin/registrationWeekUi.test.ts`
 
 **Interfaces:**
 - Consumes: unchanged `onDelete(id): Promise<void>`, `onUpdate(id, changes)`, `RegistrationWeek.status`.
-- Produces: `partitionRegistrationWeeks(weeks)` returning `{ active: RegistrationWeek[]; archived: RegistrationWeek[] }`; styled `DeleteWeekDialog`; archive list; success toast.
+- Produces: `partitionRegistrationWeeks(weeks)`, archived-week exclusion from active URL selection, independent delete target, success toast.
 
-- [ ] **Step 1: Write failing pure partition tests**
+- [ ] **Step 1: Write failing active/archive partition tests**
 
 Add to `src/admin/registrationWeekUi.test.ts`:
 
 ```ts
 import { partitionRegistrationWeeks } from "./registrationWeekUi";
 
-it("separates archived weeks from the primary week list", () => {
-  const result = partitionRegistrationWeeks([
-    week("open", "2026-09-21", "open"),
-    week("locked", "2026-09-28", "locked"),
-    week("archived", "2026-09-14", "archived"),
-  ]);
+it("keeps archived weeks out of the primary management list", () => {
+  const open = { ...existingWeek, id: "open", status: "open" as const };
+  const locked = {
+    ...existingWeek,
+    id: "locked",
+    week_start: "2026-10-05",
+    status: "locked" as const,
+  };
+  const archived = {
+    ...existingWeek,
+    id: "archived",
+    week_start: "2026-09-21",
+    status: "archived" as const,
+  };
 
-  expect(result.active.map((item) => item.id)).toEqual(["open", "locked"]);
-  expect(result.archived.map((item) => item.id)).toEqual(["archived"]);
+  const result = partitionRegistrationWeeks([open, locked, archived]);
+  expect(result.active.map((week) => week.id)).toEqual(["open", "locked"]);
+  expect(result.archived.map((week) => week.id)).toEqual(["archived"]);
 });
 ```
 
-Use the test file's existing `week(...)` fixture shape or add the complete `RegistrationWeek` fixture there.
+- [ ] **Step 2: Write failing archived-query selection test**
 
-- [ ] **Step 2: Write the failing destructive dialog render test**
+In `src/admin/adminWeekSelection.test.ts`, add:
 
-Create `src/admin/WeekDialogs.test.tsx` using `renderToStaticMarkup`:
+```ts
+it("does not treat an archived week as an active requested admin week", () => {
+  const archived = {
+    ...week("archived", "2026-09-21"),
+    status: "archived" as const,
+  };
+  const result = resolveAdminRegistrationWeek(
+    [archived],
+    archived.week_start,
+  );
+  expect(result).toEqual({ week: null, invalidRequestedWeek: true });
+});
+```
+
+Use the test file's existing `week(...)` fixture shape.
+
+- [ ] **Step 3: Write the destructive dialog render test**
+
+Create `src/admin/WeekDialogs.test.tsx`:
 
 ```tsx
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DeleteWeekDialog } from "./WeekDialogs";
 
-it("states that the whole weekly workflow is permanently deleted", () => {
+it("states that employee registrations and the official schedule are both deleted", () => {
   const html = renderToStaticMarkup(
     <DeleteWeekDialog
       week={{
@@ -424,27 +379,23 @@ it("states that the whole weekly workflow is permanently deleted", () => {
 });
 ```
 
-- [ ] **Step 3: Run the lifecycle UI tests to verify RED**
-
-Run:
+- [ ] **Step 4: Run lifecycle UI tests and verify RED**
 
 ```bash
 npm test -- \
   src/admin/registrationWeekUi.test.ts \
+  src/admin/adminWeekSelection.test.ts \
   src/admin/WeekDialogs.test.tsx
 ```
 
-Expected: FAIL because partition helper and new destructive copy do not exist yet.
+Expected: FAIL because the partition helper/new dialog copy/archived URL rule are not implemented.
 
-- [ ] **Step 4: Implement the pure partition helper**
+- [ ] **Step 5: Implement week partition and active requested-week rule**
 
 Add to `src/admin/registrationWeekUi.ts`:
 
 ```ts
-export function partitionRegistrationWeeks(weeks: RegistrationWeek[]): {
-  active: RegistrationWeek[];
-  archived: RegistrationWeek[];
-} {
+export function partitionRegistrationWeeks(weeks: RegistrationWeek[]) {
   return {
     active: weeks.filter((week) => week.status !== "archived"),
     archived: weeks.filter((week) => week.status === "archived"),
@@ -452,11 +403,26 @@ export function partitionRegistrationWeeks(weeks: RegistrationWeek[]): {
 }
 ```
 
-Keep `registrationWeekActionState(...).canDelete` true for all statuses.
+Keep `registrationWeekActionState(...).canDelete === true` for archived weeks.
 
-- [ ] **Step 5: Refactor `WeekManager` to support independent delete targets and a collapsed archive section**
+Change the requested-week branch in `resolveAdminRegistrationWeek`:
 
-Use this state shape rather than tying deletion to `selected`:
+```ts
+if (requestedWeekStart) {
+  const week =
+    weeks.find(
+      (item) =>
+        item.week_start === requestedWeekStart && item.status !== "archived",
+    ) ?? null;
+  return { week, invalidRequestedWeek: week === null };
+}
+```
+
+This keeps archived weeks out of `/admin/availability` and `/admin/schedule` active-week flows while they remain visible/deletable in the independent archived list.
+
+- [ ] **Step 6: Refactor `WeekManager` to use active weeks for the primary selector and archived weeks for a collapsed list**
+
+Use:
 
 ```ts
 const { active: activeWeeks, archived: archivedWeeks } =
@@ -467,9 +433,9 @@ const [deleteTarget, setDeleteTarget] = useState<RegistrationWeek | null>(null);
 const [successMessage, setSuccessMessage] = useState<string | null>(null);
 ```
 
-The primary `CustomSelect` options must come from `activeWeeks`, not all weeks.
+Primary `CustomSelect` options must use `activeWeeks` only.
 
-Render archived weeks below the main card using native collapsed details:
+Render archived weeks below the primary manager:
 
 ```tsx
 {archivedWeeks.length > 0 && (
@@ -500,9 +466,21 @@ Render archived weeks below the main card using native collapsed details:
 )}
 ```
 
-For the active week delete action, call `setDeleteTarget(selected)`.
+The active selected week's delete button also calls `setDeleteTarget(selected)`.
 
-Render one dialog from `deleteTarget`:
+- [ ] **Step 7: Add success toast behavior in `WeekManager`**
+
+Import `useEffect` and `formatWeekRange`, then add:
+
+```ts
+useEffect(() => {
+  if (!successMessage) return;
+  const timer = window.setTimeout(() => setSuccessMessage(null), 2600);
+  return () => window.clearTimeout(timer);
+}, [successMessage]);
+```
+
+Pass a wrapper to the single delete dialog:
 
 ```tsx
 {deleteTarget && (
@@ -511,25 +489,15 @@ Render one dialog from `deleteTarget`:
     busy={busy}
     onClose={() => setDeleteTarget(null)}
     onDelete={async (id) => {
-      const label = formatWeekRange(deleteTarget.week_start);
+      const range = formatWeekRange(deleteTarget.week_start);
       await onDelete(id);
       setDeleteTarget(null);
       setSuccessMessage(
-        `Đã xóa tuần ${label} và toàn bộ dữ liệu liên quan.`,
+        `Đã xóa tuần ${range} và toàn bộ dữ liệu liên quan.`,
       );
     }}
   />
 )}
-```
-
-Add a 2.6-second auto-dismiss effect for `successMessage`, matching the employee save toast timing:
-
-```ts
-useEffect(() => {
-  if (!successMessage) return;
-  const timer = window.setTimeout(() => setSuccessMessage(null), 2600);
-  return () => window.clearTimeout(timer);
-}, [successMessage]);
 ```
 
 Render:
@@ -544,11 +512,9 @@ Render:
 </div>
 ```
 
-Update the import to include `useEffect` and `formatWeekRange`.
+- [ ] **Step 8: Replace delete dialog copy/visual structure**
 
-- [ ] **Step 6: Replace the delete dialog copy and structure**
-
-In `src/admin/WeekDialogs.tsx`, keep the no-dismiss-while-busy behavior and change the destructive dialog body to explicitly say both datasets are removed:
+In `WeekDialogs.tsx`, keep dismissal disabled while `busy` and render:
 
 ```tsx
 <section
@@ -570,18 +536,21 @@ In `src/admin/WeekDialogs.tsx`, keep the no-dismiss-while-busy behavior and chan
     Toàn bộ đăng ký nhân viên và lịch đã xếp của tuần này sẽ bị xóa vĩnh viễn.
     Ảnh JPG đã xuất trước đó không bị ảnh hưởng.
   </p>
-  ...
-  <button className="button danger" ...>
-    {busy ? "Đang xóa..." : "Xóa toàn bộ tuần"}
-  </button>
+  {error && <div className="inline-error" role="alert">{error}</div>}
+  <footer>
+    <button className="button secondary" type="button" ...>Hủy</button>
+    <button className="button danger" type="button" ...>
+      {busy ? "Đang xóa..." : "Xóa toàn bộ tuần"}
+    </button>
+  </footer>
 </section>
 ```
 
-Do not claim the official schedule is preserved.
+Use the existing concrete `disabled`, `autoFocus`, `onClick`, and `onClose` handlers from the current dialog; only the copy/classes/button label change.
 
-- [ ] **Step 7: Resolve navigation away from an archived selected week**
+- [ ] **Step 9: Navigate away after archiving the selected week**
 
-In `src/admin/AdminDashboard.tsx`, after `updateWeek(id, changes)` and `refreshBase()`, when the selected week was archived, navigate to the next non-archived week selected by the existing resolver or to `/admin/registration-weeks`:
+In `AdminDashboard.tsx`, change `patchWeek` so archiving the selected week refreshes and resolves the next valid non-archived week:
 
 ```ts
 async function patchWeek(
@@ -608,11 +577,11 @@ async function patchWeek(
 }
 ```
 
-Keep the existing delete fallback logic, now backed by the atomic RPC.
+Keep the current post-delete fallback logic; Task 2 changes only the backend operation it invokes.
 
-- [ ] **Step 8: Add restrained styles for the archive area, destructive dialog, and toast**
+- [ ] **Step 10: Add restrained archive/dialog/toast styles**
 
-In `src/admin/RegistrationWeeks.css`, add classes with these visual rules:
+In `RegistrationWeeks.css`, add:
 
 ```css
 .archived-weeks {
@@ -691,35 +660,30 @@ In `src/admin/RegistrationWeeks.css`, add classes with these visual rules:
 }
 ```
 
-Adapt selectors to existing CSS specificity if needed, but keep the same restrained visual intent.
-
-- [ ] **Step 9: Run week lifecycle tests and build**
-
-Run:
+- [ ] **Step 11: Run tests/build and commit**
 
 ```bash
 npm test -- \
   src/admin/registrationWeekUi.test.ts \
+  src/admin/adminWeekSelection.test.ts \
   src/admin/WeekDialogs.test.tsx \
   src/admin/AdminDashboard.test.tsx
 npm run build
-```
 
-Expected: PASS.
-
-- [ ] **Step 10: Commit week lifecycle UI**
-
-```bash
 git add \
+  src/admin/registrationWeekUi.ts \
+  src/admin/registrationWeekUi.test.ts \
+  src/admin/adminWeekSelection.ts \
+  src/admin/adminWeekSelection.test.ts \
   src/admin/WeekManager.tsx \
   src/admin/WeekDialogs.tsx \
   src/admin/WeekDialogs.test.tsx \
   src/admin/RegistrationWeeks.css \
-  src/admin/AdminDashboard.tsx \
-  src/admin/registrationWeekUi.ts \
-  src/admin/registrationWeekUi.test.ts
+  src/admin/AdminDashboard.tsx
 git commit -m "feat: streamline registration week lifecycle"
 ```
+
+Expected: tests/build PASS.
 
 ---
 
@@ -728,14 +692,12 @@ git commit -m "feat: streamline registration week lifecycle"
 **Files:**
 - Create: `src/scheduling/availabilityShiftMatch.ts`
 - Create/Test: `src/scheduling/availabilityShiftMatch.test.ts`
-- Reference: `src/lib/availability.ts`
-- Reference: `src/scheduling/shiftStyle.ts`
 
 **Interfaces:**
 - Consumes: `getIntervals(day)`, `clockToMinutes(value)`, `shiftRangesFromLabel(label)`, `ShiftType`.
 - Produces: `findExactShiftForAvailability(day, shifts): ShiftType | null`.
 
-- [ ] **Step 1: Write failing exact-match tests**
+- [ ] **Step 1: Write failing tests**
 
 Create `src/scheduling/availabilityShiftMatch.test.ts`:
 
@@ -753,40 +715,38 @@ const shifts: ShiftType[] = [
 
 describe("findExactShiftForAvailability", () => {
   it("matches one exact interval", () => {
-    const day = createPresetDay("morning");
-    expect(findExactShiftForAvailability(day, shifts)?.id).toBe("morning");
+    expect(findExactShiftForAvailability(createPresetDay("morning"), shifts)?.id)
+      .toBe("morning");
   });
 
   it("matches split intervals across h and colon label formats", () => {
-    const day = createPresetDay("full");
-    expect(findExactShiftForAvailability(day, shifts)?.id).toBe("split");
+    expect(findExactShiftForAvailability(createPresetDay("full"), shifts)?.id)
+      .toBe("split");
   });
 
-  it("does not guess a nearby configured shift", () => {
+  it("does not guess a nearby shift", () => {
     const availability = createEmptyAvailability();
     availability.days["1"] = createPresetDay("morning_afternoon");
-    const day = availability.days["1"];
-    expect(findExactShiftForAvailability(day, shifts)).toBeNull();
+    expect(findExactShiftForAvailability(availability.days["1"], shifts))
+      .toBeNull();
   });
 
-  it("never matches an OFF day", () => {
+  it("never matches OFF", () => {
     expect(findExactShiftForAvailability(createEmptyAvailability().days["1"], shifts))
       .toBeNull();
   });
 });
 ```
 
-- [ ] **Step 2: Run the helper test to verify RED**
-
-Run:
+- [ ] **Step 2: Run and verify RED**
 
 ```bash
 npm test -- src/scheduling/availabilityShiftMatch.test.ts
 ```
 
-Expected: FAIL because the module/function does not exist.
+Expected: FAIL because the module does not exist.
 
-- [ ] **Step 3: Implement exact normalized range equality**
+- [ ] **Step 3: Implement normalized exact range equality**
 
 Create `src/scheduling/availabilityShiftMatch.ts`:
 
@@ -796,7 +756,9 @@ import type { DayAvailability } from "../types/domain";
 import { clockToMinutes, shiftRangesFromLabel } from "./shiftStyle";
 import type { ShiftType } from "./types";
 
-function availabilityRanges(day: DayAvailability) {
+type Range = { start: number; end: number };
+
+function availabilityRanges(day: DayAvailability): Range[] {
   return getIntervals(day).flatMap(({ start, end }) => {
     const startMinutes = clockToMinutes(start);
     const endMinutes = clockToMinutes(end);
@@ -806,15 +768,14 @@ function availabilityRanges(day: DayAvailability) {
   });
 }
 
-function sameRanges(
-  left: ReadonlyArray<{ start: number; end: number }>,
-  right: ReadonlyArray<{ start: number; end: number }>,
-): boolean {
-  if (left.length !== right.length || left.length === 0) return false;
-  const sort = (ranges: ReadonlyArray<{ start: number; end: number }>) =>
-    [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
-  const first = sort(left);
-  const second = sort(right);
+function sorted(ranges: readonly Range[]): Range[] {
+  return [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
+}
+
+function sameRanges(left: readonly Range[], right: readonly Range[]): boolean {
+  if (left.length === 0 || left.length !== right.length) return false;
+  const first = sorted(left);
+  const second = sorted(right);
   return first.every(
     (range, index) =>
       range.start === second[index].start && range.end === second[index].end,
@@ -828,16 +789,13 @@ export function findExactShiftForAvailability(
   if (day.status !== "available") return null;
   const source = availabilityRanges(day);
   if (source.length === 0) return null;
-  return (
-    shifts.find((shift) => sameRanges(source, shiftRangesFromLabel(shift.label))) ??
-    null
-  );
+  return shifts.find(
+    (shift) => sameRanges(source, shiftRangesFromLabel(shift.label)),
+  ) ?? null;
 }
 ```
 
-- [ ] **Step 4: Run matching tests to verify GREEN**
-
-Run:
+- [ ] **Step 4: Run and verify GREEN**
 
 ```bash
 npm test -- \
@@ -848,7 +806,7 @@ npm test -- \
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the pure matching helper**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add \
@@ -859,21 +817,20 @@ git commit -m "feat: match registration intervals to configured shifts"
 
 ---
 
-### Task 5: Render Official Shifts First and a Muted Interactive Registration Pill Below
+### Task 5: Render Official Shifts First and the Registration Pill Below
 
 **Files:**
 - Modify: `src/admin/ScheduleGrid.tsx`
 - Modify/Test: `src/admin/ScheduleGrid.test.tsx`
 - Modify: `src/admin/AdminSchedule.css`
-- Consumes helper: `src/scheduling/availabilityShiftMatch.ts`
 
 **Interfaces:**
-- Consumes: `findExactShiftForAvailability(day, shifts)`, `formatAvailabilityCell`, `getOffReason`, `formatShiftLabel`, `shiftStyle`, configured `ShiftType.color`.
-- Produces: scheduler cell markup with `.official-shifts` before `.availability-detail`; `.availability-hint.matched|neutral|off`; read-only `.availability-popover`.
+- Consumes: `findExactShiftForAvailability`, `formatAvailabilityCell`, `getOffReason`, `formatShiftLabel`, `resolvedShiftColor`, `shiftStyle`.
+- Produces: `.official-shifts` before `.availability-detail`; `.availability-hint.matched|neutral|off`; read-only click detail via native `<details>`.
 
-- [ ] **Step 1: Replace the old expectation with failing scheduler-cell hierarchy tests**
+- [ ] **Step 1: Add failing DOM-order and visual-source tests**
 
-Extend `src/admin/ScheduleGrid.test.tsx` with:
+Extend `src/admin/ScheduleGrid.test.tsx`:
 
 ```ts
 it("renders official shifts before registration guidance", () => {
@@ -887,10 +844,10 @@ it("renders official shifts before registration guidance", () => {
 });
 ```
 
-Add exact configured-shift styling test using an availability that equals the existing `shift` fixture or add a morning shift fixture:
+Add exact-match coverage using the existing `17:00-23:00` shift fixture:
 
 ```ts
-it("reuses a configured shift label/color source for an exact registration match", () => {
+it("uses the configured shift source for an exact registration match", () => {
   const availability = createEmptyAvailability();
   availability.days["1"] = {
     status: "available",
@@ -906,10 +863,10 @@ it("reuses a configured shift label/color source for an exact registration match
 });
 ```
 
-Add neutral unmatched test:
+Add unmatched neutral coverage:
 
 ```ts
-it("uses a neutral registration pill when no configured shift matches exactly", () => {
+it("uses a neutral pill when no configured shift matches exactly", () => {
   const availability = createEmptyAvailability();
   availability.days["1"] = {
     status: "available",
@@ -924,21 +881,19 @@ it("uses a neutral registration pill when no configured shift matches exactly", 
 });
 ```
 
-Update the existing OFF reason test to assert the reason is inside `.availability-popover` and the compact summary remains `ĐK · Nghỉ`.
+Update the existing OFF test to require `availability-hint off`, compact `ĐK · Nghỉ`, and the full reason inside `availability-popover`.
 
-- [ ] **Step 2: Run scheduler tests to verify RED**
-
-Run:
+- [ ] **Step 2: Run and verify RED**
 
 ```bash
 npm test -- src/admin/ScheduleGrid.test.tsx
 ```
 
-Expected: FAIL because registration currently renders before official shifts and has no matched/neutral detail structure.
+Expected: FAIL because registration currently renders before official shifts and does not use matched/neutral detail structure.
 
-- [ ] **Step 3: Refactor `ScheduleCell` to compute the registration visual model**
+- [ ] **Step 3: Compute matched/neutral/OFF registration presentation**
 
-In `src/admin/ScheduleGrid.tsx`, import:
+Import:
 
 ```ts
 import { findExactShiftForAvailability } from "../scheduling/availabilityShiftMatch";
@@ -964,17 +919,13 @@ const registrationKind = !availability
       : "neutral";
 ```
 
-Do not use `semanticShiftColor(...)` for unmatched registrations anymore; unmatched means neutral by design.
+Do not use `semanticShiftColor(...)` for unmatched registration pills.
 
-- [ ] **Step 4: Move registration guidance below official shifts and use native `details` for click-to-view context**
+- [ ] **Step 4: Move registration UI below official shifts and make it read-only clickable detail**
 
-The order inside `.schedule-cell-stack` must be:
+Inside `.schedule-cell-stack`, render the existing `.official-shifts` block first, then:
 
 ```tsx
-<div className="official-shifts">
-  {entries.map(...)}
-</div>
-
 {availability && registrationKind && (
   <details
     className={`availability-detail ${registrationKind}`}
@@ -1004,11 +955,11 @@ The order inside `.schedule-cell-stack` must be:
 )}
 ```
 
-Keep the pill read-only. Do not add mutation callbacks.
+Do not add edit/save/delete callbacks to this detail.
 
-- [ ] **Step 5: Add low-noise pill and popover styles**
+- [ ] **Step 5: Style the pill as visually subordinate but preserve configured color identity**
 
-In `src/admin/AdminSchedule.css`, replace/extend the existing availability hint treatment so the official chip remains visually dominant:
+In `AdminSchedule.css`:
 
 ```css
 .scheduler-layout .schedule-cell-stack {
@@ -1042,10 +993,10 @@ In `src/admin/AdminSchedule.css`, replace/extend the existing availability hint 
   align-items: center;
   justify-content: center;
   padding: 3px 7px;
-  border: 1px solid rgba(93, 106, 99, 0.16);
-  border-radius: 999px;
   color: #66706b;
   background: #f5f7f6;
+  border: 1px solid rgba(93, 106, 99, 0.16);
+  border-radius: 999px;
   font-size: 0.6rem;
   font-weight: 700;
   line-height: 1.2;
@@ -1053,9 +1004,11 @@ In `src/admin/AdminSchedule.css`, replace/extend the existing availability hint 
 }
 
 .scheduler-layout .availability-hint.matched {
-  color: color-mix(in srgb, var(--shift-ink) 72%, #ffffff);
-  background: color-mix(in srgb, var(--shift-bg) 55%, #ffffff);
-  border-color: color-mix(in srgb, var(--shift-border) 45%, #ffffff);
+  color: var(--shift-ink);
+  background: var(--shift-bg);
+  border-color: var(--shift-border);
+  opacity: 0.68;
+  filter: saturate(0.72);
 }
 
 .scheduler-layout .availability-hint.off {
@@ -1075,7 +1028,7 @@ In `src/admin/AdminSchedule.css`, replace/extend the existing availability hint 
   gap: 4px;
   padding: 9px 10px;
   color: #3f4944;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #dce2df;
   border-radius: 9px;
   box-shadow: 0 10px 26px rgba(31, 43, 37, 0.14);
@@ -1088,11 +1041,9 @@ In `src/admin/AdminSchedule.css`, replace/extend the existing availability hint 
 }
 ```
 
-If `color-mix()` conflicts with the app's browser support target during verification, replace those three matched declarations with existing CSS variables at reduced opacity using a pseudo/background wrapper; do not revert to semantic guessed colors.
+Keep official shift chip opacity at its current full-strength value.
 
-- [ ] **Step 6: Run scheduler/matching tests and build**
-
-Run:
+- [ ] **Step 6: Run scheduler tests/build and commit**
 
 ```bash
 npm test -- \
@@ -1100,13 +1051,7 @@ npm test -- \
   src/admin/ScheduleGrid.test.tsx \
   src/scheduling/availabilityNotice.test.ts
 npm run build
-```
 
-Expected: PASS. `availabilityNotice.test.ts` confirms this visual change did not turn guidance into a blocking rule.
-
-- [ ] **Step 7: Commit scheduler guidance UI**
-
-```bash
 git add \
   src/admin/ScheduleGrid.tsx \
   src/admin/ScheduleGrid.test.tsx \
@@ -1114,59 +1059,28 @@ git add \
 git commit -m "feat: show synced registration guidance in scheduler"
 ```
 
+Expected: PASS; availability guidance remains non-blocking.
+
 ---
 
-### Task 6: Protect the End-to-End Weekly Flow in Focused CI
+### Task 6: Focused CI and Final Verification
 
 **Files:**
 - Modify: `.github/workflows/port-scheduler-ci.yml`
-- Modify as needed only for regression assertions: `src/admin/AdminMatrix.test.tsx`
-- Modify as needed only for regression assertions: `src/employee/EmployeeRegistrationPage.test.ts`
-- Reference/Test: `src/app/router.test.ts`
+- No unrelated production changes
 
 **Interfaces:**
-- Consumes: all production behavior from Tasks 1-5.
-- Produces: focused branch CI that runs the lifecycle and shift-matching tests on every push to `feat/port-schedulework-scheduler`.
+- Consumes: complete implementation from Tasks 2-5 and baseline audit from Task 1.
+- Produces: focused CI coverage and completion evidence without merging to `main`.
 
-- [ ] **Step 1: Add any missing direct same-source assertions**
+- [ ] **Step 1: Add new lifecycle/matching tests to focused CI**
 
-In `src/admin/AdminMatrix.test.tsx`, ensure the rendered matrix maps an `AvailabilitySubmission.employee_id` to the matching employee row and week start, rather than synthesizing separate state.
-
-In `src/employee/EmployeeRegistrationPage.test.ts`, retain or add the save-notify contract:
-
-```ts
-it("notifies the app only after the availability save succeeds", async () => {
-  const events: string[] = [];
-  await saveAvailabilityThenNotify(
-    async () => {
-      events.push("saved");
-      return "result";
-    },
-    () => events.push("notified"),
-  );
-  expect(events).toEqual(["saved", "notified"]);
-});
-```
-
-This protects `/app/my-schedule` refresh sequencing without adding a new state layer.
-
-- [ ] **Step 2: Confirm the removed team schedule route remains absent**
-
-Run:
-
-```bash
-npm test -- src/app/router.test.ts src/employee/EmployeeApp.test.tsx
-```
-
-Expected: PASS with no `/app/team-schedule` route restored.
-
-- [ ] **Step 3: Add new files to the focused CI command**
-
-Update `.github/workflows/port-scheduler-ci.yml` so `Scheduler focused tests` includes at least:
+Keep every existing focused test and add:
 
 ```yaml
-          src/admin/WeekDialogs.test.tsx
+          src/admin/api.test.ts
           src/admin/registrationWeekUi.test.ts
+          src/admin/WeekDialogs.test.tsx
           src/admin/employeePositions.test.ts
           src/admin/AdminMatrix.test.tsx
           src/employee/EmployeeRegistrationPage.test.ts
@@ -1175,17 +1089,15 @@ Update `.github/workflows/port-scheduler-ci.yml` so `Scheduler focused tests` in
           src/scheduling/availabilityShiftMatch.test.ts
 ```
 
-Keep all existing focused test entries.
-
-- [ ] **Step 4: Run the full flow-focused set locally**
-
-Run:
+- [ ] **Step 2: Run focused flow tests**
 
 ```bash
 npm test -- \
   src/app/router.test.ts \
+  src/admin/api.test.ts \
   src/admin/employeePositions.test.ts \
   src/admin/registrationWeekUi.test.ts \
+  src/admin/adminWeekSelection.test.ts \
   src/admin/WeekDialogs.test.tsx \
   src/admin/AdminAvailabilityPage.test.tsx \
   src/admin/AdminSchedulePage.test.tsx \
@@ -1202,107 +1114,68 @@ npm test -- \
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit CI protection**
-
-```bash
-git add \
-  .github/workflows/port-scheduler-ci.yml \
-  src/admin/AdminMatrix.test.tsx \
-  src/employee/EmployeeRegistrationPage.test.ts
-git commit -m "test: cover complete weekly scheduling flow"
-```
-
-Only include test files that actually changed in the `git add` command.
-
----
-
-### Task 7: Final Verification and Manual Flow Checklist
-
-**Files:**
-- No production files should be introduced in this task.
-- Verify all files changed by Tasks 1-6.
-
-**Interfaces:**
-- Consumes: complete implementation.
-- Produces: evidence that tests, build, SQL checks, branch scope, and user-facing flow are coherent before claiming completion.
-
-- [ ] **Step 1: Run the complete automated test suite**
+- [ ] **Step 3: Run full repository verification**
 
 ```bash
 npm test
-```
-
-Expected: all Vitest tests PASS.
-
-- [ ] **Step 2: Run the production build**
-
-```bash
 npm run build
-```
-
-Expected: TypeScript build and Vite build succeed.
-
-- [ ] **Step 3: Run existing Deno checks used by CI**
-
-```bash
 npx --yes deno@latest test \
   --config supabase/functions/deno.json \
   supabase/functions/_shared/*_test.ts
-
 npx --yes deno@latest check \
   --config supabase/functions/deno.json \
   supabase/functions/admin-users/index.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 4: Run whitespace and branch-scope checks**
-
-```bash
 git diff --check origin/main...HEAD
-git status --short
 git branch --show-current
 ```
 
-Expected:
+Expected branch:
 
 ```text
 feat/port-schedulework-scheduler
 ```
 
-`git diff --check` must print no whitespace errors. Do not merge or push changes to `main`.
+Do not merge or update `main`.
 
-- [ ] **Step 5: Apply the migration only in the intended development Supabase environment, then perform the deletion smoke test**
+- [ ] **Step 4: Commit CI update**
 
-When the engineer has the correct Supabase project selected and is intentionally ready to mutate that development database, run:
+```bash
+git add .github/workflows/port-scheduler-ci.yml
+git commit -m "test: protect complete weekly scheduling flow"
+```
+
+- [ ] **Step 5: Apply the migration only when intentionally targeting the development Supabase project**
+
+After confirming the selected Supabase project is the intended development environment:
 
 ```bash
 npx supabase db push
 ```
 
-Then smoke-test with disposable data:
+Then perform this disposable-data smoke test:
 
-1. Create a registration week beginning on a Monday.
-2. Submit one employee registration for that week.
-3. Open `/admin/availability?week=YYYY-MM-DD` and confirm the same registration appears.
-4. Click `Xếp lịch tuần này`; confirm `/admin/schedule?week=YYYY-MM-DD` opens.
-5. Create the schedule week explicitly.
-6. Confirm a matching registered interval uses the configured shift color/label in a lighter pill below official shifts.
-7. Confirm an unmatched interval is neutral.
-8. Confirm `ĐK · Nghỉ` opens its reason in the read-only detail popover.
-9. Add one official shift and confirm the registration pill remains below it.
-10. Export JPG if desired.
-11. Archive the registration week and confirm it moves into the collapsed `Tuần đã lưu trữ` section.
-12. Delete that archived week and confirm the styled dialog says registrations and official schedule will both be deleted.
-13. Confirm the success toast appears.
-14. Confirm the week disappears from registration weeks, availability, schedule selection, and employee registration/my-schedule selection.
-15. Confirm unrelated weeks remain intact.
+1. Create a Monday-start registration week.
+2. Confirm employee `/app/availability` shows the exact Monday-Sunday range and Vietnam-time deadline.
+3. Submit one employee registration.
+4. Confirm `/app/my-schedule` shows that same registration.
+5. Confirm `/admin/availability?week=YYYY-MM-DD` shows the same registration.
+6. Click `Xếp lịch tuần này` and confirm `/admin/schedule?week=YYYY-MM-DD`.
+7. Confirm the schedule week is not created until Admin clicks `Tạo lịch tuần này`.
+8. Confirm an exact registered interval reuses the configured shift label/color in a lighter pill below official shifts.
+9. Confirm an unmatched interval is neutral.
+10. Confirm `ĐK · Nghỉ` opens its full reason read-only.
+11. Add an official shift and confirm it remains above the registration pill.
+12. Archive the week and confirm it moves to collapsed `Tuần đã lưu trữ`.
+13. Delete the archived week and confirm the styled dialog warns that registrations and the official schedule will both be deleted.
+14. Confirm the success toast appears.
+15. Confirm the week disappears from registration management, admin availability, admin schedule selection, employee registration selection, and employee my-schedule selection.
+16. Confirm an unrelated week remains intact.
 
-Do not run this smoke test against production data without explicit intent.
+Do not run the destructive smoke test against production data without explicit intent.
 
-- [ ] **Step 6: Verify GitHub Actions for the final feature-branch commit**
+- [ ] **Step 6: Verify the final GitHub Actions run**
 
-After pushing the final `feat/port-schedulework-scheduler` commit, inspect the `Port scheduler CI` run and require all steps to succeed:
+After the final feature-branch push, require every `Port scheduler CI` step to succeed:
 
 ```text
 npm ci
@@ -1314,21 +1187,21 @@ Deno admin-users typecheck
 Diff whitespace check
 ```
 
-- [ ] **Step 7: Report completion without merging**
+- [ ] **Step 7: Completion report**
 
-The completion report must state:
+Report these facts explicitly:
 
 ```text
-- branch: feat/port-schedulework-scheduler
-- main was not modified by the implementation work
-- employee/position linkage audit result
-- week/timezone audit result
-- employee -> my-schedule -> admin availability -> admin scheduler flow result
-- atomic week deletion result
-- archive UI result
-- registration pill exact-match/neutral/OFF result
-- automated test/build/CI evidence
-- whether the Supabase migration has or has not been applied to the user's target environment
+branch: feat/port-schedulework-scheduler
+main modified by implementation: no
+employee/position audit: pass/fail with evidence
+week/timezone audit: pass/fail with evidence
+employee -> my-schedule -> admin availability -> admin scheduler: pass/fail with evidence
+atomic week deletion: pass/fail with evidence
+archive UI: pass/fail with evidence
+registration pill exact-match/neutral/OFF: pass/fail with evidence
+automated tests/build/CI: exact results
+Supabase migration applied to target environment: yes/no
 ```
 
 Do not create or merge a PR unless the user explicitly asks.
