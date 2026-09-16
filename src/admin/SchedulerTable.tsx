@@ -44,6 +44,7 @@ export type SchedulerTableProps = {
   entries: ScheduleEntry[];
   shifts: ShiftType[];
   weekStart: string;
+  employeeColumnWidth?: number;
   renderCell?: (
     employee: CloudEmployee,
     day: number,
@@ -146,6 +147,7 @@ export function SchedulerTable({
   entries,
   shifts,
   weekStart,
+  employeeColumnWidth,
   renderCell,
   renderGroupRow,
   renderEmployeeRow,
@@ -165,7 +167,7 @@ export function SchedulerTable({
       ]),
   );
   const wrapperStyle = {
-    "--scheduler-employee-width": `${employeeColumnWidthPx(employees)}px`,
+    "--scheduler-employee-width": `${employeeColumnWidth ?? employeeColumnWidthPx(employees)}px`,
   } as CSSProperties;
 
   return (
