@@ -11,7 +11,6 @@ import {
   EntryEditor,
   prepareScheduleWeekForEditing,
   selectScheduleWeekId,
-  scheduleWeekStatusLabel,
 } from "./AdminScheduler";
 import { WeekManager } from "./WeekManager";
 import {
@@ -261,10 +260,10 @@ describe("Admin scheduler confirmations", () => {
     );
   });
 
-  it("maps schedule statuses to Vietnamese labels", () => {
-    expect(scheduleWeekStatusLabel("draft")).toBe("Bản nháp");
-    expect(scheduleWeekStatusLabel("published")).toBe("Đã công bố");
-    expect(scheduleWeekStatusLabel("archived")).toBe("Đã lưu trữ");
+  it("does not expose schedule status labels in the scheduler UI", () => {
+    expect(adminSchedulerSource).not.toContain("Công bố lịch");
+    expect(adminSchedulerSource).not.toContain("Đã công bố");
+    expect(adminSchedulerSource).not.toContain("Bản nháp");
     expect(adminSchedulerSource).not.toContain(">Archive<");
     expect(adminSchedulerSource).not.toContain(
       "label: `${formatWeekRange(item.weekStart)} · ${item.status}`",
