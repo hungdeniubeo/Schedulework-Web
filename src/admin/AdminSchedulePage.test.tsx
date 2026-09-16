@@ -13,23 +13,34 @@ const week: RegistrationWeek = {
 };
 
 describe("AdminSchedulePage", () => {
-  it("requires an explicit action before creating a missing schedule week", () => {
-    const onCreate = vi.fn(async () => undefined);
+  it("sends Admin to week management when no registration week exists", () => {
+    const html = renderToStaticMarkup(
+      <AdminSchedulePage
+        selectedWeek={null}
+        invalidRequestedWeek={false}
+        registrationWeekStarts={[]}
+        navigate={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Chưa có tuần để xếp lịch");
+    expect(html).toContain("Tạo tuần mới");
+    expect(html).not.toContain("Tạo lịch tuần này");
+  });
+
+  it("renders the scheduler immediately for a valid registration week", () => {
     const html = renderToStaticMarkup(
       <AdminSchedulePage
         selectedWeek={week}
         invalidRequestedWeek={false}
-        scheduleWeekStarts={[]}
         registrationWeekStarts={[week.week_start]}
-        busy={false}
         navigate={vi.fn()}
-        onCreate={onCreate}
       />,
     );
 
-    expect(html).toContain("Tuần này chưa có lịch xếp");
-    expect(html).toContain("Tạo lịch tuần này");
-    expect(onCreate).not.toHaveBeenCalled();
+    expect(html).toContain("Xếp lịch chính thức");
+    expect(html).not.toContain("Tuần này chưa có lịch xếp");
+    expect(html).not.toContain("Tạo lịch tuần này");
   });
 
   it("shows a clear state for an invalid requested registration week", () => {
@@ -37,11 +48,8 @@ describe("AdminSchedulePage", () => {
       <AdminSchedulePage
         selectedWeek={null}
         invalidRequestedWeek
-        scheduleWeekStarts={[]}
         registrationWeekStarts={[]}
-        busy={false}
         navigate={vi.fn()}
-        onCreate={vi.fn(async () => undefined)}
       />,
     );
     expect(html).toContain("Không tìm thấy tuần đăng ký");
