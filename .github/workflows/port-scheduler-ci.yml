@@ -48,6 +48,7 @@ jobs:
           src/employee/ScheduleViews.test.tsx
           src/employee/registrationWeekSelection.test.ts
           src/employee/scheduleApi.test.ts
+          src/scheduling/exportJpg.test.ts
           src/scheduling/availabilityShiftMatch.test.ts
           src/scheduling/employeeOrder.test.ts
           src/scheduling/reorderApi.test.ts
