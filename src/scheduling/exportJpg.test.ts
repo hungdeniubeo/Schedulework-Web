@@ -92,4 +92,67 @@ describe("exportScheduleJpg", () => {
       expect.objectContaining({ width: 1340, height: 620 }),
     );
   });
+
+  it("keeps the live visual but removes interaction chrome from the exported clone", async () => {
+    const anchor = { href: "", download: "", click: vi.fn() };
+    const liveSurface = {
+      scrollWidth: 1340,
+      scrollHeight: 620,
+      getBoundingClientRect: () => ({ width: 1340, height: 620 }),
+    } as HTMLElement;
+    const liveSheet = {
+      closest: () => liveSurface,
+    } as HTMLElement;
+    const canvas = {
+      toBlob: (callback: BlobCallback) => callback(new Blob(["jpg"])),
+    } as HTMLCanvasElement;
+    html2canvas.mockResolvedValue(canvas);
+    vi.stubGlobal("document", {
+      getElementById: (id: string) =>
+        id === "cloud-schedule-sheet" ? liveSheet : null,
+      createElement: () => anchor,
+    });
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:schedule",
+      revokeObjectURL: vi.fn(),
+    });
+    vi.stubGlobal("window", { setTimeout: (callback: () => void) => callback() });
+
+    await exportScheduleJpg("cloud-schedule-export", "2026-09-21");
+
+    const deleteControl = { style: {} };
+    const dragHandle = { style: {} };
+    const dropMessage = { style: {} };
+    const details = { removeAttribute: vi.fn() };
+    const countInput = { style: {} };
+    const clonedSurface = {
+      style: {},
+      closest: () => null,
+      querySelectorAll: (selector: string) => {
+        if (selector === ".schedule-entry-delete") return [deleteControl];
+        if (selector === ".schedule-employee-drag-handle") return [dragHandle];
+        if (selector === ".schedule-drop-message") return [dropMessage];
+        if (selector === ".availability-detail") return [details];
+        if (selector === ".staffing-count-input") return [countInput];
+        return [];
+      },
+    };
+    const clonedSheet = { closest: () => clonedSurface };
+    const options = html2canvas.mock.calls[0][1];
+    options.onclone({
+      getElementById: (id: string) =>
+        id === "cloud-schedule-sheet" ? clonedSheet : null,
+    } as unknown as Document);
+
+    expect(deleteControl.style).toMatchObject({ display: "none" });
+    expect(dragHandle.style).toMatchObject({ display: "none" });
+    expect(dropMessage.style).toMatchObject({ display: "none" });
+    expect(details.removeAttribute).toHaveBeenCalledWith("open");
+    expect(countInput.style).toMatchObject({
+      pointerEvents: "none",
+      border: "0px",
+      background: "transparent",
+      boxShadow: "none",
+    });
+  });
 });
