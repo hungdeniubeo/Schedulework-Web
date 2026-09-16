@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegistrationWeek } from "../types/domain";
 
 const supabase = vi.hoisted(() => ({ client: null as any }));
@@ -8,6 +8,10 @@ vi.mock("../lib/config", () => ({
 }));
 
 import { createWeek, deleteWeek } from "./api";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("registration week API", () => {
   it("returns the newly created week so the Admin UI can select it", async () => {
@@ -39,18 +43,32 @@ describe("registration week API", () => {
     expect(query.select).toHaveBeenCalledWith("*");
   });
 
-  it("deletes a registration week by id", async () => {
-    const query = {
-      delete: vi.fn(),
-      eq: vi.fn().mockResolvedValue({ error: null }),
+  it("deletes the complete weekly workflow through the transactional RPC", async () => {
+    const rpc = vi.fn(async () => ({ data: "2026-09-21", error: null }));
+    const from = vi.fn(() => {
+      throw new Error("direct table delete must not be used");
+    });
+    supabase.client = { rpc, from };
+
+    await expect(deleteWeek("week-1")).resolves.toBeUndefined();
+
+    expect(rpc).toHaveBeenCalledWith("delete_registration_workflow", {
+      target_registration_week_id: "week-1",
+    });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("surfaces atomic delete failure without falling back to direct deletes", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    supabase.client = {
+      rpc: vi.fn(async () => ({
+        data: null,
+        error: { message: "REGISTRATION_WEEK_NOT_FOUND" },
+      })),
     };
-    query.delete.mockReturnValue(query);
-    supabase.client = { from: vi.fn().mockReturnValue(query) };
 
-    await expect(deleteWeek("week-old")).resolves.toBeUndefined();
-
-    expect(supabase.client.from).toHaveBeenCalledWith("registration_weeks");
-    expect(query.delete).toHaveBeenCalledOnce();
-    expect(query.eq).toHaveBeenCalledWith("id", "week-old");
+    await expect(deleteWeek("missing")).rejects.toThrow(
+      "Không xóa được toàn bộ dữ liệu tuần đăng ký.",
+    );
   });
 });
