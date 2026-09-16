@@ -4,23 +4,23 @@
 
 **Goal:** Make group creation, rename, reorder, and deletion behave consistently across employee management, availability, scheduling, and exported schedule visuals, while preserving employees and history when a group is deleted.
 
-**Architecture:** Supabase remains the single source of truth. The database foreign key owns delete semantics with `ON DELETE SET NULL`; the shared grouping model owns how real and ungrouped sections are built; long-lived admin pages refresh group/employee structure on focus/visibility without reloading official schedule entries. Scheduler and availability continue to consume the shared grouping model so empty groups and deleted-group employees render consistently.
+**Architecture:** Supabase remains the single source of truth. PostgreSQL owns deletion semantics with `ON DELETE SET NULL`; `buildScheduleGroups()` owns the shared grouping rules; long-lived admin views reload only group/employee structure when focus/visibility returns. Scheduler, availability, and JPG export continue to consume the same live schedule structure instead of duplicating group logic.
 
-**Tech Stack:** React 19, TypeScript, Vite/Vitest, Supabase/PostgreSQL, existing `subscribePageRefresh` utility, existing scheduler components and GitHub Actions workflow.
+**Tech Stack:** React 19, TypeScript, Vite/Vitest, Supabase/PostgreSQL, existing `subscribePageRefresh` utility, existing scheduler components, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-09-16-group-lifecycle-and-sync-design.md`
 
 ## Global Constraints
 
 - Work only on `feat/port-schedulework-scheduler`; do not modify, merge, or create a PR to `main` unless explicitly requested later.
-- Deleting a group must never delete/deactivate employees, employee accounts, availability submissions, positions, schedule weeks, or schedule entries.
-- Employees from a deleted group must end with `group_id = null` and display as `Chưa có nhóm`.
-- Every real group must render in schedule-style tables even when it has zero employees.
-- The synthetic `Chưa có nhóm` section appears only when at least one employee is ungrouped.
-- Scheduler group headings must contain the group name only; remove the decorative `◈` area icon.
-- Structural refreshes use the existing focus/visibility refresh pattern. Do not add a new state library or a new polling framework.
-- Scheduler structural refresh must not reload official schedule entries or reset in-progress schedule interaction.
-- JPG export continues to capture the live scheduler visual; no separate group-layout implementation is introduced for export.
+- Deleting a group must never delete/deactivate employees, employee accounts, positions, availability submissions, schedule weeks, or schedule entries.
+- Employees from a deleted group must become `group_id = null` and display as `Chưa có nhóm`.
+- Every real group must render in schedule-style tables even with zero employees.
+- Synthetic `Chưa có nhóm` renders only when at least one employee has no group.
+- Scheduler group headings contain only the group name; remove `◈`.
+- Cross-page structural refresh uses focus/visibility only; do not add a new polling framework or global state library.
+- Scheduler structural refresh must not reload official schedule entries.
+- Export continues to capture the live scheduler DOM, so there is no separate export group-layout implementation.
 
 ---
 
@@ -31,8 +31,8 @@
 - Create: `src/admin/GroupLifecycleMigration.test.ts`
 
 **Interfaces:**
-- Consumes: existing nullable `public.employees.group_id` foreign key to `public.groups(id)`.
-- Produces: the same `employees_group_id_fkey` relationship with `ON DELETE SET NULL`.
+- Consumes: nullable `public.employees.group_id`.
+- Produces: `employees_group_id_fkey` referencing `public.groups(id) ON DELETE SET NULL`.
 
 - [ ] **Step 1: Write the failing migration contract test**
 
@@ -60,7 +60,7 @@ describe("group lifecycle migration", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
+- [ ] **Step 2: Verify RED**
 
 Run:
 
@@ -68,11 +68,11 @@ Run:
 npm test -- src/admin/GroupLifecycleMigration.test.ts
 ```
 
-Expected: FAIL because `202609160004_group_delete_set_null.sql` does not exist yet.
+Expected: FAIL because the migration file does not exist.
 
-- [ ] **Step 3: Add the minimal migration**
+- [ ] **Step 3: Add the migration**
 
-Create:
+Create `supabase/migrations/202609160004_group_delete_set_null.sql`:
 
 ```sql
 alter table public.employees
@@ -85,11 +85,9 @@ alter table public.employees
   on delete set null;
 ```
 
-Do not add data-copy loops or manual employee updates.
+Do not add manual employee-update loops.
 
 - [ ] **Step 4: Verify GREEN**
-
-Run:
 
 ```bash
 npm test -- src/admin/GroupLifecycleMigration.test.ts
@@ -106,20 +104,19 @@ git commit -m "db: unassign employees when groups are deleted"
 
 ---
 
-### Task 2: Preserve Empty Real Groups in the Shared Grouping Model
+### Task 2: Preserve Empty Groups in the Shared Schedule Grouping Model
 
 **Files:**
 - Modify: `src/scheduling/scheduleSheetModel.ts`
 - Modify: `src/scheduling/scheduleSheetModel.test.ts`
 
 **Interfaces:**
-- Consumes: `Group[]`, `CloudEmployee[]`.
-- Produces: `buildScheduleGroups(groups, employees): ScheduleGroup[]` where all real groups are retained and `Chưa có nhóm` is conditional.
-- Produces: exported constant `UNGROUPED_GROUP_ID = "ungrouped"` so scheduler DnD can identify the synthetic section safely.
+- Produces: `export const UNGROUPED_GROUP_ID = "ungrouped"`.
+- Produces: `buildScheduleGroups(groups, employees)` retaining every real group in `sortOrder` and appending a synthetic ungrouped section only when needed.
 
-- [ ] **Step 1: Expand tests before implementation**
+- [ ] **Step 1: Add failing grouping tests**
 
-Replace/extend the `buildScheduleGroups` coverage with explicit cases:
+Extend `src/scheduling/scheduleSheetModel.test.ts` with:
 
 ```ts
 it("keeps empty real groups in sort order", () => {
@@ -140,32 +137,36 @@ it("keeps empty real groups in sort order", () => {
   ]);
 });
 
-it("adds Chưa có nhóm only when an employee is ungrouped", () => {
+it("adds Chưa có nhóm only when at least one employee is ungrouped", () => {
   const groups: Group[] = [{ id: "g1", name: "MEAT", sortOrder: 0 }];
 
-  expect(buildScheduleGroups(groups, [employee("hung", null, 0)])
-    .map((section) => section.group.name))
-    .toEqual(["MEAT", "Chưa có nhóm"]);
+  expect(
+    buildScheduleGroups(groups, [employee("hung", null, 0)]).map(
+      (section) => section.group.name,
+    ),
+  ).toEqual(["MEAT", "Chưa có nhóm"]);
 
-  expect(buildScheduleGroups(groups, [employee("hung", "g1", 0)])
-    .map((section) => section.group.name))
-    .toEqual(["MEAT"]);
+  expect(
+    buildScheduleGroups(groups, [employee("hung", "g1", 0)]).map(
+      (section) => section.group.name,
+    ),
+  ).toEqual(["MEAT"]);
 });
 ```
 
-Keep the existing employee sort-order assertion and update its expected sections to include empty real groups when applicable.
+Update the existing grouped-order expectation so an empty configured group remains present.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npm test -- src/scheduling/scheduleSheetModel.test.ts
 ```
 
-Expected: FAIL because the current implementation filters every empty section.
+Expected: FAIL because the current implementation filters empty sections.
 
 - [ ] **Step 3: Implement the shared grouping rule**
 
-Refactor `scheduleSheetModel.ts` to this shape:
+Refactor `src/scheduling/scheduleSheetModel.ts`:
 
 ```ts
 export const UNGROUPED_GROUP_ID = "ungrouped";
@@ -177,7 +178,6 @@ export function buildScheduleGroups(
   const orderedGroups = [...groups].sort(
     (first, second) => first.sortOrder - second.sortOrder,
   );
-
   const employeeSort = (first: CloudEmployee, second: CloudEmployee) =>
     first.sortOrder - second.sortOrder ||
     first.name.localeCompare(second.name, "vi");
@@ -208,13 +208,13 @@ export function buildScheduleGroups(
 }
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [ ] **Step 4: Verify GREEN across both schedule surfaces**
 
 ```bash
 npm test -- src/scheduling/scheduleSheetModel.test.ts src/admin/AdminMatrix.test.tsx src/admin/SchedulerTable.test.tsx
 ```
 
-Expected: PASS after updating any old assertion that assumed empty real groups disappear.
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -225,20 +225,21 @@ git commit -m "feat: keep empty groups in schedule views"
 
 ---
 
-### Task 3: Make Group Deletion Explicit and Safe in the Admin UI
+### Task 3: Make Group Deletion Explicit and Safe in `/admin/groups`
 
 **Files:**
 - Create: `src/admin/GroupDeleteDialog.tsx`
 - Create: `src/admin/GroupDeleteDialog.test.tsx`
+- Create: `src/admin/GroupManager.test.ts`
 - Modify: `src/admin/GroupManager.tsx`
 - Modify: `src/scheduling/api.ts`
 - Modify: `src/scheduling/api.test.ts`
 
 **Interfaces:**
-- `GroupDeleteDialog` consumes `{ group: Group; deleting: boolean; onCancel(): void; onConfirm(): void }`.
-- `removeGroup(id: string): Promise<void>` performs one group delete and now reports generic delete failure instead of instructing the user to move employees first.
+- `GroupDeleteDialog({ group, deleting, onCancel, onConfirm })` uses existing `ModalBackdrop`/`confirm-dialog` UI.
+- `removeGroup(id: string): Promise<void>` performs one delete and reports `Không xóa được nhóm.` on failure.
 
-- [ ] **Step 1: Add API regression coverage first**
+- [ ] **Step 1: Add API regression coverage**
 
 Update `src/scheduling/api.test.ts` to import `removeGroup` and add:
 
@@ -257,19 +258,16 @@ describe("removeGroup", () => {
     await expect(removeGroup("group-1")).resolves.toBeUndefined();
   });
 
-  it("does not tell admins to manually move employees on failure", async () => {
+  it("uses generic delete failure copy instead of move-employees-first copy", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     supabase.client = clientWithGroupDelete({ message: "database failure" });
 
     await expect(removeGroup("group-1")).rejects.toThrow("Không xóa được nhóm.");
-    await expect(removeGroup("group-1")).rejects.not.toThrow(
-      "Hãy chuyển nhân viên sang nhóm khác trước.",
-    );
   });
 });
 ```
 
-- [ ] **Step 2: Add deletion-dialog test before component**
+- [ ] **Step 2: Add dialog and wiring tests**
 
 Create `src/admin/GroupDeleteDialog.test.tsx`:
 
@@ -278,7 +276,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { GroupDeleteDialog } from "./GroupDeleteDialog";
 
-it("explains that employees become ungrouped and history remains", () => {
+it("explains that employees become ungrouped while schedule data stays", () => {
   const html = renderToStaticMarkup(
     <GroupDeleteDialog
       group={{ id: "group-1", name: "BAR", sortOrder: 0 }}
@@ -291,17 +289,36 @@ it("explains that employees become ungrouped and history remains", () => {
   expect(html).toContain("Xóa nhóm BAR?");
   expect(html).toContain("Chưa có nhóm");
   expect(html).toContain("Lịch làm việc và dữ liệu đăng ký không bị xóa");
-  expect(html).toContain("Xóa nhóm");
 });
 ```
 
-- [ ] **Step 3: Run tests and verify RED**
+Create `src/admin/GroupManager.test.ts`:
 
-```bash
-npm test -- src/scheduling/api.test.ts src/admin/GroupDeleteDialog.test.tsx
+```ts
+import { describe, expect, it } from "vitest";
+import source from "./GroupManager.tsx?raw";
+
+describe("GroupManager delete flow", () => {
+  it("opens the confirmation dialog instead of deleting directly from the row", () => {
+    expect(source).toContain("deleteTarget");
+    expect(source).toContain("setDeleteTarget(group)");
+    expect(source).toContain("<GroupDeleteDialog");
+  });
+
+  it("reloads the authoritative group list after confirmed deletion", () => {
+    expect(source).toContain("await removeGroup(deleteTarget.id)");
+    expect(source).toContain("await load()");
+  });
+});
 ```
 
-Expected: FAIL because API copy is stale and `GroupDeleteDialog` does not exist.
+- [ ] **Step 3: Verify RED**
+
+```bash
+npm test -- src/scheduling/api.test.ts src/admin/GroupDeleteDialog.test.tsx src/admin/GroupManager.test.ts
+```
+
+Expected: FAIL because delete copy is stale and dialog/wiring do not exist.
 
 - [ ] **Step 4: Implement API and dialog**
 
@@ -314,25 +331,72 @@ export async function removeGroup(id: string): Promise<void> {
 }
 ```
 
-Implement `GroupDeleteDialog` with the existing `ModalBackdrop` and `confirm-dialog` styles, `role="alertdialog"`, disabled dismissal while `deleting`, and the approved copy.
+Implement `GroupDeleteDialog` with:
 
-- [ ] **Step 5: Wire GroupManager to the dialog**
+```tsx
+<ModalBackdrop onClose={() => !deleting && onCancel()}>
+  <section role="alertdialog" aria-modal="true" className="confirm-dialog">
+    <h2>Xóa nhóm {group.name}?</h2>
+    <p>
+      Nhân viên trong nhóm sẽ chuyển sang “Chưa có nhóm”. Lịch làm việc và dữ
+      liệu đăng ký không bị xóa.
+    </p>
+    <footer>
+      <button className="button secondary" disabled={deleting} onClick={onCancel}>
+        Hủy
+      </button>
+      <button className="button ghost danger" disabled={deleting} onClick={onConfirm}>
+        {deleting ? "Đang xóa..." : "Xóa nhóm"}
+      </button>
+    </footer>
+  </section>
+</ModalBackdrop>
+```
+
+- [ ] **Step 5: Wire GroupManager exactly**
 
 In `GroupManager.tsx`:
 
-- add `deleteTarget: Group | null` state;
-- clicking `Xóa` sets `deleteTarget` instead of deleting immediately;
-- confirmation calls `removeGroup(deleteTarget.id)` once;
-- on success: reload `groups`, close the dialog;
-- on failure: retain the group, close or keep the dialog according to current confirm-dialog conventions, and show inline error;
-- while delete is running, disable duplicate mutations.
+```ts
+const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
 
-Also refactor group rename so an empty trimmed input restores `group.name`, and a failed `patchGroup()` restores the previous displayed value instead of leaving stale text in the uncontrolled input.
+async function confirmDelete() {
+  if (!deleteTarget || busy) return;
+  setBusy(true);
+  setError(null);
+  try {
+    await removeGroup(deleteTarget.id);
+    await load();
+    setDeleteTarget(null);
+  } catch (reason) {
+    setError(reason instanceof Error ? reason.message : "Không xóa được nhóm.");
+  } finally {
+    setBusy(false);
+  }
+}
+```
+
+The row button becomes:
+
+```tsx
+<button
+  className="button ghost danger"
+  type="button"
+  disabled={busy}
+  onClick={() => setDeleteTarget(group)}
+>
+  Xóa
+</button>
+```
+
+Render `GroupDeleteDialog` when `deleteTarget !== null`.
+
+For rename, if the trimmed name is empty, immediately restore `event.currentTarget.value = group.name`. If `patchGroup()` rejects, restore the previous value and show the error. On success, `await load()`.
 
 - [ ] **Step 6: Verify GREEN**
 
 ```bash
-npm test -- src/scheduling/api.test.ts src/admin/GroupDeleteDialog.test.tsx
+npm test -- src/scheduling/api.test.ts src/admin/GroupDeleteDialog.test.tsx src/admin/GroupManager.test.ts
 npm run build
 ```
 
@@ -341,29 +405,30 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/scheduling/api.ts src/scheduling/api.test.ts src/admin/GroupDeleteDialog.tsx src/admin/GroupDeleteDialog.test.tsx src/admin/GroupManager.tsx
+git add src/scheduling/api.ts src/scheduling/api.test.ts src/admin/GroupDeleteDialog.tsx src/admin/GroupDeleteDialog.test.tsx src/admin/GroupManager.tsx src/admin/GroupManager.test.ts
 git commit -m "feat: allow safe group deletion"
 ```
 
 ---
 
-### Task 4: Remove the Scheduler Area Icon and Keep Synthetic Ungrouped DnD Safe
+### Task 4: Render Group Rows Correctly in Scheduler and Availability
 
 **Files:**
 - Modify: `src/admin/SchedulerTable.tsx`
 - Modify: `src/admin/SchedulerTable.test.tsx`
 - Modify: `src/admin/ScheduleGrid.tsx`
-- Modify: `src/admin/ScheduleGrid.test.tsx` or `src/admin/schedulerDnd.test.ts` as appropriate
-- Modify: scheduler CSS only if `.scheduler-group-mark` becomes unused.
+- Modify: `src/admin/ScheduleGrid.test.tsx`
+- Modify: `src/admin/AdminMatrix.test.tsx`
+- Modify: `src/admin/AdminSchedule.css`
 
 **Interfaces:**
-- Consumes: `UNGROUPED_GROUP_ID` from `scheduleSheetModel.ts`.
-- Produces: group rows that render only the uppercase group name.
-- Empty real groups remain valid employee-drop targets; synthetic `Chưa có nhóm` is not passed to the reorder RPC as if it were a real UUID.
+- Consumes: `UNGROUPED_GROUP_ID` from `src/scheduling/scheduleSheetModel.ts`.
+- Empty real groups remain visible and valid drop targets.
+- Synthetic `Chưa có nhóm` remains visible but is not a group drop target because it is not a database UUID.
 
-- [ ] **Step 1: Add scheduler rendering assertions first**
+- [ ] **Step 1: Add scheduler/availability rendering tests**
 
-Extend `SchedulerTable.test.tsx`:
+Add to `SchedulerTable.test.tsx`:
 
 ```tsx
 it("renders empty group headings without the decorative area icon", () => {
@@ -384,300 +449,27 @@ it("renders empty group headings without the decorative area icon", () => {
   expect(html).toContain("BAR");
   expect(html).not.toContain("◈");
 });
-```
 
-- [ ] **Step 2: Verify RED**
+it("renders ungrouped employees under Chưa có nhóm", () => {
+  const html = renderToStaticMarkup(
+    <SchedulerTable
+      groups={[{ id: "meat", name: "MEAT", sortOrder: 0 }]}
+      employees={[{ ...employee, groupId: null }]}
+      entries={[]}
+      shifts={shifts}
+      weekStart="2026-09-21"
+    />,
+  );
 
-```bash
-npm test -- src/admin/SchedulerTable.test.tsx
-```
-
-Expected: FAIL because `◈` is currently rendered.
-
-- [ ] **Step 3: Remove icon markup**
-
-Change group children from:
-
-```tsx
-<div className="scheduler-group-label">
-  <span className="scheduler-group-mark" aria-hidden="true">◈</span>
-  <strong>{group.name.toLocaleUpperCase("vi")}</strong>
-</div>
-```
-
-to:
-
-```tsx
-<div className="scheduler-group-label">
-  <strong>{group.name.toLocaleUpperCase("vi")}</strong>
-</div>
-```
-
-Remove now-unused `.scheduler-group-mark` CSS if no other component references it.
-
-- [ ] **Step 4: Prevent synthetic group IDs reaching employee reorder**
-
-Import `UNGROUPED_GROUP_ID` into `ScheduleGrid.tsx`. For `GroupDropRow`, keep real empty groups droppable, but disable the synthetic ungrouped group:
-
-```tsx
-editable={
-  props.editable &&
-  Boolean(props.onMoveEmployee) &&
-  group.id !== UNGROUPED_GROUP_ID
-}
-```
-
-Ungrouped employee rows remain visible; their current drag handle already stays disabled because `employee.groupId` is null.
-
-- [ ] **Step 5: Verify scheduler regressions**
-
-```bash
-npm test -- src/admin/SchedulerTable.test.tsx src/admin/ScheduleGrid.test.tsx src/admin/schedulerDnd.test.ts src/scheduling/exportJpg.test.ts
-```
-
-Expected: PASS. Export needs no separate visual implementation because it captures the live DOM.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/admin/SchedulerTable.tsx src/admin/SchedulerTable.test.tsx src/admin/ScheduleGrid.tsx src/admin/ScheduleGrid.test.tsx src/admin/schedulerDnd.test.ts src/admin/AdminSchedule.css src/admin/AdminScheduleLive.css
-git commit -m "style: sync scheduler group sections"
-```
-
-Only add CSS files that actually changed.
-
----
-
-### Task 5: Refresh Group/Employee Structure Across Long-Lived Admin Views
-
-**Files:**
-- Modify: `src/admin/AdminScheduler.tsx`
-- Modify: `src/admin/AdminSchedulerBehavior.test.tsx`
-- Modify: `src/admin/EmployeeManager.tsx`
-- Create: `src/admin/AdminStructureRefresh.test.ts`
-- Modify: `src/admin/AdminDashboard.tsx`
-- Modify: `src/admin/GroupManager.tsx`
-
-**Interfaces:**
-- Consumes: `subscribePageRefresh(refresh)` from `src/lib/pageRefresh.ts`.
-- Produces: focus/visibility structural refreshes with no periodic polling.
-- Scheduler refresh path updates `groups + employees` only; official `entries` remain untouched.
-
-- [ ] **Step 1: Lock scheduler refresh behavior before implementation**
-
-Extend `AdminSchedulerBehavior.test.tsx`:
-
-```ts
-it("refreshes group and employee structure without reloading official entries", () => {
-  expect(source).toContain("loadStructure");
-  expect(source).toContain("listGroups()");
-  expect(source).toContain("listSchedulerEmployees()");
-  expect(source).toContain("subscribePageRefresh");
+  expect(html).toContain("Chưa có nhóm");
+  expect(html).toContain("Nguyễn Phi Hùng");
 });
 ```
-
-The implementation must keep `loadEntries()` out of the structural focus callback. Keep the existing 15-second availability refresh independent.
-
-- [ ] **Step 2: Verify RED**
-
-```bash
-npm test -- src/admin/AdminSchedulerBehavior.test.tsx
-```
-
-Expected: FAIL because there is no dedicated `loadStructure` focus refresh yet.
-
-- [ ] **Step 3: Implement scheduler structural refresh**
-
-Add:
-
-```ts
-const loadStructure = useCallback(async () => {
-  const [nextGroups, nextEmployees] = await Promise.all([
-    listGroups(),
-    listSchedulerEmployees(),
-  ]);
-  setGroups(nextGroups);
-  setEmployees(nextEmployees);
-}, []);
-```
-
-Subscribe without an interval:
-
-```ts
-useEffect(() =>
-  subscribePageRefresh(() => {
-    void loadStructure().catch((reason) => {
-      console.error(reason);
-      setNotice("Không làm mới được nhóm/nhân viên. Lịch đang xếp vẫn được giữ nguyên.");
-    });
-  }),
-[loadStructure]);
-```
-
-Do not call `loadEntries()` from this callback.
-
-Add a small effect to reset a deleted group filter:
-
-```ts
-useEffect(() => {
-  if (groupFilter !== "all" && !groups.some((group) => group.id === groupFilter)) {
-    setGroupFilter("all");
-  }
-}, [groupFilter, groups]);
-```
-
-- [ ] **Step 4: Add a source contract for the other admin refresh consumers**
-
-Create `src/admin/AdminStructureRefresh.test.ts`:
-
-```ts
-import { describe, expect, it } from "vitest";
-import employeeManagerSource from "./EmployeeManager.tsx?raw";
-import groupManagerSource from "./GroupManager.tsx?raw";
-import dashboardSource from "./AdminDashboard.tsx?raw";
-
-describe("admin group structure refresh", () => {
-  it("refreshes employee groups when EmployeeManager regains focus", () => {
-    expect(employeeManagerSource).toContain("subscribePageRefresh");
-    expect(employeeManagerSource).toContain("listSchedulerEmployees()");
-    expect(employeeManagerSource).toContain("listGroups()");
-  });
-
-  it("refreshes the group manager from Supabase on focus", () => {
-    expect(groupManagerSource).toContain("subscribePageRefresh");
-    expect(groupManagerSource).toContain("listGroups()");
-  });
-
-  it("refreshes dashboard/availability employee-group structure on focus", () => {
-    expect(dashboardSource).toContain("subscribePageRefresh");
-    expect(dashboardSource).toContain("refreshStructure");
-  });
-});
-```
-
-- [ ] **Step 5: Verify RED**
-
-```bash
-npm test -- src/admin/AdminStructureRefresh.test.ts
-```
-
-Expected: FAIL because the three screens do not yet share the required structural focus refresh.
-
-- [ ] **Step 6: Implement EmployeeManager focus refresh**
-
-Import `useCallback` and `subscribePageRefresh`.
-
-Create a dedicated loader for only employees/groups:
-
-```ts
-const loadEmployeeStructure = useCallback(async () => {
-  const [nextEmployees, nextGroups] = await Promise.all([
-    listSchedulerEmployees(),
-    listGroups(),
-  ]);
-  setEmployees(nextEmployees);
-  setGroups(nextGroups);
-}, []);
-```
-
-Subscribe while avoiding mutation races:
-
-```ts
-useEffect(() =>
-  subscribePageRefresh(() => {
-    if (adding || busyId !== null || positionBusy) return;
-    void loadEmployeeStructure().catch((reason) => {
-      console.error(reason);
-      setError("Không làm mới được nhóm và nhân viên.");
-    });
-  }),
-[adding, busyId, loadEmployeeStructure, positionBusy]);
-```
-
-Do not clear current data before the request resolves. Existing `groupName ?? "Chưa có nhóm"` and the blank group select option should then reflect deleted-group employees automatically.
-
-- [ ] **Step 7: Implement GroupManager focus refresh**
-
-Wrap `load` in `useCallback`, import `subscribePageRefresh`, and subscribe when not `busy`:
-
-```ts
-useEffect(() =>
-  subscribePageRefresh(() => {
-    if (busy) return;
-    void load().catch((reason) => {
-      console.error(reason);
-      setError("Không làm mới được nhóm.");
-    });
-  }),
-[busy, load]);
-```
-
-- [ ] **Step 8: Implement dashboard/availability structural refresh**
-
-In `AdminDashboard.tsx`, import `subscribePageRefresh` and add a structure-only loader:
-
-```ts
-const refreshStructure = useCallback(async () => {
-  const [nextEmployees, nextGroups] = await Promise.all([
-    listSchedulerEmployees(),
-    listGroups(),
-  ]);
-  setEmployees(nextEmployees);
-  setGroups(nextGroups);
-}, []);
-```
-
-Subscribe only for sections that actually render this parent-owned structure:
-
-```ts
-useEffect(() => {
-  if (section !== "availability" && section !== "dashboard") return;
-  return subscribePageRefresh(() => {
-    void refreshStructure().catch((reason) => {
-      console.error(reason);
-      setError("Không làm mới được nhóm và nhân viên.");
-    });
-  });
-}, [refreshStructure, section]);
-```
-
-Keep the existing submission 15-second refresh separate; group metadata does not need polling.
-
-- [ ] **Step 9: Verify GREEN**
-
-```bash
-npm test -- src/admin/AdminSchedulerBehavior.test.tsx src/admin/AdminStructureRefresh.test.ts src/admin/AdminMatrix.test.tsx src/admin/AdminDashboard.test.tsx
-npm run build
-```
-
-Expected: PASS.
-
-- [ ] **Step 10: Commit**
-
-```bash
-git add src/admin/AdminScheduler.tsx src/admin/AdminSchedulerBehavior.test.tsx src/admin/EmployeeManager.tsx src/admin/GroupManager.tsx src/admin/AdminDashboard.tsx src/admin/AdminStructureRefresh.test.ts
-git commit -m "feat: refresh group structure across admin views"
-```
-
----
-
-### Task 6: Add End-to-End Regression Coverage for Group Lifecycle Rendering
-
-**Files:**
-- Modify: `src/admin/AdminMatrix.test.tsx`
-- Modify: `src/admin/SchedulerTable.test.tsx`
-- Modify: `src/scheduling/scheduleSheetModel.test.ts`
-- Create or modify: `src/admin/GroupManager.test.tsx` only if a static/source contract is needed beyond `GroupDeleteDialog.test.tsx`.
-
-**Interfaces:**
-- Verifies that the shared grouping behavior is visible in scheduler and availability surfaces.
-
-- [ ] **Step 1: Add availability empty-group coverage**
 
 Add to `AdminMatrix.test.tsx`:
 
 ```tsx
-it("keeps configured groups visible even when they have no active employees", () => {
+it("keeps configured empty groups visible", () => {
   const html = renderToStaticMarkup(
     <AdminMatrix
       employees={[employee]}
@@ -695,71 +487,314 @@ it("keeps configured groups visible even when they have no active employees", ()
 });
 ```
 
-- [ ] **Step 2: Add ungrouped rendering coverage**
+Add a source assertion to `ScheduleGrid.test.tsx` that `UNGROUPED_GROUP_ID` is imported and checked when enabling `GroupDropRow`.
 
-In either `SchedulerTable.test.tsx` or shared model tests, create an employee with `groupId: null` and assert `Chưa có nhóm` plus the employee name are both present.
-
-- [ ] **Step 3: Run the complete focused lifecycle set**
+- [ ] **Step 2: Verify RED**
 
 ```bash
-npm test -- \
-  src/admin/GroupLifecycleMigration.test.ts \
-  src/scheduling/api.test.ts \
-  src/scheduling/scheduleSheetModel.test.ts \
-  src/admin/GroupDeleteDialog.test.tsx \
-  src/admin/SchedulerTable.test.tsx \
-  src/admin/ScheduleGrid.test.tsx \
-  src/admin/AdminMatrix.test.tsx \
-  src/admin/AdminSchedulerBehavior.test.tsx \
-  src/admin/AdminStructureRefresh.test.ts \
-  src/scheduling/exportJpg.test.ts
+npm test -- src/admin/SchedulerTable.test.tsx src/admin/ScheduleGrid.test.tsx src/admin/AdminMatrix.test.tsx
+```
+
+Expected: FAIL because the icon still exists and empty groups are currently filtered by the old shared model until Task 2 is implemented.
+
+- [ ] **Step 3: Remove the area icon**
+
+Change SchedulerTable group markup to:
+
+```tsx
+<div className="scheduler-group-label">
+  <strong>{group.name.toLocaleUpperCase("vi")}</strong>
+</div>
+```
+
+Remove the unused `.scheduler-group-mark` CSS rule from `AdminSchedule.css`.
+
+- [ ] **Step 4: Make synthetic ungrouped non-droppable**
+
+Import:
+
+```ts
+import { UNGROUPED_GROUP_ID } from "../scheduling/scheduleSheetModel";
+```
+
+When rendering `GroupDropRow`, use:
+
+```tsx
+editable={
+  props.editable &&
+  Boolean(props.onMoveEmployee) &&
+  group.id !== UNGROUPED_GROUP_ID
+}
+```
+
+Keep real empty groups droppable so an employee can be dragged into a newly created group.
+
+- [ ] **Step 5: Verify GREEN including export**
+
+```bash
+npm test -- src/admin/SchedulerTable.test.tsx src/admin/ScheduleGrid.test.tsx src/admin/AdminMatrix.test.tsx src/scheduling/exportJpg.test.ts
+```
+
+Expected: PASS. No export component changes are needed because JPG export captures the live schedule DOM.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/admin/SchedulerTable.tsx src/admin/SchedulerTable.test.tsx src/admin/ScheduleGrid.tsx src/admin/ScheduleGrid.test.tsx src/admin/AdminMatrix.test.tsx src/admin/AdminSchedule.css
+git commit -m "style: synchronize scheduler group rows"
+```
+
+---
+
+### Task 5: Refresh Group and Employee Structure Across Admin Views
+
+**Files:**
+- Modify: `src/admin/AdminScheduler.tsx`
+- Modify: `src/admin/AdminSchedulerBehavior.test.tsx`
+- Modify: `src/admin/EmployeeManager.tsx`
+- Modify: `src/admin/GroupManager.tsx`
+- Modify: `src/admin/AdminDashboard.tsx`
+- Create: `src/admin/AdminStructureRefresh.test.ts`
+
+**Interfaces:**
+- Consumes: `subscribePageRefresh(refresh)` from `src/lib/pageRefresh.ts`.
+- Scheduler structural refresh updates `groups + employees` only.
+- Availability/dashboard parent refresh updates `groups + employees` only; existing submission polling remains separate.
+
+- [ ] **Step 1: Add scheduler structural-refresh test**
+
+Extend `AdminSchedulerBehavior.test.tsx`:
+
+```ts
+it("refreshes groups and employees separately from official schedule entries", () => {
+  expect(source).toContain("loadStructure");
+  expect(source).toContain("listGroups()");
+  expect(source).toContain("listSchedulerEmployees()");
+  expect(source).toContain("subscribePageRefresh");
+});
+```
+
+- [ ] **Step 2: Add source contracts for employee/group/dashboard pages**
+
+Create `src/admin/AdminStructureRefresh.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import employeeManagerSource from "./EmployeeManager.tsx?raw";
+import groupManagerSource from "./GroupManager.tsx?raw";
+import dashboardSource from "./AdminDashboard.tsx?raw";
+
+describe("admin group structure refresh", () => {
+  it("refreshes employee groups on focus/visibility", () => {
+    expect(employeeManagerSource).toContain("subscribePageRefresh");
+    expect(employeeManagerSource).toContain("loadEmployeeStructure");
+  });
+
+  it("refreshes the group manager from Supabase on focus/visibility", () => {
+    expect(groupManagerSource).toContain("subscribePageRefresh");
+    expect(groupManagerSource).toContain("await listGroups()");
+  });
+
+  it("refreshes dashboard/availability structure on focus/visibility", () => {
+    expect(dashboardSource).toContain("subscribePageRefresh");
+    expect(dashboardSource).toContain("refreshStructure");
+  });
+});
+```
+
+- [ ] **Step 3: Verify RED**
+
+```bash
+npm test -- src/admin/AdminSchedulerBehavior.test.tsx src/admin/AdminStructureRefresh.test.ts
+```
+
+Expected: FAIL because the dedicated structural refresh paths do not exist yet.
+
+- [ ] **Step 4: Implement scheduler structure refresh**
+
+Add to `AdminScheduler.tsx`:
+
+```ts
+const loadStructure = useCallback(async () => {
+  const [nextGroups, nextEmployees] = await Promise.all([
+    listGroups(),
+    listSchedulerEmployees(),
+  ]);
+  setGroups(nextGroups);
+  setEmployees(nextEmployees);
+}, []);
+```
+
+Subscribe with no interval:
+
+```ts
+useEffect(() =>
+  subscribePageRefresh(() => {
+    void loadStructure().catch((reason) => {
+      console.error(reason);
+      setNotice(
+        "Không làm mới được nhóm/nhân viên. Lịch đang xếp vẫn được giữ nguyên.",
+      );
+    });
+  }),
+[loadStructure]);
+```
+
+Do not call `loadEntries()` in this structural refresh.
+
+Reset a deleted active filter:
+
+```ts
+useEffect(() => {
+  if (groupFilter !== "all" && !groups.some((group) => group.id === groupFilter)) {
+    setGroupFilter("all");
+  }
+}, [groupFilter, groups]);
+```
+
+- [ ] **Step 5: Implement EmployeeManager structure refresh**
+
+Import `useCallback` and `subscribePageRefresh`.
+
+Add:
+
+```ts
+const loadEmployeeStructure = useCallback(async () => {
+  const [nextEmployees, nextGroups] = await Promise.all([
+    listSchedulerEmployees(),
+    listGroups(),
+  ]);
+  setEmployees(nextEmployees);
+  setGroups(nextGroups);
+}, []);
+```
+
+Subscribe while mutations are idle:
+
+```ts
+useEffect(() =>
+  subscribePageRefresh(() => {
+    if (adding || busyId !== null || positionBusy) return;
+    void loadEmployeeStructure().catch((reason) => {
+      console.error(reason);
+      setError("Không làm mới được nhóm và nhân viên.");
+    });
+  }),
+[adding, busyId, loadEmployeeStructure, positionBusy]);
+```
+
+Do not clear existing employees/groups before the request resolves.
+
+- [ ] **Step 6: Implement GroupManager focus refresh**
+
+Wrap `load` with `useCallback`:
+
+```ts
+const load = useCallback(async () => {
+  setGroups(await listGroups());
+}, []);
+```
+
+Then:
+
+```ts
+useEffect(() =>
+  subscribePageRefresh(() => {
+    if (busy) return;
+    void load().catch((reason) => {
+      console.error(reason);
+      setError("Không làm mới được nhóm.");
+    });
+  }),
+[busy, load]);
+```
+
+- [ ] **Step 7: Implement dashboard/availability parent structure refresh**
+
+Import `subscribePageRefresh` in `AdminDashboard.tsx` and add:
+
+```ts
+const refreshStructure = useCallback(async () => {
+  const [nextEmployees, nextGroups] = await Promise.all([
+    listSchedulerEmployees(),
+    listGroups(),
+  ]);
+  setEmployees(nextEmployees);
+  setGroups(nextGroups);
+}, []);
+```
+
+Subscribe only where those parent-owned arrays are rendered:
+
+```ts
+useEffect(() => {
+  if (section !== "availability" && section !== "dashboard") return;
+  return subscribePageRefresh(() => {
+    void refreshStructure().catch((reason) => {
+      console.error(reason);
+      setError("Không làm mới được nhóm và nhân viên.");
+    });
+  });
+}, [refreshStructure, section]);
+```
+
+Keep existing submission refresh/polling unchanged.
+
+- [ ] **Step 8: Verify GREEN**
+
+```bash
+npm test -- src/admin/AdminSchedulerBehavior.test.tsx src/admin/AdminStructureRefresh.test.ts src/admin/AdminMatrix.test.tsx src/admin/AdminDashboard.test.tsx
+npm run build
 ```
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/admin/AdminMatrix.test.tsx src/admin/SchedulerTable.test.tsx src/scheduling/scheduleSheetModel.test.ts src/admin/GroupManager.test.tsx
-git commit -m "test: cover synchronized group lifecycle"
+git add src/admin/AdminScheduler.tsx src/admin/AdminSchedulerBehavior.test.tsx src/admin/EmployeeManager.tsx src/admin/GroupManager.tsx src/admin/AdminDashboard.tsx src/admin/AdminStructureRefresh.test.ts
+git commit -m "feat: refresh group structure across admin views"
 ```
-
-Only stage `GroupManager.test.tsx` if it was actually created.
 
 ---
 
-### Task 7: Protect the New Flow in CI and Perform Final Verification
+### Task 6: Protect the Lifecycle in Focused CI and Run Final Verification
 
 **Files:**
 - Modify: `.github/workflows/port-scheduler-ci.yml`
 
 **Interfaces:**
-- Adds the new group lifecycle tests to the existing focused scheduler test step.
+- Adds every new group-lifecycle regression test to the existing focused scheduler step.
 
-- [ ] **Step 1: Add focused test files to CI**
+- [ ] **Step 1: Add focused tests to CI**
 
-Add these files to the `Scheduler focused tests` command:
+Add these paths to `Scheduler focused tests`:
 
 ```text
 src/admin/GroupLifecycleMigration.test.ts
 src/admin/GroupDeleteDialog.test.tsx
+src/admin/GroupManager.test.ts
 src/admin/AdminStructureRefresh.test.ts
 src/scheduling/scheduleSheetModel.test.ts
 ```
 
-Keep all existing focused tests.
+Keep every existing focused test.
 
-- [ ] **Step 2: Run focused tests locally when a checkout is available**
+- [ ] **Step 2: Run focused verification**
 
 ```bash
 npm test -- \
   src/admin/GroupLifecycleMigration.test.ts \
   src/admin/GroupDeleteDialog.test.tsx \
+  src/admin/GroupManager.test.ts \
   src/admin/AdminStructureRefresh.test.ts \
   src/scheduling/scheduleSheetModel.test.ts \
+  src/scheduling/api.test.ts \
   src/admin/SchedulerTable.test.tsx \
+  src/admin/ScheduleGrid.test.tsx \
   src/admin/AdminMatrix.test.tsx \
-  src/scheduling/api.test.ts
+  src/admin/AdminSchedulerBehavior.test.tsx \
+  src/scheduling/exportJpg.test.ts
 ```
 
 Expected: PASS.
@@ -776,7 +811,7 @@ git diff --check origin/main...HEAD
 
 Expected: all commands succeed.
 
-- [ ] **Step 4: Commit CI update**
+- [ ] **Step 4: Commit CI protection**
 
 ```bash
 git add .github/workflows/port-scheduler-ci.yml
@@ -785,55 +820,33 @@ git commit -m "ci: protect group lifecycle synchronization"
 
 - [ ] **Step 5: Apply the migration to the intended Supabase project**
 
-Before applying, confirm the CLI is linked to the intended project. Then run:
+After verifying the CLI is linked to the intended project:
 
 ```bash
 npx supabase db push
 ```
 
-Expected: migration `202609160004_group_delete_set_null.sql` is applied successfully.
+Expected: `202609160004_group_delete_set_null.sql` applies successfully.
 
-- [ ] **Step 6: Manual smoke test**
-
-Use a disposable group and one non-critical employee:
+- [ ] **Step 6: Run the manual acceptance flow**
 
 ```text
-/admin/groups
-Create BAR
-→ BAR appears in group list
-
-/admin/schedule?week=<existing-week>
-Return/focus the tab
-→ BAR appears as an empty group row
-→ group row has no ◈ icon
-
-/admin/employees
-Assign Hùng to BAR
-→ Hùng shows BAR
-
-/admin/availability and /admin/schedule
-Return/focus each tab
-→ Hùng appears under BAR
-
-/admin/groups
-Rename BAR → BEVERAGE
-→ return/focus employees, availability, schedule
-→ BEVERAGE appears everywhere
-
-/admin/groups
-Delete BEVERAGE
-→ confirmation says employees become Chưa có nhóm
-→ confirm
-→ Hùng remains active
-→ Hùng's position is unchanged
-→ existing availability/schedule data remains
-→ /admin/employees shows Chưa có nhóm
-→ /admin/availability and /admin/schedule place Hùng under Chưa có nhóm
+1. /admin/groups → create BAR.
+2. /admin/schedule?week=<existing-week> → return/focus tab → BAR appears even with no employees and no ◈ icon.
+3. /admin/employees → assign Hùng to BAR.
+4. Return/focus /admin/availability and /admin/schedule → Hùng appears under BAR.
+5. /admin/groups → rename BAR to BEVERAGE.
+6. Return/focus employees, availability, schedule → BEVERAGE appears everywhere; BAR disappears.
+7. /admin/groups → delete BEVERAGE → confirmation says employees become Chưa có nhóm and history stays.
+8. Confirm deletion.
+9. Verify Hùng still exists, stays active, keeps the same position, schedule entries and availability data.
+10. Verify employees shows Chưa có nhóm and schedule/availability place Hùng under Chưa có nhóm.
+11. Export JPG and verify the same group headings/no-icon presentation as the live table.
 ```
 
-- [ ] **Step 7: Final branch verification**
+- [ ] **Step 7: Final branch check**
 
-Confirm all writes remain on:
+Confirm all implementation commits remain on:
 
 ```text
 feat/port-schedulework-scheduler
