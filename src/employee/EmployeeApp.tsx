@@ -47,9 +47,7 @@ export function EmployeeHeader({
     <header className="employee-header">
       <div className="employee-header-top">
         <div className="employee-brand">
-          <BrandLogo
-            mobileHome={{ path: "/app/availability", navigate }}
-          />
+          <BrandLogo mobileHome={{ path: "/app/availability", navigate }} />
           <div>
             <strong>ScheduleWork</strong>
             <small>Cổng nhân viên</small>
@@ -185,6 +183,7 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         message="Đang chuyển đến trang đổi mật khẩu bắt buộc."
       />
     );
+
   return (
     <div className="employee-app">
       <EmployeeHeader
@@ -193,22 +192,21 @@ export function EmployeeApp({ loginRoute, section, navigate }: Props) {
         onLogout={() => void logout()}
       />
       <Suspense fallback={sectionFallback}>
-  {section === "availability" ? (
-    <EmployeeRegistrationPage
-      onLogout={logout}
-      onSubmissionSaved={() =>
-        setSubmissionRevision((current) => current + 1)
-      }
-      employee={employee!}
-    />
-  ) : (
-    <MySchedulePage
-      employeeId={employee!.id}
-      submissionRevision={submissionRevision}
-      onRegister={() => navigate("/app/availability")}
-    />
-  )}
-</Suspense>
+        {section === "availability" ? (
+          <EmployeeRegistrationPage
+            onSubmissionSaved={() =>
+              setSubmissionRevision((current) => current + 1)
+            }
+            employee={employee!}
+          />
+        ) : (
+          <MySchedulePage
+            employeeId={employee!.id}
+            submissionRevision={submissionRevision}
+            onRegister={() => navigate("/app/availability")}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

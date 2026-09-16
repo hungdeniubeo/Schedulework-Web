@@ -11,7 +11,6 @@ import {
   EntryEditor,
   prepareScheduleWeekForEditing,
   selectScheduleWeekId,
-  scheduleWeekStatusLabel,
 } from "./AdminScheduler";
 import { WeekManager } from "./WeekManager";
 import {
@@ -50,6 +49,15 @@ const createdRegistrationWeek: RegistrationWeek = {
 };
 
 const createWeekStub = async () => createdRegistrationWeek;
+
+function renderUnifiedScheduler() {
+  return renderToStaticMarkup(
+    <AdminScheduler
+      preferredWeekStart="2026-09-21"
+      registrationWeekStarts={["2026-09-21"]}
+    />,
+  );
+}
 
 describe("Admin desktop selects", () => {
   it("uses the shared custom control for registration weeks", () => {
@@ -156,7 +164,7 @@ describe("Admin desktop selects", () => {
     expect(archivedHtml).not.toContain("Khóa đăng ký");
     expect(archivedHtml).not.toContain("Chỉnh sửa tuần");
     expect(archivedHtml).not.toContain(">Lưu trữ<");
-    expect(archivedHtml).toContain(">Xóa</button>");
+    expect(archivedHtml).toContain(">Xóa tuần</button>");
   });
 
   it("maps status labels and action availability without exposing enums", () => {
@@ -180,25 +188,27 @@ describe("Admin desktop selects", () => {
     });
   });
 
-  it("uses custom controls for scheduler filters", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("uses only the employee/group controls in the unified scheduler", () => {
+    const html = renderUnifiedScheduler();
 
     expect(html).not.toContain("<select");
-    expect(html).toContain('aria-label="Tuần xếp lịch"');
+    expect(html).not.toContain('aria-label="Tuần xếp lịch"');
     expect(html).toContain('aria-label="Lọc theo nhóm"');
+    expect(html).toContain('aria-label="Tìm nhân viên"');
   });
 
-  it("keeps week creation outside the frequently used schedule filters", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("does not expose a second week-creation action in the scheduler", () => {
+    const html = renderUnifiedScheduler();
 
-    expect(html).toContain('aria-label="Tạo lịch tuần mới"');
+    expect(html).not.toContain('aria-label="Tạo lịch tuần mới"');
     expect(html).not.toContain('aria-label="Tuần bắt đầu từ Thứ Hai"');
+    expect(html).not.toContain("Tạo lịch tuần");
   });
 
-  it("gives each schedule filter a visible label", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("gives the remaining schedule filters visible labels", () => {
+    const html = renderUnifiedScheduler();
 
-    expect(html).toContain("Tuần đang xem");
+    expect(html).not.toContain("Tuần đang xem");
     expect(html).toContain("Tìm nhân viên");
     expect(html).toContain("Nhóm nhân viên");
   });
@@ -250,10 +260,10 @@ describe("Admin scheduler confirmations", () => {
     );
   });
 
-  it("maps schedule statuses to Vietnamese labels", () => {
-    expect(scheduleWeekStatusLabel("draft")).toBe("Bản nháp");
-    expect(scheduleWeekStatusLabel("published")).toBe("Đã công bố");
-    expect(scheduleWeekStatusLabel("archived")).toBe("Đã lưu trữ");
+  it("does not expose schedule status labels in the scheduler UI", () => {
+    expect(adminSchedulerSource).not.toContain("Công bố lịch");
+    expect(adminSchedulerSource).not.toContain("Đã công bố");
+    expect(adminSchedulerSource).not.toContain("Bản nháp");
     expect(adminSchedulerSource).not.toContain(">Archive<");
     expect(adminSchedulerSource).not.toContain(
       "label: `${formatWeekRange(item.weekStart)} · ${item.status}`",
@@ -276,7 +286,7 @@ describe("Admin scheduler confirmations", () => {
     expect(updateStatus).toHaveBeenCalledWith(publishedWeek.id, "draft");
   });
 
-  it("keeps archived schedules read-only", async () => {
+  it("lets the first edit reopen an archived schedule as a draft", async () => {
     const archivedWeek: ScheduleWeek = {
       id: "schedule-archived",
       weekStart: "2026-09-21",
@@ -284,10 +294,12 @@ describe("Admin scheduler confirmations", () => {
       publishedAt: null,
       countOverrides: {},
     };
+    const updateStatus = vi.fn(async () => undefined);
 
     await expect(
-      prepareScheduleWeekForEditing(archivedWeek, async () => undefined),
-    ).rejects.toThrow("Lịch đã lưu trữ nên không thể chỉnh sửa.");
+      prepareScheduleWeekForEditing(archivedWeek, updateStatus),
+    ).resolves.toEqual({ ...archivedWeek, status: "draft" });
+    expect(updateStatus).toHaveBeenCalledWith(archivedWeek.id, "draft");
   });
 
   it("does not fall back to a browser-native confirmation dialog", () => {

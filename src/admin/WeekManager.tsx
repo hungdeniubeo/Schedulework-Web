@@ -254,6 +254,7 @@ export function WeekManager({
                     <button
                       className="button ghost danger"
                       type="button"
+                      aria-label={`Xóa tuần ${formatWeekRange(selected.week_start)}`}
                       disabled={busy}
                       onClick={() => setDeleteTarget(selected)}
                     >
@@ -280,7 +281,7 @@ export function WeekManager({
           </summary>
           <div className="archived-week-list">
             {archivedWeeks.map((week) => (
-              <div className="archived-week-row" key={week.id}>
+              <div className="archived-week-row" key={week.id} data-week-id={week.id}>
                 <div>
                   <strong>{formatWeekDisplay(week.week_start)}</strong>
                   <span className="status-badge archived">Đã lưu trữ</span>
@@ -288,10 +289,12 @@ export function WeekManager({
                 <button
                   type="button"
                   className="button ghost danger compact"
+                  aria-label={`Xóa tuần ${formatWeekRange(week.week_start)}`}
+                  title={`Xóa ${formatWeekDisplay(week.week_start)}`}
                   disabled={busy}
                   onClick={() => setDeleteTarget(week)}
                 >
-                  Xóa
+                  Xóa tuần
                 </button>
               </div>
             ))}

@@ -73,11 +73,14 @@ describe("submitted availability display", () => {
 });
 
 describe("My Schedule responsibility", () => {
-  it("changes its server request identity after a successful-save revision", () => {
-    expect(myScheduleRequestKey("employee-1", 0)).not.toBe(
-      myScheduleRequestKey("employee-1", 1),
+  it("changes its server request identity after save or page-activity refresh", () => {
+    expect(myScheduleRequestKey("e1", 2, 0)).toBe("e1:2:0");
+    expect(myScheduleRequestKey("e1", 2, 1)).not.toBe(
+      myScheduleRequestKey("e1", 2, 0),
     );
-    expect(myScheduleRequestKey("employee-1", 1)).toBe("employee-1:1");
+    expect(myScheduleRequestKey("employee-1", 0, 0)).not.toBe(
+      myScheduleRequestKey("employee-1", 1, 0),
+    );
   });
 
   it("renders exactly one submitted availability section", () => {

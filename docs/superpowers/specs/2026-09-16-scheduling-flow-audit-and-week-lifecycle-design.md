@@ -1,3 +1,7 @@
+> **SUPERSEDED IN PART — 2026-09-16**
+>
+> Manual schedule-week creation and user-facing publish behavior in this document are superseded by `2026-09-16-unified-week-workflow-design.md` and `2026-09-16-scheduler-reference-parity-and-refresh-design.md`. Week deletion, availability semantics, and registration guidance remain valid where they do not conflict with newer specs.
+
 # Scheduling Flow Audit and Week Lifecycle Design
 
 Date: 2026-09-16

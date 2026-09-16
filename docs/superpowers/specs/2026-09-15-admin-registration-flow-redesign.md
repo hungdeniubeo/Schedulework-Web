@@ -1,3 +1,7 @@
+> **SUPERSEDED IN PART — 2026-09-16**
+>
+> The manual schedule-week creation flow and older `/admin/schedule` presentation in this document are superseded by `2026-09-16-unified-week-workflow-design.md` and `2026-09-16-scheduler-reference-parity-and-refresh-design.md`. Navigation and page-responsibility guidance remains historical context unless a newer spec conflicts.
+
 # Admin Registration Flow Redesign
 
 ## Goal

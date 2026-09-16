@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
 import { AppState } from "../components/AppState";
 import {
@@ -12,8 +12,8 @@ import {
   clearAvailabilityDraft,
   loadAvailabilityDraft,
   saveAvailabilityDraft,
-  selectAvailabilityDraft,
 } from "../lib/draftStorage";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   formatDeadline,
   formatRegistrationWeekLabel,
@@ -27,15 +27,17 @@ import {
   loadEmployeePortal,
   saveEmployeeAvailability,
 } from "./api";
+import {
+  canRefreshEmployeePortal,
+  reconcileEmployeePortalRefresh,
+} from "./employeePortalRefresh";
 
 type Props = {
-  onLogout: () => Promise<void>;
   onSubmissionSaved: () => void;
   employee: { id: string; name: string; active: boolean };
 };
 
 export function EmployeeRegistrationPage({
-  onLogout,
   onSubmissionSaved,
   employee,
 }: Props) {
@@ -52,7 +54,35 @@ export function EmployeeRegistrationPage({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
   const [now, setNow] = useState(() => new Date());
+
   const savingRef = useRef(false);
+  const refreshingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const contextRef = useRef<EmployeePortalData | null>(null);
+  const availabilityRef = useRef<Availability>(availability);
+  const hasDraftRef = useRef(false);
+
+  const updateContext = useCallback((next: EmployeePortalData | null) => {
+    contextRef.current = next;
+    setContext(next);
+  }, []);
+
+  const updateAvailability = useCallback((next: Availability) => {
+    availabilityRef.current = next;
+    setAvailability(next);
+  }, []);
+
+  const updateHasDraft = useCallback((next: boolean) => {
+    hasDraftRef.current = next;
+    setHasDraft(next);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
@@ -65,50 +95,94 @@ export function EmployeeRegistrationPage({
     return () => window.clearTimeout(timer);
   }, [successMessage]);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    loadEmployeePortal(employee)
-      .then((data) => {
-        if (!active) return;
-        setContext(data);
-        const submitted = data.submission
-          ? normalizeAvailability(data.submission.availability)
-          : createEmptyAvailability();
-        const locked =
-          data.week.locked ||
-          isRegistrationLocked(data.week.status, data.week.lockAt);
-        const draft = locked
-          ? null
-          : loadAvailabilityDraft(data.employee.id, data.week.id);
-        if (locked) clearAvailabilityDraft(data.employee.id, data.week.id);
-        const selected = selectAvailabilityDraft(submitted, draft, locked);
-        if (draft && !selected.restored)
-          clearAvailabilityDraft(data.employee.id, data.week.id);
-        setAvailability(selected.availability);
-        setHasDraft(selected.restored);
-      })
-      .catch((reason: unknown) => {
-        if (!active) return;
+  const refreshPortal = useCallback(
+    async (initial = false) => {
+      if (
+        !canRefreshEmployeePortal(savingRef.current, refreshingRef.current)
+      )
+        return;
+
+      const showLoading = initial || contextRef.current === null;
+      refreshingRef.current = true;
+      if (showLoading) setLoading(true);
+      if (contextRef.current === null) setError(null);
+
+      try {
+        const nextContext = await loadEmployeePortal(employee);
+        if (!mountedRef.current) return;
+
+        const nextDraft = loadAvailabilityDraft(
+          nextContext.employee.id,
+          nextContext.week.id,
+        );
+        const result = reconcileEmployeePortalRefresh({
+          currentContext: contextRef.current,
+          currentAvailability: availabilityRef.current,
+          hasDraft: hasDraftRef.current,
+          nextContext,
+          nextDraft,
+          now: new Date(),
+        });
+
+        if (result.shouldClearDraft) {
+          clearAvailabilityDraft(
+            nextContext.employee.id,
+            nextContext.week.id,
+          );
+        }
+        updateContext(result.context);
+        updateAvailability(result.availability);
+        updateHasDraft(result.hasDraft);
+        setError(null);
+      } catch (reason: unknown) {
+        if (!mountedRef.current) return;
         console.error(reason);
         const portalError =
           reason instanceof EmployeePortalError ? reason : null;
-        setError({
-          title:
-            portalError?.code === "NO_ACTIVE_WEEK"
-              ? "Chưa mở đăng ký"
-              : portalError?.code === "EMPLOYEE_INACTIVE"
-                ? "Tài khoản chưa hoạt động"
-                : "Không tải được lịch đăng ký",
-          message:
-            portalError?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.",
-        });
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [employee]);
+        const current = contextRef.current;
+        const title =
+          portalError?.code === "NO_ACTIVE_WEEK"
+            ? "Chưa mở đăng ký"
+            : portalError?.code === "EMPLOYEE_INACTIVE"
+              ? "Tài khoản chưa hoạt động"
+              : "Không tải được lịch đăng ký";
+        const message =
+          portalError?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
+
+        if (portalError?.code === "NO_ACTIVE_WEEK") {
+          if (current) {
+            clearAvailabilityDraft(current.employee.id, current.week.id);
+          }
+          updateContext(null);
+          updateAvailability(createEmptyAvailability());
+          updateHasDraft(false);
+        }
+
+        if (
+          !current ||
+          portalError?.code === "NO_ACTIVE_WEEK" ||
+          portalError?.code === "EMPLOYEE_INACTIVE"
+        ) {
+          setError({ title, message });
+        } else {
+          setFormError(`Không làm mới được tuần đăng ký. ${message}`);
+        }
+      } finally {
+        refreshingRef.current = false;
+        if (mountedRef.current && showLoading) setLoading(false);
+      }
+    },
+    [employee, updateAvailability, updateContext, updateHasDraft],
+  );
+
+  useEffect(() => {
+    void refreshPortal(true);
+  }, [refreshPortal]);
+
+  useEffect(
+    () => subscribePageRefresh(() => void refreshPortal(false)),
+    [refreshPortal],
+  );
 
   useEffect(() => {
     if (
@@ -118,13 +192,13 @@ export function EmployeeRegistrationPage({
     )
       return;
     clearAvailabilityDraft(context.employee.id, context.week.id);
-    setAvailability(
+    updateAvailability(
       context.submission
         ? normalizeAvailability(context.submission.availability)
         : createEmptyAvailability(),
     );
-    setHasDraft(false);
-  }, [context, hasDraft, now]);
+    updateHasDraft(false);
+  }, [context, hasDraft, now, updateAvailability, updateHasDraft]);
 
   async function submit() {
     if (
@@ -147,18 +221,19 @@ export function EmployeeRegistrationPage({
     const updating = context.submission !== null;
     try {
       const submission = await saveAvailabilityThenNotify(
-        () => saveEmployeeAvailability({
-          weekId: context.week.id,
-          employeeId: context.employee.id,
-          availability: availabilityForSave,
-          note: legacyNote,
-        }),
+        () =>
+          saveEmployeeAvailability({
+            weekId: context.week.id,
+            employeeId: context.employee.id,
+            availability: availabilityForSave,
+            note: legacyNote,
+          }),
         onSubmissionSaved,
       );
       clearAvailabilityDraft(context.employee.id, context.week.id);
-      setContext({ ...context, submission });
-      setAvailability(normalizeAvailability(submission.availability));
-      setHasDraft(false);
+      updateContext({ ...context, submission });
+      updateAvailability(normalizeAvailability(submission.availability));
+      updateHasDraft(false);
       setSuccessMessage(getSaveSuccessMessage(updating));
     } catch (reason) {
       console.error(reason);
@@ -167,13 +242,16 @@ export function EmployeeRegistrationPage({
         reason.code === "REGISTRATION_LOCKED"
       ) {
         clearAvailabilityDraft(context.employee.id, context.week.id);
-        setAvailability(
+        updateAvailability(
           context.submission
             ? normalizeAvailability(context.submission.availability)
             : createEmptyAvailability(),
         );
-        setHasDraft(false);
-        setContext({ ...context, week: { ...context.week, locked: true } });
+        updateHasDraft(false);
+        updateContext({
+          ...context,
+          week: { ...context.week, locked: true },
+        });
       }
       setFormError(
         reason instanceof Error
@@ -198,7 +276,7 @@ export function EmployeeRegistrationPage({
       <AppState
         title={error?.title ?? "Không tải được lịch"}
         message={error?.message ?? "Vui lòng thử lại."}
-        action={{ label: "Đăng xuất", onClick: () => void onLogout() }}
+        action={{ label: "Thử lại", onClick: () => void refreshPortal(false) }}
       />
     );
   }
@@ -246,19 +324,19 @@ export function EmployeeRegistrationPage({
           weekStart={context.week.weekStart}
           readOnly={locked}
           onChange={(next) => {
-            setAvailability(next);
+            updateAvailability(next);
             setSuccessMessage(null);
             setFormError(null);
             if (availabilityMatches(next, submittedAvailability)) {
               clearAvailabilityDraft(context.employee.id, context.week.id);
-              setHasDraft(false);
+              updateHasDraft(false);
             } else {
               saveAvailabilityDraft(
                 context.employee.id,
                 context.week.id,
                 next,
               );
-              setHasDraft(true);
+              updateHasDraft(true);
             }
           }}
         />
@@ -299,7 +377,9 @@ export function EmployeeRegistrationPage({
       )}
       <div className="save-toast-region" aria-live="polite" aria-atomic="true">
         {successMessage && (
-          <div className="save-toast" role="status">{successMessage}</div>
+          <div className="save-toast" role="status">
+            {successMessage}
+          </div>
         )}
       </div>
     </div>

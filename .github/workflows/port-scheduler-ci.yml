@@ -21,7 +21,11 @@ jobs:
         run: >-
           npm test --
           src/app/router.test.ts
+          src/lib/pageRefresh.test.ts
           src/admin/api.test.ts
+          src/admin/UnifiedWeekWorkflowMigration.test.ts
+          src/admin/DeleteWeekDiagnostics.test.ts
+          src/admin/WeeklyFlowRegression.test.tsx
           src/admin/adminWeekSelection.test.ts
           src/admin/registrationWeekUi.test.ts
           src/admin/WeekDialogs.test.tsx
@@ -32,15 +36,22 @@ jobs:
           src/admin/AdminSchedulePage.test.tsx
           src/admin/AdminDashboard.test.tsx
           src/admin/AdminSelects.test.tsx
+          src/admin/AdminSchedulerBehavior.test.tsx
+          src/admin/SchedulerTable.test.tsx
+          src/admin/ScheduleDailySummary.test.tsx
+          src/admin/AdminScheduleExport.test.tsx
+          src/admin/ScheduleGrid.test.tsx
+          src/admin/ScheduleGridLayout.test.tsx
+          src/admin/schedulerDnd.test.ts
           src/employee/EmployeeRegistrationPage.test.ts
+          src/employee/employeePortalRefresh.test.ts
+          src/employee/ScheduleViews.test.tsx
           src/employee/registrationWeekSelection.test.ts
           src/employee/scheduleApi.test.ts
           src/scheduling/availabilityShiftMatch.test.ts
           src/scheduling/employeeOrder.test.ts
           src/scheduling/reorderApi.test.ts
           src/scheduling/availabilityNotice.test.ts
-          src/admin/schedulerDnd.test.ts
-          src/admin/ScheduleGrid.test.tsx
           src/scheduling/ScheduleSheet.test.tsx
           src/scheduling/overlap.test.ts
           src/scheduling/merge.test.ts

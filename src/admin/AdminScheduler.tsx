@@ -4,31 +4,25 @@ import {
   useMemo,
   useRef,
   useState,
-  type FormEvent,
 } from "react";
 import { CustomSelect } from "../components/CustomSelect";
 import {
   AlertTriangleIcon,
   CheckIcon,
   CloseIcon,
-  PlusIcon,
   RefreshIcon,
 } from "../components/Icons";
 import { ModalBackdrop } from "../components/ModalBackdrop";
-import { DateTimePicker } from "../components/DateTimePicker";
-import {
-  isMondayDate,
-  defaultRegistrationWindow,
-  formatWeekDisplay,
-} from "../lib/week";
+import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
+import { subscribePageRefresh } from "../lib/pageRefresh";
+import { formatWeekDisplay } from "../lib/week";
 import {
   addScheduleEntry,
-  addScheduleWeek,
   clearScheduleWeek,
   consolidateScheduleEntry,
   listGroups,
-  listScheduleEntries,
   listScheduleAvailability,
+  listScheduleEntries,
   listScheduleWeeks,
   listSchedulerEmployees,
   listShiftTypes,
@@ -40,8 +34,9 @@ import { availabilityNoticeForEntry } from "../scheduling/availabilityNotice";
 import { moveEmployeeLocally } from "../scheduling/employeeOrder";
 import { reorderSchedulerEmployee } from "../scheduling/employeeReorderApi";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
-import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
 import { consolidateCellEntry } from "../scheduling/merge";
+import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
+import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import { type StaffingPeriod } from "../scheduling/staffing";
 import type {
   ScheduleEntry,
@@ -49,164 +44,20 @@ import type {
   ScheduleWeekStatus,
   ShiftType,
 } from "../scheduling/types";
-import { ScheduleGrid } from "./ScheduleGrid";
-import { ScheduleSheet } from "../scheduling/ScheduleSheet";
-import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import type { Availability } from "../types/domain";
-import { availabilityByEmployee as mapAvailabilityByEmployee } from "../lib/availability";
+import { AdminScheduleExport } from "./AdminScheduleExport";
+import { ScheduleGrid } from "./ScheduleGrid";
+import { EntryEditor } from "./ScheduleEntryEditor";
 
-export function scheduleWeekStatusLabel(status: ScheduleWeekStatus): string {
-  if (status === "published") return "Đã công bố";
-  if (status === "archived") return "Đã lưu trữ";
-  return "Bản nháp";
-}
+export { EntryEditor } from "./ScheduleEntryEditor";
 
 export async function prepareScheduleWeekForEditing(
   week: ScheduleWeek,
   updateStatus: (id: string, status: ScheduleWeekStatus) => Promise<void>,
 ): Promise<ScheduleWeek> {
-  if (week.status === "archived")
-    throw new Error("Lịch đã lưu trữ nên không thể chỉnh sửa.");
   if (week.status === "draft") return week;
   await updateStatus(week.id, "draft");
   return { ...week, status: "draft" };
-}
-
-type EntryEditorProps = {
-  entry: ScheduleEntry;
-  shifts: ShiftType[];
-  entries: ScheduleEntry[];
-  saving: boolean;
-  onClose: () => void;
-  onSave: (entry: ScheduleEntry) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-};
-
-export function EntryEditor({
-  entry,
-  shifts,
-  entries,
-  saving,
-  onClose,
-  onSave,
-  onDelete,
-}: EntryEditorProps) {
-  const [draft, setDraft] = useState(entry);
-  const [error, setError] = useState<string | null>(null);
-  async function save() {
-    const issue = getEntryIssue(draft, entries, shifts);
-    if (issue)
-      return setError(
-        issue.kind === "overlap"
-          ? "Ca này bị trùng giờ với một ca khác."
-          : issue.message,
-      );
-    try {
-      await onSave(draft);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không lưu được ca.");
-    }
-  }
-  return (
-    <ModalBackdrop onClose={onClose}>
-      <section
-        className="entry-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="entry-editor-title"
-      >
-        <header>
-          <h2 id="entry-editor-title">Chỉnh sửa ca</h2>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Đóng"
-            autoFocus
-            onClick={onClose}
-          >
-            <CloseIcon />
-          </button>
-        </header>
-        <div className="dialog-content">
-          <div className="field">
-            <span>Loại ca</span>
-            <CustomSelect
-              ariaLabel="Loại ca"
-              value={draft.shiftTypeId}
-              options={shifts.map((shift) => ({
-                value: shift.id,
-                label: shift.label,
-              }))}
-              onChange={(shiftTypeId) => setDraft({ ...draft, shiftTypeId })}
-            />
-          </div>
-          <div className="time-pair">
-            <label>
-              Giờ bắt đầu
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
-                maxLength={5}
-                placeholder="HH:mm"
-                value={draft.customStart ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, customStart: e.target.value || null })
-                }
-              />
-            </label>
-            <label>
-              Giờ kết thúc
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="(?:[01]\d|2[0-3]):[0-5]\d"
-                maxLength={5}
-                placeholder="HH:mm"
-                value={draft.customEnd ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, customEnd: e.target.value || null })
-                }
-              />
-            </label>
-          </div>
-          <label className="field">
-            Nhãn tùy chỉnh / ca gãy
-            <input
-              placeholder="10:00-14:00/18:00-23:00"
-              value={draft.customLabel ?? ""}
-              onChange={(e) =>
-                setDraft({ ...draft, customLabel: e.target.value || null })
-              }
-            />
-          </label>
-          {error && <div className="inline-error">{error}</div>}
-        </div>
-        <footer>
-          <button
-            className="button ghost danger"
-            type="button"
-            disabled={saving}
-            onClick={() => void onDelete(entry.id)}
-          >
-            Xóa ca
-          </button>
-          <div>
-            <button className="button secondary" onClick={onClose}>
-              Hủy
-            </button>
-            <button
-              className="button primary"
-              disabled={saving}
-              onClick={() => void save()}
-            >
-              {saving ? "Đang lưu..." : "Lưu"}
-            </button>
-          </div>
-        </footer>
-      </section>
-    </ModalBackdrop>
-  );
 }
 
 type AdminSchedulerProps = {
@@ -257,10 +108,6 @@ export function AdminScheduler({
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
-  const [creatingWeek, setCreatingWeek] = useState(false);
-  const [newWeekStart, setNewWeekStart] = useState(
-    defaultRegistrationWindow().weekStart,
-  );
 
   const loadBase = useCallback(async () => {
     const [nextGroups, nextEmployees, nextShifts, nextWeeks] = await Promise.all([
@@ -277,31 +124,38 @@ export function AdminScheduler({
       selectScheduleWeekId(nextWeeks, current, preferredWeekStart),
     );
   }, [preferredWeekStart]);
+
   useEffect(() => {
-    loadBase().catch((reason) => setError(reason.message));
+    loadBase().catch((reason) =>
+      setError(
+        reason instanceof Error ? reason.message : "Không tải được lịch xếp.",
+      ),
+    );
   }, [loadBase]);
+
   const week = weeks.find((item) => item.id === weekId) ?? null;
   const weekStart = week?.weekStart ?? "";
 
   useEffect(() => {
-    if (preferredWeekStart) setNewWeekStart(preferredWeekStart);
-  }, [preferredWeekStart]);
-
-  useEffect(() => {
     if (weekStart) onWeekStartChange?.(weekStart);
   }, [onWeekStartChange, weekStart]);
+
   const loadEntries = useCallback(async () => {
     const request = ++entriesRequest.current;
     const nextEntries = weekId ? await listScheduleEntries(weekId) : [];
     if (request === entriesRequest.current) setEntries(nextEntries);
   }, [weekId]);
+
   const loadAvailability = useCallback(async () => {
     const request = ++availabilityRequest.current;
-    const submissions = weekStart ? await listScheduleAvailability(weekStart) : [];
+    const submissions = weekStart
+      ? await listScheduleAvailability(weekStart)
+      : [];
     if (request === availabilityRequest.current) {
       setAvailabilityByEmployee(mapAvailabilityByEmployee(submissions));
     }
   }, [weekStart]);
+
   useEffect(() => {
     let active = true;
     setEntries([]);
@@ -309,7 +163,15 @@ export function AdminScheduler({
     setNotice(null);
     setWeekDataLoading(Boolean(weekId));
     Promise.all([loadEntries(), loadAvailability()])
-      .catch((reason) => active && setError(reason.message))
+      .catch((reason) => {
+        if (active) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Không tải được dữ liệu lịch tuần.",
+          );
+        }
+      })
       .finally(() => active && setWeekDataLoading(false));
     return () => {
       active = false;
@@ -318,7 +180,22 @@ export function AdminScheduler({
     };
   }, [loadAvailability, loadEntries, weekId]);
 
-  const editable = Boolean(week && week.status !== "archived" && !weekDataLoading);
+  useEffect(() => {
+    if (!weekStart) return;
+    return subscribePageRefresh(
+      () => {
+        void loadAvailability().catch((reason) => {
+          console.error(reason);
+          setNotice(
+            "Không làm mới được lịch đăng ký. Lịch đang xếp vẫn được giữ nguyên.",
+          );
+        });
+      },
+      { intervalMs: 15_000 },
+    );
+  }, [loadAvailability, weekStart]);
+
+  const editable = Boolean(week && !weekDataLoading);
   const filteredEmployees = useMemo(
     () =>
       employees.filter(
@@ -338,12 +215,14 @@ export function AdminScheduler({
   const activeEmployeeIds = useMemo(
     () =>
       new Set(
-        employees.filter((employee) => employee.active).map((employee) => employee.id),
+        employees
+          .filter((employee) => employee.active)
+          .map((employee) => employee.id),
       ),
     [employees],
   );
-  const availabilityCount = Object.keys(availabilityByEmployee).filter((employeeId) =>
-    activeEmployeeIds.has(employeeId),
+  const availabilityCount = Object.keys(availabilityByEmployee).filter(
+    (employeeId) => activeEmployeeIds.has(employeeId),
   ).length;
   const hasRegistrationWeek = week
     ? registrationWeekStarts.includes(week.weekStart)
@@ -402,18 +281,27 @@ export function AdminScheduler({
       customEnd: null,
       customLabel: null,
       sortOrderInCell: entries.filter(
-        (item) => item.employeeId === employeeId && item.dayOfWeek === dayOfWeek,
+        (item) =>
+          item.employeeId === employeeId && item.dayOfWeek === dayOfWeek,
       ).length,
     };
     const issue = issueMessage(candidate);
-    if (issue) return setError(issue);
+    if (issue) {
+      setError(issue);
+      return;
+    }
+
     const previousEntries = entries;
     const inCell = entries.filter(
-      (entry) => entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
+      (entry) =>
+        entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek,
     );
     const optimisticEntry =
       inCell.length > 0
-        ? { ...consolidateCellEntry(candidate, inCell, shifts), id: inCell[0].id }
+        ? {
+            ...consolidateCellEntry(candidate, inCell, shifts),
+            id: inCell[0].id,
+          }
         : candidate;
     setEntries((current) => [
       ...current.filter(
@@ -455,11 +343,16 @@ export function AdminScheduler({
       !editable ||
       busy ||
       (entry.employeeId === employeeId && entry.dayOfWeek === dayOfWeek)
-    )
+    ) {
       return;
+    }
     const candidate = { ...entry, employeeId, dayOfWeek };
     const issue = issueMessage(candidate);
-    if (issue) return setError(issue);
+    if (issue) {
+      setError(issue);
+      return;
+    }
+
     const previousEntries = entries;
     const inTargetCell = entries.filter(
       (item) =>
@@ -496,7 +389,9 @@ export function AdminScheduler({
       updateAvailabilityNotice(optimisticEntry);
     } catch (reason) {
       setEntries(previousEntries);
-      setError(reason instanceof Error ? reason.message : "Không di chuyển được ca.");
+      setError(
+        reason instanceof Error ? reason.message : "Không di chuyển được ca.",
+      );
     } finally {
       setBusy(false);
     }
@@ -584,49 +479,10 @@ export function AdminScheduler({
       await Promise.all([loadEntries(), loadBase()]);
       setConfirmingClear(false);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không xóa được lịch tuần.");
-      setConfirmingClear(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function createWeek(event: FormEvent) {
-    event.preventDefault();
-    if (!isMondayDate(newWeekStart))
-      return setError("Ngày bắt đầu tuần phải là Thứ Hai.");
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      await addScheduleWeek(newWeekStart);
-      await loadBase();
-      setCreatingWeek(false);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không tạo được tuần.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function setStatus(status: "draft" | "published" | "archived") {
-    if (!week) return;
-    if (status === "published" && findScheduleIssues(entries, shifts).length > 0) {
       setError(
-        "Không thể công bố vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.",
+        reason instanceof Error ? reason.message : "Không xóa được lịch tuần.",
       );
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await patchScheduleWeek(week.id, {
-        status,
-        ...(status === "published" ? { publishedAt: new Date().toISOString() } : {}),
-      });
-      await loadBase();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không cập nhật được lịch.");
+      setConfirmingClear(false);
     } finally {
       setBusy(false);
     }
@@ -674,31 +530,21 @@ export function AdminScheduler({
   }
 
   return (
-    <div className="scheduler-page">
+    <div className="scheduler-page route-scoped">
       <section className="panel scheduler-toolbar">
         <div>
-          <span className="eyebrow">Xếp lịch chính thức</span>
+          <span className="eyebrow">Xếp lịch làm việc</span>
           <h2>
-            {week ? formatWeekDisplay(week.weekStart) : "Chưa có tuần xếp lịch"}
+            {week
+              ? formatWeekDisplay(week.weekStart)
+              : preferredWeekStart
+                ? formatWeekDisplay(preferredWeekStart)
+                : "Chưa có tuần xếp lịch"}
           </h2>
         </div>
         <div className="schedule-actions">
           {week && (
             <>
-              <span
-                className={`status-badge ${week.status === "published" ? "open" : week.status === "draft" ? "draft" : "archived"}`}
-              >
-                {scheduleWeekStatusLabel(week.status)}
-              </span>
-              {week.status === "draft" && (
-                <button
-                  className="button primary"
-                  disabled={busy || weekDataLoading || entries.length === 0}
-                  onClick={() => void setStatus("published")}
-                >
-                  Công bố lịch
-                </button>
-              )}
               <button
                 className="button secondary"
                 disabled={busy || weekDataLoading}
@@ -706,15 +552,6 @@ export function AdminScheduler({
               >
                 Xuất JPG
               </button>
-              {week.status !== "archived" && (
-                <button
-                  className="button ghost danger"
-                  disabled={busy || weekDataLoading}
-                  onClick={() => void setStatus("archived")}
-                >
-                  Lưu trữ
-                </button>
-              )}
               {editable && (
                 <button
                   className="button ghost danger"
@@ -729,52 +566,25 @@ export function AdminScheduler({
           )}
         </div>
       </section>
-      <section className="panel scheduler-filters" aria-label="Bộ lọc lịch">
+
+      <section
+        className="panel scheduler-filters route-scoped-filters"
+        aria-label="Bộ lọc lịch"
+      >
         <div className="scheduler-filter-heading">
           <div>
-            <span className="eyebrow">Bộ lọc lịch</span>
-            <h3>Chọn lịch làm việc</h3>
+            <span className="eyebrow">Công cụ</span>
+            <h3>Tìm và lọc nhân viên</h3>
           </div>
-          <button
-            type="button"
-            className="button secondary scheduler-create-week"
-            aria-label="Tạo lịch tuần mới"
-            disabled={busy}
-            onClick={() => setCreatingWeek(true)}
-          >
-            <PlusIcon /> Tạo lịch tuần
-          </button>
         </div>
         <div className="scheduler-filter-grid">
-          <label className="scheduler-filter-field schedule-week-filter">
-            <span>Tuần đang xem</span>
-            <CustomSelect
-              ariaLabel="Tuần xếp lịch"
-              value={weekId}
-              disabled={busy || weekDataLoading}
-              options={[
-                ...(!weekId ? [{ value: "", label: "Chọn tuần" }] : []),
-                ...weeks.map((item) => ({
-                  value: item.id,
-                  label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
-                })),
-              ]}
-              onChange={(nextWeekId) => {
-                setWeekDataLoading(true);
-                setEntries([]);
-                setAvailabilityByEmployee({});
-                setNotice(null);
-                setWeekId(nextWeekId);
-              }}
-            />
-          </label>
           <label className="scheduler-filter-field">
             <span>Tìm nhân viên</span>
             <input
               aria-label="Tìm nhân viên"
               placeholder="Nhập tên nhân viên..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
             />
           </label>
           <label className="scheduler-filter-field">
@@ -798,7 +608,13 @@ export function AdminScheduler({
             onClick={() => {
               setWeekDataLoading(true);
               void Promise.all([loadBase(), loadEntries(), loadAvailability()])
-                .catch((reason) => setError(reason.message))
+                .catch((reason) =>
+                  setError(
+                    reason instanceof Error
+                      ? reason.message
+                      : "Không làm mới được dữ liệu lịch.",
+                  ),
+                )
                 .finally(() => setWeekDataLoading(false));
             }}
           >
@@ -807,9 +623,12 @@ export function AdminScheduler({
           </button>
         </div>
       </section>
+
       {week ? (
         <section
-          className={`schedule-sync-bar ${hasRegistrationWeek ? "synced" : "missing"}`}
+          className={`schedule-sync-bar ${
+            hasRegistrationWeek ? "synced" : "missing"
+          }`}
         >
           <span className="schedule-sync-icon" aria-hidden="true">
             {hasRegistrationWeek ? <CheckIcon /> : <AlertTriangleIcon />}
@@ -842,13 +661,15 @@ export function AdminScheduler({
             <AlertTriangleIcon />
           </span>
           <div>
-            <strong>Chưa có lịch chính thức cho tuần đang chọn</strong>
+            <strong>Đang tải lịch xếp của tuần đã tạo</strong>
             <p>
-              {formatWeekDisplay(preferredWeekStart)} · Tạo lịch tuần để bắt đầu xếp ca.
+              {formatWeekDisplay(preferredWeekStart)} · Lịch xếp được tạo tự động
+              cùng tuần đăng ký. Hãy làm mới nếu dữ liệu chưa xuất hiện.
             </p>
           </div>
         </section>
       ) : null}
+
       {error && (
         <div className="inline-error scheduler-error" role="alert">
           {error}
@@ -861,6 +682,7 @@ export function AdminScheduler({
           </button>
         </div>
       )}
+
       {notice && (
         <div className="scheduler-info-notice" role="status">
           <span>{notice}</span>
@@ -873,6 +695,7 @@ export function AdminScheduler({
           </button>
         </div>
       )}
+
       {week ? (
         <>
           <ScheduleGrid
@@ -887,7 +710,9 @@ export function AdminScheduler({
             onAssign={(employeeId, day, shiftId) =>
               void assign(employeeId, day, shiftId)
             }
-            onMove={(entry, employeeId, day) => void move(entry, employeeId, day)}
+            onMove={(entry, employeeId, day) =>
+              void move(entry, employeeId, day)
+            }
             onMoveEmployee={(employeeId, targetGroupId, beforeEmployeeId) =>
               void moveEmployeeRow(employeeId, targetGroupId, beforeEmployeeId)
             }
@@ -900,26 +725,25 @@ export function AdminScheduler({
             }
           />
           <div className="schedule-export-stage" aria-hidden="true">
-            <ScheduleSheet
+            <AdminScheduleExport
               id="cloud-schedule-export"
-              className="schedule-export-sheet"
               groups={groups}
               employees={scheduleEmployees}
               entries={entries}
               shifts={shifts}
               weekStart={week.weekStart}
               countOverrides={week.countOverrides}
-              showStaffing
             />
           </div>
         </>
       ) : (
         <div className="panel empty-panel">
           {preferredWeekStart
-            ? "Tạo lịch chính thức cho đúng tuần đăng ký để bắt đầu xếp ca."
-            : "Tạo tuần xếp lịch để bắt đầu."}
+            ? "Đang đồng bộ lịch xếp của tuần đăng ký..."
+            : "Chưa có tuần đăng ký để xếp lịch."}
         </div>
       )}
+
       {editing && (
         <EntryEditor
           entry={editing}
@@ -931,63 +755,7 @@ export function AdminScheduler({
           onDelete={deleteEntry}
         />
       )}
-      {creatingWeek && (
-        <ModalBackdrop onClose={() => setCreatingWeek(false)}>
-          <form
-            className="create-schedule-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-schedule-title"
-            onSubmit={(event) => void createWeek(event)}
-          >
-            <header>
-              <div>
-                <span className="eyebrow">Lịch chính thức</span>
-                <h2 id="create-schedule-title">Tạo lịch tuần mới</h2>
-              </div>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Đóng"
-                onClick={() => setCreatingWeek(false)}
-              >
-                <CloseIcon />
-              </button>
-            </header>
-            <div className="dialog-content">
-              <p>Chọn ngày Thứ Hai bắt đầu tuần cần xếp lịch.</p>
-              <label className="field">
-                Tuần bắt đầu từ Thứ Hai
-                <DateTimePicker
-                  ariaLabel="Tuần bắt đầu từ Thứ Hai"
-                  dateOnly
-                  requiredWeekday={1}
-                  value={newWeekStart}
-                  onChange={setNewWeekStart}
-                />
-              </label>
-              {isMondayDate(newWeekStart) && (
-                <div className="create-schedule-preview">
-                  <span>Tuần sẽ tạo</span>
-                  <strong>{formatWeekDisplay(newWeekStart)}</strong>
-                </div>
-              )}
-            </div>
-            <footer>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => setCreatingWeek(false)}
-              >
-                Hủy
-              </button>
-              <button className="button primary" disabled={busy}>
-                <PlusIcon /> {busy ? "Đang tạo..." : "Tạo lịch tuần"}
-              </button>
-            </footer>
-          </form>
-        </ModalBackdrop>
-      )}
+
       {confirmingClear && (
         <ModalBackdrop onClose={() => setConfirmingClear(false)}>
           <section

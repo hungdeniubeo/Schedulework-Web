@@ -272,16 +272,6 @@ export async function listScheduleWeeks(): Promise<ScheduleWeek[]> {
   }));
 }
 
-export async function addScheduleWeek(weekStart: string): Promise<void> {
-  const { error } = await getSupabase()
-    .from("schedule_weeks")
-    .insert({ week_start: weekStart, status: "draft" });
-  fail(
-    error,
-    "Không tạo được tuần xếp lịch. Ngày bắt đầu phải là Thứ 2 và chưa tồn tại.",
-  );
-}
-
 export async function patchScheduleWeek(
   id: string,
   changes: {

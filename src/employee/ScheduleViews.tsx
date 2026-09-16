@@ -8,6 +8,7 @@ import {
   formatAvailabilityPreset,
   getOffReason,
 } from "../lib/availability";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   addDateOnlyDays,
   formatDateShort,
@@ -17,10 +18,7 @@ import {
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { ArrowLeftRightIcon, DownloadIcon } from "../components/Icons";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
-import {
-  semanticShiftColor,
-  shiftStyle,
-} from "../scheduling/shiftStyle";
+import { semanticShiftColor, shiftStyle } from "../scheduling/shiftStyle";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
 import type {
   MyScheduleData,
@@ -50,14 +48,29 @@ function usePublishedSchedule(employeeId: string) {
 export function myScheduleRequestKey(
   employeeId: string,
   submissionRevision: number,
+  refreshRevision = 0,
 ): string {
-  return `${employeeId}:${submissionRevision}`;
+  return `${employeeId}:${submissionRevision}:${refreshRevision}`;
 }
 
 function useMySchedule(employeeId: string, submissionRevision: number) {
   const [data, setData] = useState<MyScheduleData | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const requestKey = myScheduleRequestKey(employeeId, submissionRevision);
+  const [refreshRevision, setRefreshRevision] = useState(0);
+  const requestKey = myScheduleRequestKey(
+    employeeId,
+    submissionRevision,
+    refreshRevision,
+  );
+
+  useEffect(
+    () =>
+      subscribePageRefresh(() =>
+        setRefreshRevision((current) => current + 1),
+      ),
+    [],
+  );
+
   useEffect(() => {
     let active = true;
     setError(null);
@@ -66,7 +79,9 @@ function useMySchedule(employeeId: string, submissionRevision: number) {
       .catch((reason) => {
         console.error(reason);
         if (active)
-          setError(reason instanceof Error ? reason.message : "Không tải được lịch.");
+          setError(
+            reason instanceof Error ? reason.message : "Không tải được lịch.",
+          );
       });
     return () => {
       active = false;
@@ -126,7 +141,13 @@ export function SubmittedAvailability({
   compact?: boolean;
 }) {
   return (
-    <section className={compact ? "submitted-schedule-section compact" : "submitted-schedule-section"}>
+    <section
+      className={
+        compact
+          ? "submitted-schedule-section compact"
+          : "submitted-schedule-section"
+      }
+    >
       {compact && (
         <header className="submitted-heading">
           <div>
@@ -163,7 +184,9 @@ export function SubmittedAvailability({
                 >
                   {shiftValue}
                 </strong>
-                {preset && <span className="submitted-day-period">{preset}</span>}
+                {preset && (
+                  <span className="submitted-day-period">{preset}</span>
+                )}
                 {offReason && (
                   <span className="submitted-off-reason">
                     Lý do: {offReason}
@@ -221,9 +244,7 @@ export function MyScheduleContent({
         <span className="eyebrow">Lịch đã đăng ký</span>
         <h1>Lịch của tôi</h1>
         <p>{formatWeekDisplay(data.weekStart)}</p>
-        <div className="submitted-waiting-status">
-          {submittedTimeLabel(data)} · Chờ quản lý xếp lịch
-        </div>
+        <div className="submitted-waiting-status">{submittedTimeLabel(data)}</div>
       </header>
       <SubmittedAvailability data={data} />
     </main>

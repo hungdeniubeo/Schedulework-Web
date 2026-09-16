@@ -14,33 +14,49 @@ afterEach(() => {
 });
 
 describe("registration week API", () => {
-  it("returns the newly created week so the Admin UI can select it", async () => {
+  it("creates registration and schedule weeks through the transactional RPC", async () => {
     const created: RegistrationWeek = {
       id: "week-new",
       week_start: "2026-10-05",
       lock_at: "2026-10-02T15:00:00.000Z",
       status: "open",
-      created_at: "2026-09-14T00:00:00.000Z",
-      updated_at: "2026-09-14T00:00:00.000Z",
+      created_at: "2026-09-16T00:00:00.000Z",
+      updated_at: "2026-09-16T00:00:00.000Z",
     };
-    const query = {
-      insert: vi.fn(),
-      select: vi.fn(),
-      single: vi.fn().mockResolvedValue({ data: created, error: null }),
-    };
-    query.insert.mockReturnValue(query);
-    query.select.mockReturnValue(query);
-    supabase.client = { from: vi.fn().mockReturnValue(query) };
+    const rpc = vi.fn(async () => ({ data: created, error: null }));
+    const from = vi.fn(() => {
+      throw new Error("direct registration insert must not be used");
+    });
+    supabase.client = { rpc, from };
 
     await expect(
       createWeek("2026-10-05", "2026-10-02T15:00:00.000Z"),
     ).resolves.toEqual(created);
-    expect(query.insert).toHaveBeenCalledWith({
-      week_start: "2026-10-05",
-      lock_at: "2026-10-02T15:00:00.000Z",
-      status: "open",
+
+    expect(rpc).toHaveBeenCalledWith("create_registration_workflow", {
+      target_week_start: "2026-10-05",
+      target_lock_at: "2026-10-02T15:00:00.000Z",
     });
-    expect(query.select).toHaveBeenCalledWith("*");
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("surfaces atomic creation failure without falling back to a direct insert", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { code: "23505", message: "duplicate key value" },
+    }));
+    const from = vi.fn(() => {
+      throw new Error("direct registration insert must not be used");
+    });
+    supabase.client = { rpc, from };
+
+    await expect(
+      createWeek("2026-10-05", "2026-10-02T15:00:00.000Z"),
+    ).rejects.toThrow(
+      "Không tạo được tuần đăng ký và lịch xếp tương ứng. [23505] duplicate key value",
+    );
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("deletes the complete weekly workflow through the transactional RPC", async () => {
