@@ -15,6 +15,16 @@ function fail(error: { message: string } | null, message: string): void {
   }
 }
 
+type SupabaseErrorLike = {
+  message: string;
+  code?: string | null;
+};
+
+function weeklyDeleteError(error: SupabaseErrorLike): string {
+  const detail = `${error.code ? `[${error.code}] ` : ""}${error.message}`.trim();
+  return `Không xóa được toàn bộ dữ liệu tuần đăng ký. ${detail}`;
+}
+
 export async function isAdmin(user: User): Promise<boolean> {
   const { data, error } = await getSupabase()
     .from("profiles")
@@ -80,7 +90,9 @@ export async function deleteWeek(id: string): Promise<void> {
   const { error } = await getSupabase().rpc("delete_registration_workflow", {
     target_registration_week_id: id,
   });
-  fail(error, "Không xóa được toàn bộ dữ liệu tuần đăng ký.");
+  if (!error) return;
+  console.error(error);
+  throw new Error(weeklyDeleteError(error));
 }
 
 export async function listSubmissions(
