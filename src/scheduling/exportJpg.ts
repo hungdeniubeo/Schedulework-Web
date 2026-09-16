@@ -1,8 +1,20 @@
+function resolveScheduleExportElement(
+  sourceDocument: Document,
+  elementId: string,
+): HTMLElement | null {
+  if (elementId === "cloud-schedule-export") {
+    const liveSheet = sourceDocument.getElementById("cloud-schedule-sheet");
+    const liveSurface = liveSheet?.closest<HTMLElement>(".schedule-table-scroll");
+    if (liveSurface) return liveSurface;
+  }
+  return sourceDocument.getElementById(elementId);
+}
+
 export async function exportScheduleJpg(
   elementId: string,
   weekStart: string,
 ): Promise<void> {
-  const element = document.getElementById(elementId);
+  const element = resolveScheduleExportElement(document, elementId);
   if (!element) throw new Error("Không tìm thấy bảng lịch để xuất.");
   const bounds = element.getBoundingClientRect();
   const width = Math.ceil(Math.max(bounds.width, element.scrollWidth || 0));
@@ -28,7 +40,7 @@ export async function exportScheduleJpg(
     scrollX: 0,
     scrollY: 0,
     onclone: (clonedDocument) => {
-      const clonedElement = clonedDocument.getElementById(elementId);
+      const clonedElement = resolveScheduleExportElement(clonedDocument, elementId);
       if (!clonedElement) return;
       const stage = clonedElement.closest<HTMLElement>(".schedule-export-stage");
       if (stage) {
@@ -40,6 +52,7 @@ export async function exportScheduleJpg(
       }
       clonedElement.style.width = `${width}px`;
       clonedElement.style.maxWidth = "none";
+      clonedElement.style.overflow = "visible";
     },
   });
   const blob = await new Promise<Blob | null>((resolve) =>
