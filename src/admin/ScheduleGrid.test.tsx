@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { createEmptyAvailability, createPresetDay } from "../lib/availability";
+import { shiftStyle } from "../scheduling/shiftStyle";
 import type { CloudEmployee, ScheduleEntry, ShiftType } from "../scheduling/types";
 import { ScheduleGrid } from "./ScheduleGrid";
 
@@ -57,22 +58,51 @@ function render(
 }
 
 describe("Admin scheduler availability guidance", () => {
-  it("shows exact custom registration separately from the official shift", () => {
+  it("renders official shifts before registration guidance", () => {
     const availability = createEmptyAvailability();
     availability.days["1"] = createPresetDay("morning_afternoon");
     const day = availability.days["1"];
     if ("intervals" in day) day.intervals[0].end = "18:00";
     const html = render({ [employee.id]: availability });
-    expect(html).toContain("ĐK</span> · 10h–18h");
-    expect(html).toContain("official-shifts");
+
+    expect(html.indexOf("official-shifts")).toBeLessThan(
+      html.indexOf("availability-detail"),
+    );
     expect(html).toContain("17:00 – 23:00");
+    expect(html).toContain("ĐK</span> · 10h–18h");
+  });
+
+  it("syncs an exact registration interval to the configured shift style", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = createPresetDay("evening");
+    const html = render({ [employee.id]: availability });
+    const expectedBackground = (
+      shiftStyle(shift.color) as unknown as Record<string, string>
+    )["--shift-bg"];
+
+    expect(html).toContain('class="availability-hint matched"');
+    expect(html).toContain(`--shift-bg:${expectedBackground}`);
+    expect(html).toContain("ĐK</span> · 17:00 – 23:00");
+    expect(html).toContain("Khớp ca: 17:00 – 23:00");
+  });
+
+  it("keeps unmatched registration hours neutral instead of guessing a shift", () => {
+    const availability = createEmptyAvailability();
+    availability.days["1"] = createPresetDay("morning_afternoon");
+    const day = availability.days["1"];
+    if ("intervals" in day) day.intervals[0].end = "18:00";
+    const html = render({ [employee.id]: availability });
+
+    expect(html).toContain('class="availability-hint neutral"');
+    expect(html).toContain("ĐK</span> · 10h–18h");
+    expect(html).not.toContain("Khớp ca:");
   });
 
   it("does not show a registration hint when no submission exists", () => {
     expect(render()).not.toContain("availability-hint");
   });
 
-  it("shows a compact off reason without mixing it into official shifts", () => {
+  it("keeps OFF compact in the cell and exposes the full reason in the detail popover", () => {
     const availability = createEmptyAvailability();
     availability.days["1"] = {
       status: "off",
@@ -81,8 +111,11 @@ describe("Admin scheduler availability guidance", () => {
       offReason: "Em có lịch học ở trung tâm",
     };
     const html = render({ [employee.id]: availability });
+
+    expect(html).toContain('class="availability-hint off"');
     expect(html).toContain("ĐK</span> · Nghỉ");
-    expect(html).toContain("Em có lịch học ở trung tâm");
+    expect(html).toContain('class="availability-popover"');
+    expect(html).toContain("Lý do: Em có lịch học ở trung tâm");
     expect(html).toContain("official-shifts");
   });
 
