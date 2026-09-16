@@ -22,7 +22,6 @@ import {
   getOffReason,
 } from "../lib/availability";
 import { findExactShiftForAvailability } from "../scheduling/availabilityShiftMatch";
-import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { entryLabel, getEntryIssue } from "../scheduling/overlap";
 import {
   formatShiftLabel,
@@ -37,6 +36,7 @@ import type {
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
 import type { StaffingPeriod } from "../scheduling/staffing";
+import { SchedulerTable } from "./SchedulerTable";
 import {
   previewEntryForCell,
   resolveSchedulerDrop,
@@ -137,7 +137,11 @@ function EntryChip({
         {...drag.listeners}
         {...drag.attributes}
       >
-        {formatShiftLabel(label)}
+        {formatShiftLabel(label)
+          .split(" / ")
+          .map((part, index) => (
+            <span key={`${part}-${index}`}>{part}</span>
+          ))}
       </button>
       {editable && onDelete && (
         <button
@@ -193,7 +197,9 @@ function ScheduleCell({
     disabled: !editable,
   });
   const assignable = Boolean(selectedShiftId && editable);
-  const availabilityLabel = availability ? formatAvailabilityCell(availability) : "";
+  const availabilityLabel = availability
+    ? formatAvailabilityCell(availability)
+    : "";
   const offReason = availability ? getOffReason(availability) : "";
   const matchedShift = availability
     ? findExactShiftForAvailability(availability, shifts)
@@ -232,7 +238,9 @@ function ScheduleCell({
       role={assignable ? "button" : undefined}
       tabIndex={assignable ? 0 : undefined}
       title={blocked ? blockedLabel : undefined}
-      aria-label={assignable ? `Xếp ca cho ${employee.name}, ngày ${day}` : undefined}
+      aria-label={
+        assignable ? `Xếp ca cho ${employee.name}, ngày ${day}` : undefined
+      }
       onClick={() => {
         if (assignable) onAssign(employee.id, day);
       }}
@@ -322,10 +330,12 @@ function ScheduleTrash({ enabled, active }: { enabled: boolean; active: boolean 
 function EmployeeDragHeader({
   employee,
   groupId,
+  areaClass,
   editable,
 }: {
   employee: CloudEmployee;
   groupId: string;
+  areaClass: string;
   editable: boolean;
 }) {
   const drag = useDraggable({
@@ -353,6 +363,7 @@ function EmployeeDragHeader({
       >
         <span aria-hidden="true">⠿</span>
       </button>
+      <span className={`scheduler-employee-dot ${areaClass}`} aria-hidden="true" />
       <span className="schedule-employee-copy">
         <strong className="schedule-employee-name">{employee.name}</strong>
         {employee.positionName && (
@@ -360,8 +371,8 @@ function EmployeeDragHeader({
             {employee.positionName}
           </small>
         )}
-        {employee.isNew && <small className="schedule-new-badge">NEW</small>}
       </span>
+      {employee.isNew && <small className="schedule-new-badge">NEW</small>}
     </div>
   );
 }
@@ -391,7 +402,7 @@ function EmployeeDropRow({
   return (
     <tr
       ref={drop.setNodeRef}
-      className={`schedule-area-row ${areaClass} ${drop.isOver ? "employee-drop-target" : ""}`}
+      className={`scheduler-employee-row ${areaClass} ${drop.isOver ? "employee-drop-target" : ""}`}
     >
       {children}
     </tr>
@@ -417,7 +428,7 @@ function GroupDropRow({
   return (
     <tr
       ref={drop.setNodeRef}
-      className={`schedule-group-row ${areaClass} ${drop.isOver ? "employee-group-drop-target" : ""}`}
+      className={`scheduler-group-row ${areaClass} ${drop.isOver ? "employee-group-drop-target" : ""}`}
     >
       {children}
     </tr>
@@ -429,7 +440,8 @@ const scheduleCollisionDetection: CollisionDetection = (args) => {
   return pointerWithin(args).filter((collision) => {
     const id = String(collision.id);
     return employeeDrag
-      ? id.startsWith("employee-target:") || id.startsWith("employee-group-target:")
+      ? id.startsWith("employee-target:") ||
+          id.startsWith("employee-group-target:")
       : id.startsWith("cell:") || id === "schedule-trash";
   });
 };
@@ -610,7 +622,9 @@ export function ScheduleGrid(props: Props) {
             active={activeDrag?.kind === "entry"}
           />
           <section className="scheduler-week-overview" aria-label="Tổng quan tuần">
-            <strong className="scheduler-week-overview-title">Tổng quan tuần</strong>
+            <strong className="scheduler-week-overview-title">
+              Tổng quan tuần
+            </strong>
             <div className="scheduler-week-overview-stats">
               <div>
                 <strong>{props.entries.length}</strong>
@@ -626,14 +640,13 @@ export function ScheduleGrid(props: Props) {
           </section>
         </aside>
         <div className="schedule-table-scroll">
-          <ScheduleSheet
+          <SchedulerTable
             id="cloud-schedule-sheet"
             groups={props.groups}
             employees={props.employees}
             entries={props.entries}
             shifts={props.shifts}
             weekStart={props.weekStart}
-            countOverrides={props.countOverrides}
             renderGroupRow={(group, areaClass, children) => (
               <GroupDropRow
                 group={group}
@@ -653,10 +666,11 @@ export function ScheduleGrid(props: Props) {
                 {children}
               </EmployeeDropRow>
             )}
-            renderEmployeeHeader={(employee) => (
+            renderEmployeeHeader={(employee, areaClass) => (
               <EmployeeDragHeader
                 employee={employee}
                 groupId={employee.groupId ?? ""}
+                areaClass={areaClass}
                 editable={
                   props.editable &&
                   Boolean(props.onMoveEmployee) &&
@@ -664,35 +678,12 @@ export function ScheduleGrid(props: Props) {
                 }
               />
             )}
-            renderStaffingCell={
-              props.onSetCountOverride
-                ? (day, period, value) => (
-                    <input
-                      key={`${day}:${period}:${value}`}
-                      className="staffing-count-input"
-                      type="number"
-                      min="0"
-                      disabled={!props.editable}
-                      defaultValue={value}
-                      aria-label={`Tổng ca ${period === "S" ? "Sáng" : period === "T" ? "Trưa" : "Tối"} ngày ${day}`}
-                      title="Nhập số để chỉnh tay; xóa trắng để dùng số tự động"
-                      onBlur={(event) =>
-                        props.onSetCountOverride?.(
-                          day,
-                          period,
-                          event.currentTarget.value,
-                        )
-                      }
-                    />
-                  )
-                : undefined
-            }
-            renderCell={(employee, day, entries) => (
+            renderCell={(employee, day, cellEntries) => (
               <ScheduleCell
                 key={day}
                 employee={employee}
                 day={day}
-                entries={entries}
+                entries={cellEntries}
                 shifts={props.shifts}
                 editable={props.editable}
                 selectedShiftId={props.selectedShiftId}
