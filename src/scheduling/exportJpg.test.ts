@@ -102,7 +102,7 @@ describe("exportScheduleJpg", () => {
     } as HTMLElement;
     const liveSheet = {
       closest: () => liveSurface,
-    } as HTMLElement;
+    } as unknown as HTMLElement;
     const canvas = {
       toBlob: (callback: BlobCallback) => callback(new Blob(["jpg"])),
     } as HTMLCanvasElement;
