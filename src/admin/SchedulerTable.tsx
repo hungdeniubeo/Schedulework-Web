@@ -223,7 +223,6 @@ export function SchedulerTable({
             const groupChildren = (
               <td colSpan={8}>
                 <div className="scheduler-group-label">
-                  <span className="scheduler-group-mark" aria-hidden="true">◈</span>
                   <strong>{group.name.toLocaleUpperCase("vi")}</strong>
                 </div>
               </td>
