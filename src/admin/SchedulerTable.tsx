@@ -167,11 +167,14 @@ export function SchedulerTable({
         AREA_TONE_CLASSES[index] ?? "schedule-area-neutral",
       ]),
   );
+  const liveSurface = id === "cloud-schedule-sheet";
+  const resolvedEmployeeColumnWidth = liveSurface
+    ? 360
+    : (employeeColumnWidth ?? employeeColumnWidthPx(employees));
   const wrapperStyle = {
-    "--scheduler-employee-width": `${employeeColumnWidth ?? employeeColumnWidthPx(employees)}px`,
+    "--scheduler-employee-width": `${resolvedEmployeeColumnWidth}px`,
   } as CSSProperties;
-  const liveSurfaceClass =
-    id === "cloud-schedule-sheet" ? "legacy-scheduler-live-surface" : "";
+  const liveSurfaceClass = liveSurface ? "legacy-scheduler-live-surface" : "";
 
   return (
     <section
