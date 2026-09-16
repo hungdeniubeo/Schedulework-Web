@@ -24,11 +24,15 @@ jobs:
           src/lib/pageRefresh.test.ts
           src/admin/api.test.ts
           src/admin/UnifiedWeekWorkflowMigration.test.ts
+          src/admin/GroupLifecycleMigration.test.ts
           src/admin/DeleteWeekDiagnostics.test.ts
           src/admin/WeeklyFlowRegression.test.tsx
           src/admin/adminWeekSelection.test.ts
           src/admin/registrationWeekUi.test.ts
           src/admin/WeekDialogs.test.tsx
+          src/admin/GroupDeleteDialog.test.tsx
+          src/admin/GroupManager.test.ts
+          src/admin/EmployeeManager.test.tsx
           src/admin/employeePositions.test.ts
           src/admin/AdminNavigation.test.tsx
           src/admin/AdminAvailabilityPage.test.tsx
@@ -53,6 +57,7 @@ jobs:
           src/scheduling/employeeOrder.test.ts
           src/scheduling/reorderApi.test.ts
           src/scheduling/availabilityNotice.test.ts
+          src/scheduling/scheduleSheetModel.test.ts
           src/scheduling/ScheduleSheet.test.tsx
           src/scheduling/overlap.test.ts
           src/scheduling/merge.test.ts
