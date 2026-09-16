@@ -88,10 +88,7 @@ export async function patchGroup(
 
 export async function removeGroup(id: string): Promise<void> {
   const { error } = await getSupabase().from("groups").delete().eq("id", id);
-  fail(
-    error,
-    "Không thể xóa nhóm đang có nhân viên. Hãy chuyển nhân viên sang nhóm khác trước.",
-  );
+  fail(error, "Không xóa được nhóm.");
 }
 
 function positionFromRow(row: Record<string, unknown>): Position {
