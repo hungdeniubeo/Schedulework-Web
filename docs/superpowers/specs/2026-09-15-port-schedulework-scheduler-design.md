@@ -1,3 +1,7 @@
+> **SUPERSEDED IN PART — 2026-09-16**
+>
+> Scheduler presentation, refresh behavior, and the user-facing draft/published workflow in this document are superseded by `2026-09-16-scheduler-reference-parity-and-refresh-design.md`. Keep this file only as historical context for the original port. The newer design is authoritative where the two conflict.
+
 # Port ScheduleWork Scheduler to Schedulework-Web — Design
 
 ## Goal
