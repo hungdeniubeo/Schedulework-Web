@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { CloudEmployee } from "../scheduling/types";
+import source from "./EmployeeManager.tsx?raw";
 import { DeleteEmployeeDialog, EmployeeCard } from "./EmployeeManager";
 
 const employee: CloudEmployee = {
@@ -57,6 +58,13 @@ describe("employee management cards", () => {
     expect(html).toContain(">Xóa<");
     expect(html).not.toContain("Deactivate");
     expect(html).not.toContain("Reactivate");
+  });
+
+  it("refreshes employee and group structure when the page becomes active again", () => {
+    expect(source).toContain("subscribePageRefresh");
+    expect(source).toContain("refreshStructure");
+    expect(source).toContain("listSchedulerEmployees()");
+    expect(source).toContain("listGroups()");
   });
 });
 
