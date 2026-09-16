@@ -22,6 +22,117 @@
   margin-inline: auto;
 }
 
+.archived-weeks {
+  margin-top: 18px;
+  border: 1px solid rgba(76, 92, 84, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.archived-weeks > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.archived-weeks > summary::-webkit-details-marker {
+  display: none;
+}
+
+.archived-weeks > summary span {
+  color: #4d5953;
+  font-weight: 760;
+}
+
+.archived-weeks > summary small {
+  color: var(--muted);
+}
+
+.archived-week-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.archived-week-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  background: #f7f8f7;
+  border: 1px solid rgba(76, 92, 84, 0.1);
+  border-radius: 10px;
+}
+
+.archived-week-row > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.archived-week-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.week-delete-dialog {
+  max-width: 520px;
+  text-align: left;
+}
+
+.week-delete-warning-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  color: #8b352e;
+  background: #fff0ee;
+  border: 1px solid #efd1cd;
+  font-weight: 900;
+}
+
+.week-delete-dialog header {
+  display: grid;
+  gap: 4px;
+}
+
+.week-delete-dialog header h2,
+.week-delete-dialog p {
+  margin: 0;
+}
+
+.week-delete-target {
+  padding: 10px 12px;
+  background: #f7f8f7;
+  border-radius: 9px;
+}
+
+.admin-toast-region {
+  position: fixed;
+  z-index: 90;
+  right: 20px;
+  bottom: 20px;
+  pointer-events: none;
+}
+
+.admin-success-toast {
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 11px 14px;
+  color: #314139;
+  background: #f2f8f4;
+  border: 1px solid #cfe0d5;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(31, 43, 37, 0.12);
+}
+
 @media (max-width: 720px) {
   .registration-weeks-page {
     width: 100%;
@@ -30,5 +141,15 @@
   .registration-weeks-heading {
     padding-inline: 4px;
     text-align: left;
+  }
+
+  .archived-week-row {
+    align-items: flex-start;
+  }
+
+  .admin-toast-region {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
   }
 }
