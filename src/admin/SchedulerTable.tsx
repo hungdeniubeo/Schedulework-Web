@@ -21,6 +21,7 @@ import type {
   ScheduleEntry,
   ShiftType,
 } from "../scheduling/types";
+import "./AdminScheduleLive.css";
 
 const WEEKDAY_LABELS = [
   "Thứ hai",
@@ -169,11 +170,13 @@ export function SchedulerTable({
   const wrapperStyle = {
     "--scheduler-employee-width": `${employeeColumnWidth ?? employeeColumnWidthPx(employees)}px`,
   } as CSSProperties;
+  const liveSurfaceClass =
+    id === "cloud-schedule-sheet" ? "legacy-scheduler-live-surface" : "";
 
   return (
     <section
       id={id}
-      className={`legacy-scheduler-sheet ${className}`.trim()}
+      className={`legacy-scheduler-sheet ${liveSurfaceClass} ${className}`.trim()}
       style={wrapperStyle}
     >
       <header className="legacy-scheduler-heading">
