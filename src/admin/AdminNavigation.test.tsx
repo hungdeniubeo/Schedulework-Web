@@ -41,4 +41,24 @@ describe("AdminNavigation", () => {
     expect(html).toContain("/admin/registration-weeks?week=2026-09-21");
     expect(html).toContain("/admin/schedule?week=2026-09-21");
   });
+
+  it("groups workflow and management tabs without changing their order", () => {
+    const html = renderToStaticMarkup(
+      <AdminNavigation
+        section="dashboard"
+        selectedWeekStart="2026-10-05"
+        navigate={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('class="admin-tabs-primary"');
+    expect(html).toContain('class="admin-tabs-divider"');
+    expect(html).toContain('class="admin-tabs-management"');
+    expect(html.indexOf("Xếp lịch")).toBeLessThan(
+      html.indexOf('class="admin-tabs-divider"'),
+    );
+    expect(html.indexOf('class="admin-tabs-divider"')).toBeLessThan(
+      html.indexOf("Nhân viên"),
+    );
+  });
 });
