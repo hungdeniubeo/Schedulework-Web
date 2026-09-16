@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry, ShiftType } from "../scheduling/types";
-import legacyCss from "./AdminScheduleLegacy.css?raw";
+import legacyCss from "./AdminScheduleLegacy.css?inline";
 import { ScheduleDailySummary } from "./ScheduleDailySummary";
 
 const shifts: ShiftType[] = [
