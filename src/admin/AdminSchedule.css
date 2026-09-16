@@ -93,6 +93,112 @@
   }
 }
 
+.scheduler-layout .schedule-cell-stack {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.scheduler-layout .availability-detail {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.scheduler-layout .availability-detail > summary {
+  list-style: none;
+}
+
+.scheduler-layout .availability-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.scheduler-layout .availability-hint {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  color: #66706b;
+  background: #f5f7f6;
+  border: 1px solid rgba(93, 106, 99, 0.16);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+}
+
+.scheduler-layout .availability-hint:hover,
+.scheduler-layout .availability-hint:focus-visible {
+  color: #4d5953;
+  background: #eef2f0;
+  border-color: rgba(79, 94, 86, 0.24);
+}
+
+.scheduler-layout .availability-hint:focus-visible {
+  outline: 2px solid rgba(82, 112, 96, 0.3);
+  outline-offset: 2px;
+}
+
+.scheduler-layout .availability-hint.matched {
+  color: var(--shift-ink);
+  background: var(--shift-bg);
+  border-color: var(--shift-border);
+  opacity: 0.68;
+  filter: saturate(0.72);
+}
+
+.scheduler-layout .availability-hint.off {
+  color: #746b68;
+  background: #f7f4f3;
+  border-color: #e3dad7;
+}
+
+.scheduler-layout .availability-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 50%;
+  display: grid;
+  width: max-content;
+  max-width: 240px;
+  gap: 4px;
+  padding: 9px 10px;
+  color: #3f4944;
+  background: #fff;
+  border: 1px solid #dce2df;
+  border-radius: 9px;
+  box-shadow: 0 10px 26px rgba(31, 43, 37, 0.14);
+  transform: translateX(-50%);
+  text-align: left;
+}
+
+.scheduler-layout .availability-detail:not([open]) .availability-popover {
+  display: none;
+}
+
+.scheduler-layout .availability-popover strong {
+  font-size: 0.68rem;
+}
+
+.scheduler-layout .availability-popover span,
+.scheduler-layout .availability-popover small {
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.scheduler-layout .availability-popover small {
+  color: #6c7671;
+}
+
 .scheduler-layout .cloud-schedule-table thead th,
 .scheduler-layout .cloud-schedule-table .schedule-day-head,
 .scheduler-layout .cloud-schedule-table .schedule-group-row th,
@@ -386,5 +492,9 @@
     justify-items: start;
     padding: 24px 18px;
     text-align: left;
+  }
+
+  .scheduler-layout .availability-popover {
+    max-width: min(220px, 70vw);
   }
 }

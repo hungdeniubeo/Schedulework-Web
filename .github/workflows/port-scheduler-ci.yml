@@ -21,12 +21,21 @@ jobs:
         run: >-
           npm test --
           src/app/router.test.ts
+          src/admin/api.test.ts
           src/admin/adminWeekSelection.test.ts
+          src/admin/registrationWeekUi.test.ts
+          src/admin/WeekDialogs.test.tsx
+          src/admin/employeePositions.test.ts
           src/admin/AdminNavigation.test.tsx
           src/admin/AdminAvailabilityPage.test.tsx
+          src/admin/AdminMatrix.test.tsx
           src/admin/AdminSchedulePage.test.tsx
           src/admin/AdminDashboard.test.tsx
           src/admin/AdminSelects.test.tsx
+          src/employee/EmployeeRegistrationPage.test.ts
+          src/employee/registrationWeekSelection.test.ts
+          src/employee/scheduleApi.test.ts
+          src/scheduling/availabilityShiftMatch.test.ts
           src/scheduling/employeeOrder.test.ts
           src/scheduling/reorderApi.test.ts
           src/scheduling/availabilityNotice.test.ts

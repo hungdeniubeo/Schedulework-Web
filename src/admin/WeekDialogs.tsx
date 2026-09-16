@@ -275,19 +275,23 @@ export function DeleteWeekDialog({
   return (
     <ModalBackdrop onClose={busy ? () => undefined : onClose}>
       <section
-        className="confirm-dialog"
+        className="confirm-dialog week-delete-dialog"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="delete-registration-week-title"
         aria-describedby="delete-registration-week-description"
       >
+        <div className="week-delete-warning-icon" aria-hidden="true">!</div>
         <header>
-          <h2 id="delete-registration-week-title">Xóa tuần đăng ký?</h2>
+          <span className="eyebrow">Thao tác không thể hoàn tác</span>
+          <h2 id="delete-registration-week-title">Xóa toàn bộ tuần?</h2>
         </header>
+        <div className="week-delete-target">
+          <strong>{formatWeekDisplay(week.week_start)}</strong>
+        </div>
         <p id="delete-registration-week-description">
-          <strong>{formatWeekDisplay(week.week_start)}</strong> và toàn bộ đăng
-          ký nhân viên của tuần này sẽ bị xóa. Lịch chính thức đã xếp không bị
-          ảnh hưởng. Thao tác này không thể hoàn tác.
+          Toàn bộ đăng ký nhân viên và lịch đã xếp của tuần này sẽ bị xóa vĩnh viễn.
+          Ảnh JPG đã xuất trước đó không bị ảnh hưởng.
         </p>
         {error && <div className="inline-error" role="alert">{error}</div>}
         <footer>
@@ -301,12 +305,12 @@ export function DeleteWeekDialog({
             Hủy
           </button>
           <button
-            className="button ghost danger"
+            className="button danger"
             type="button"
             disabled={busy}
             onClick={() => void remove()}
           >
-            {busy ? "Đang xóa..." : "Xóa tuần"}
+            {busy ? "Đang xóa..." : "Xóa toàn bộ tuần"}
           </button>
         </footer>
       </section>

@@ -21,12 +21,12 @@ import {
   formatAvailabilityCell,
   getOffReason,
 } from "../lib/availability";
+import { findExactShiftForAvailability } from "../scheduling/availabilityShiftMatch";
 import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { entryLabel, getEntryIssue } from "../scheduling/overlap";
 import {
   formatShiftLabel,
   resolvedShiftColor,
-  semanticShiftColor,
   shiftStyle,
 } from "../scheduling/shiftStyle";
 import type {
@@ -195,6 +195,19 @@ function ScheduleCell({
   const assignable = Boolean(selectedShiftId && editable);
   const availabilityLabel = availability ? formatAvailabilityCell(availability) : "";
   const offReason = availability ? getOffReason(availability) : "";
+  const matchedShift = availability
+    ? findExactShiftForAvailability(availability, shifts)
+    : null;
+  const registrationLabel = matchedShift
+    ? formatShiftLabel(matchedShift.label)
+    : availabilityLabel;
+  const registrationKind = !availability
+    ? null
+    : availability.status === "off"
+      ? "off"
+      : matchedShift
+        ? "matched"
+        : "neutral";
   const previewEntry = drop.isOver
     ? previewEntryForCell(activeDrag ?? undefined, employee.id, day)
     : null;
@@ -235,19 +248,6 @@ function ScheduleCell({
       }}
     >
       <div className="schedule-cell-stack">
-        {availability && (
-          <small
-            className={`availability-hint ${availability.status}`}
-            style={
-              availability.status === "available"
-                ? shiftStyle(semanticShiftColor(availabilityLabel))
-                : undefined
-            }
-          >
-            <span>ĐK</span> · {availabilityLabel}
-            {offReason && <em title={offReason}>{offReason}</em>}
-          </small>
-        )}
         <div className="official-shifts">
           {entries.map((entry) => (
             <EntryChip
@@ -261,6 +261,36 @@ function ScheduleCell({
             />
           ))}
         </div>
+        {availability && registrationKind && (
+          <details
+            className={`availability-detail ${registrationKind}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <summary
+              className={`availability-hint ${registrationKind}`}
+              style={
+                matchedShift
+                  ? shiftStyle(
+                      resolvedShiftColor(
+                        matchedShift.label,
+                        matchedShift.color,
+                      ),
+                    )
+                  : undefined
+              }
+            >
+              <span>ĐK</span> · {registrationLabel}
+            </summary>
+            <div className="availability-popover">
+              <strong>Đăng ký của nhân viên</strong>
+              <span>{availabilityLabel}</span>
+              {matchedShift && (
+                <small>Khớp ca: {formatShiftLabel(matchedShift.label)}</small>
+              )}
+              {offReason && <small>Lý do: {offReason}</small>}
+            </div>
+          </details>
+        )}
       </div>
       {drop.isOver && blocked && (
         <span className="schedule-drop-message">{blockedLabel}</span>

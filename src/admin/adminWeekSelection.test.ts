@@ -6,22 +6,26 @@ import {
   weekStartFromSearch,
 } from "./adminWeekSelection";
 
-const weeks: RegistrationWeek[] = [
-  {
-    id: "week-open",
-    week_start: "2026-09-21",
+function week(
+  id: string,
+  weekStart: string,
+  status: RegistrationWeek["status"] = "open",
+): RegistrationWeek {
+  return {
+    id,
+    week_start: weekStart,
     lock_at: "2099-09-18T15:00:00.000Z",
-    status: "open",
+    status,
     created_at: "",
     updated_at: "",
-  },
+  };
+}
+
+const weeks: RegistrationWeek[] = [
+  week("week-open", "2026-09-21"),
   {
-    id: "week-old",
-    week_start: "2026-09-14",
+    ...week("week-old", "2026-09-14", "locked"),
     lock_at: "2026-09-11T15:00:00.000Z",
-    status: "locked",
-    created_at: "",
-    updated_at: "",
   },
 ];
 
@@ -44,6 +48,16 @@ describe("admin week selection", () => {
 
   it("marks an unknown requested week invalid", () => {
     expect(resolveAdminRegistrationWeek(weeks, "2026-10-05")).toEqual({
+      week: null,
+      invalidRequestedWeek: true,
+    });
+  });
+
+  it("does not treat an archived week as an active requested admin week", () => {
+    const archived = week("archived", "2026-09-28", "archived");
+    expect(
+      resolveAdminRegistrationWeek([archived], archived.week_start),
+    ).toEqual({
       week: null,
       invalidRequestedWeek: true,
     });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RegistrationWeek } from "../types/domain";
 import {
+  partitionRegistrationWeeks,
   registrationWeekActionState,
   registrationWeekStatusLabel,
   validateRegistrationWeek,
@@ -35,6 +36,26 @@ describe("registration week management rules", () => {
       canArchive: false,
       canDelete: true,
     });
+  });
+
+  it("keeps archived weeks out of the primary management list", () => {
+    const open = { ...existingWeek, id: "open", status: "open" as const };
+    const locked = {
+      ...existingWeek,
+      id: "locked",
+      week_start: "2026-10-05",
+      status: "locked" as const,
+    };
+    const archived = {
+      ...existingWeek,
+      id: "archived",
+      week_start: "2026-09-21",
+      status: "archived" as const,
+    };
+
+    const result = partitionRegistrationWeeks([open, locked, archived]);
+    expect(result.active.map((week) => week.id)).toEqual(["open", "locked"]);
+    expect(result.archived.map((week) => week.id)).toEqual(["archived"]);
   });
 
   it("rejects non-Monday and duplicate registration weeks", () => {

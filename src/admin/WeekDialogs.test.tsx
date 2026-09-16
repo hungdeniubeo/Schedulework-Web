@@ -55,10 +55,10 @@ describe("registration week dialogs", () => {
     expect(html).toContain("Lưu thay đổi");
   });
 
-  it("confirms cascading registration deletion without deleting an official schedule", () => {
+  it("states that employee registrations and the official schedule are both deleted", () => {
     const html = renderToStaticMarkup(
       <DeleteWeekDialog
-        week={week}
+        week={{ ...week, week_start: "2026-10-05", status: "archived" }}
         busy={false}
         onClose={() => undefined}
         onDelete={async () => undefined}
@@ -66,10 +66,10 @@ describe("registration week dialogs", () => {
     );
 
     expect(html).toContain('role="alertdialog"');
-    expect(html).toContain("Xóa tuần đăng ký?");
-    expect(html).toContain("Tuần 5 tháng 9 · 28/09 – 04/10");
-    expect(html).toContain("toàn bộ đăng ký nhân viên");
-    expect(html).toContain("Lịch chính thức đã xếp không bị ảnh hưởng");
-    expect(html).toContain("Xóa tuần");
+    expect(html).toContain("Xóa toàn bộ tuần");
+    expect(html).toContain("đăng ký nhân viên");
+    expect(html).toContain("lịch đã xếp");
+    expect(html).toContain("05/10 – 11/10");
+    expect(html).not.toContain("Lịch chính thức đã xếp không bị ảnh hưởng");
   });
 });

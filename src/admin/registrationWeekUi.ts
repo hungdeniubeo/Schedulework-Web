@@ -33,6 +33,13 @@ export function registrationWeekActionState(
   };
 }
 
+export function partitionRegistrationWeeks(weeks: RegistrationWeek[]) {
+  return {
+    active: weeks.filter((week) => week.status !== "archived"),
+    archived: weeks.filter((week) => week.status === "archived"),
+  };
+}
+
 export function validateRegistrationWeek(
   weekStart: string,
   weeks: RegistrationWeek[],

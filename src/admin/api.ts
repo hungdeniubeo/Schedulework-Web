@@ -77,11 +77,10 @@ export async function updateWeek(
 }
 
 export async function deleteWeek(id: string): Promise<void> {
-  const { error } = await getSupabase()
-    .from("registration_weeks")
-    .delete()
-    .eq("id", id);
-  fail(error, "Không xóa được tuần đăng ký.");
+  const { error } = await getSupabase().rpc("delete_registration_workflow", {
+    target_registration_week_id: id,
+  });
+  fail(error, "Không xóa được toàn bộ dữ liệu tuần đăng ký.");
 }
 
 export async function listSubmissions(
