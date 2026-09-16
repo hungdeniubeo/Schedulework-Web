@@ -55,4 +55,20 @@ describe("AdminScheduleExport", () => {
     expect(html).not.toContain("schedule-employee-drag-handle");
     expect(html).not.toContain("scheduler-palette");
   });
+
+  it("keeps the export totals aligned to the same wide employee column as the reference layout", () => {
+    const html = renderToStaticMarkup(
+      <AdminScheduleExport
+        id="cloud-schedule-export"
+        groups={[{ id: "group-1", name: "MEAT", sortOrder: 0 }]}
+        employees={[employee]}
+        entries={[entry]}
+        shifts={[shift]}
+        weekStart="2026-09-21"
+      />,
+    );
+
+    expect(html).toContain("--scheduler-employee-width:360px");
+    expect(html).toContain("schedule-daily-summary");
+  });
 });
