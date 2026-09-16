@@ -67,6 +67,10 @@ describe("SchedulerTable legacy parity", () => {
     expect(html).toContain("Thứ hai");
     expect(html).toContain("Chủ nhật");
     expect(html).toContain('class="scheduler-name-cell');
+    expect(html).toContain('class="schedule-employee-identity"');
+    expect(html).toContain('class="schedule-employee-copy"');
+    expect(html).toContain('class="schedule-employee-name"');
+    expect(html).toContain('class="schedule-employee-position"');
     expect(html).toContain("Nguyễn Phi Hùng");
     expect(html).toContain("Bếp trưởng");
     expect(html).toContain("NEW");
