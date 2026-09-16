@@ -20,10 +20,8 @@ describe("AdminScheduler workflow", () => {
     expect(source).toContain("intervalMs: 15_000");
   });
 
-  it("exports the same visible schedule surface instead of rendering a second layout", () => {
-    expect(source).not.toContain("AdminScheduleExport");
-    expect(source).toContain('exportScheduleJpg("cloud-schedule-live"');
-    expect(source).not.toContain('id="cloud-schedule-export"');
-    expect(source).not.toContain("schedule-export-stage");
+  it("routes JPG export through the shared exporter", () => {
+    expect(source).toContain("exportScheduleJpg");
+    expect(source).toContain('exportScheduleJpg("cloud-schedule-export"');
   });
 });
