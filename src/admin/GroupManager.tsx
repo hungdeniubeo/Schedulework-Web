@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "../components/Icons";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   addGroup,
   listGroups,
@@ -27,6 +28,18 @@ export function GroupManager() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    return subscribePageRefresh(() => {
+      if (busy) return;
+      void load().catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error ? reason.message : "Không làm mới được nhóm.",
+        );
+      });
+    });
+  }, [busy]);
 
   async function create(event: FormEvent) {
     event.preventDefault();
