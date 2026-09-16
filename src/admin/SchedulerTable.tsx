@@ -169,7 +169,7 @@ export function SchedulerTable({
   );
   const liveSurface = id === "cloud-schedule-sheet";
   const resolvedEmployeeColumnWidth = liveSurface
-    ? 360
+    ? 220
     : (employeeColumnWidth ?? employeeColumnWidthPx(employees));
   const wrapperStyle = {
     "--scheduler-employee-width": `${resolvedEmployeeColumnWidth}px`,
