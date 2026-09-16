@@ -151,11 +151,12 @@ describe("Admin desktop selects", () => {
     expect(lockedHtml).toContain("Mở lại đăng ký");
     expect(lockedHtml).not.toContain("Khóa đăng ký");
     expect(archivedHtml).toContain("Đã lưu trữ");
+    expect(archivedHtml).toContain("Tuần đã lưu trữ");
     expect(archivedHtml).not.toContain("Mở lại đăng ký");
     expect(archivedHtml).not.toContain("Khóa đăng ký");
     expect(archivedHtml).not.toContain("Chỉnh sửa tuần");
-    expect(archivedHtml).not.toContain("Lưu trữ");
-    expect(archivedHtml).toContain("Xóa tuần");
+    expect(archivedHtml).not.toContain(">Lưu trữ<");
+    expect(archivedHtml).toContain(">Xóa</button>");
   });
 
   it("maps status labels and action availability without exposing enums", () => {
