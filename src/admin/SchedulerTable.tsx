@@ -202,7 +202,7 @@ export function SchedulerTable({
         <thead>
           <tr>
             <th className="scheduler-employee-head" scope="col">
-              <span aria-hidden="true">♙</span> Nhân viên
+              <span aria-hidden="true"></span> Nhân viên
             </th>
             {dates.map((date, index) => (
               <th
