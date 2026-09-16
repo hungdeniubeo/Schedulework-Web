@@ -21,4 +21,10 @@ describe("AdminScheduler workflow", () => {
     expect(source).toContain("loadAvailability");
     expect(source).toContain("intervalMs: 15_000");
   });
+
+  it("uses the clean admin export layout instead of the legacy shared ScheduleSheet", () => {
+    expect(source).toContain("AdminScheduleExport");
+    expect(source).not.toContain('import { ScheduleSheet }');
+    expect(source).toContain('id="cloud-schedule-export"');
+  });
 });
