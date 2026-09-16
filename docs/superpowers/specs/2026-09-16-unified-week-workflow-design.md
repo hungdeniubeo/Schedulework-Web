@@ -1,3 +1,7 @@
+> **UPDATED PRECEDENCE — 2026-09-16**
+>
+> This document remains authoritative for the unified week lifecycle. References to a user-facing publish step, schedule status controls, or publication UX are superseded by `2026-09-16-scheduler-reference-parity-and-refresh-design.md`.
+
 # Unified Week Workflow Design
 
 ## Goal
