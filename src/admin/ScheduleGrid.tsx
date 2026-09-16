@@ -28,6 +28,7 @@ import {
   resolvedShiftColor,
   shiftStyle,
 } from "../scheduling/shiftStyle";
+import type { StaffingPeriod } from "../scheduling/staffing";
 import type {
   CloudEmployee,
   Group,
@@ -35,7 +36,7 @@ import type {
   ShiftType,
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
-import type { StaffingPeriod } from "../scheduling/staffing";
+import { ScheduleDailySummary } from "./ScheduleDailySummary";
 import { SchedulerTable } from "./SchedulerTable";
 import {
   previewEntryForCell,
@@ -80,12 +81,8 @@ function PaletteShift({
       <span className="scheduler-shift-label">
         {formatShiftLabel(shift.label)
           .split(" / ")
-          .map((part, index, parts) => (
-            <span key={`${part}-${index}`}>
-              {part}
-              {index < parts.length - 1 && " /"}
-              {index < parts.length - 1 && <br />}
-            </span>
+          .map((part, index) => (
+            <span key={`${part}-${index}`}>{part}</span>
           ))}
       </span>
     </button>
@@ -363,7 +360,10 @@ function EmployeeDragHeader({
       >
         <span aria-hidden="true">⠿</span>
       </button>
-      <span className={`scheduler-employee-dot ${areaClass}`} aria-hidden="true" />
+      <span
+        className={`scheduler-employee-dot ${areaClass}`}
+        aria-hidden="true"
+      />
       <span className="schedule-employee-copy">
         <strong className="schedule-employee-name">{employee.name}</strong>
         {employee.positionName && (
@@ -506,10 +506,18 @@ type Props = {
     period: StaffingPeriod,
     value: string,
   ) => void;
+  sidebarOpen?: boolean;
+  onSidebarOpenChange?: (open: boolean) => void;
 };
 
 export function ScheduleGrid(props: Props) {
   const [activeDrag, setActiveDrag] = useState<SchedulerDragData | null>(null);
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(true);
+  const sidebarOpen = props.sidebarOpen ?? internalSidebarOpen;
+  const setSidebarOpen = (open: boolean) => {
+    if (props.onSidebarOpenChange) props.onSidebarOpenChange(open);
+    else setInternalSidebarOpen(open);
+  };
   const selectedShift = props.shifts.find(
     (shift) => shift.id === props.selectedShiftId,
   );
@@ -572,134 +580,170 @@ export function ScheduleGrid(props: Props) {
       onDragCancel={dragCancel}
       onDragEnd={dragEnd}
     >
-      <div className={`scheduler-layout ${activeDrag ? "is-dragging" : ""}`}>
-        <aside className="scheduler-palette">
-          <header className="scheduler-palette-heading">
-            <span className="scheduler-palette-kicker">Công cụ xếp lịch</span>
-            <h3>Ca làm</h3>
-            <p>
-              {props.editable
-                ? "Chọn một ca để xếp nhanh hoặc kéo vào bảng."
-                : "Tuần này đang khóa chỉnh sửa."}
-            </p>
-          </header>
-          {selectedShift && (
-            <div
-              className="scheduler-selection-status"
-              style={shiftStyle(
-                resolvedShiftColor(selectedShift.label, selectedShift.color),
-              )}
+      <div
+        className={`scheduler-workspace ${sidebarOpen ? "" : "sidebar-hidden"} ${activeDrag ? "is-dragging" : ""}`.trim()}
+      >
+        <section className="scheduler-table-column">
+          <div className="scheduler-grid-tools">
+            <button
+              type="button"
+              className="scheduler-sidebar-toggle"
+              aria-label={
+                sidebarOpen ? "Ẩn danh sách ca" : "Hiện danh sách ca"
+              }
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              <span>Đang chọn để xếp nhanh</span>
-              <strong>{formatShiftLabel(selectedShift.label)}</strong>
-              <button
-                type="button"
-                aria-label="Bỏ chọn ca"
-                onClick={() => props.onSelectShift(null)}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-          )}
-          <div className="scheduler-shift-list">
-            {props.shifts.map((shift) => (
-              <PaletteShift
-                key={shift.id}
-                shift={shift}
-                disabled={!props.editable}
-                selected={props.selectedShiftId === shift.id}
-                onSelect={() =>
-                  props.onSelectShift(
-                    props.selectedShiftId === shift.id ? null : shift.id,
-                  )
-                }
-              />
-            ))}
-            {props.shifts.length === 0 && <small>Hãy tạo ca làm trước.</small>}
+              <span aria-hidden="true">▦</span>
+              Ca làm
+            </button>
           </div>
-          <ScheduleTrash
-            enabled={props.editable && Boolean(props.onDelete)}
-            active={activeDrag?.kind === "entry"}
-          />
-          <section className="scheduler-week-overview" aria-label="Tổng quan tuần">
-            <strong className="scheduler-week-overview-title">
-              Tổng quan tuần
-            </strong>
-            <div className="scheduler-week-overview-stats">
-              <div>
-                <strong>{props.entries.length}</strong>
-                <span>ca đã xếp</span>
+          <div className="schedule-table-scroll">
+            <SchedulerTable
+              id="cloud-schedule-sheet"
+              groups={props.groups}
+              employees={props.employees}
+              entries={props.entries}
+              shifts={props.shifts}
+              weekStart={props.weekStart}
+              renderGroupRow={(group, areaClass, children) => (
+                <GroupDropRow
+                  group={group}
+                  areaClass={areaClass}
+                  editable={props.editable && Boolean(props.onMoveEmployee)}
+                >
+                  {children}
+                </GroupDropRow>
+              )}
+              renderEmployeeRow={(employee, group, areaClass, children) => (
+                <EmployeeDropRow
+                  employee={employee}
+                  group={group}
+                  areaClass={areaClass}
+                  editable={props.editable && Boolean(props.onMoveEmployee)}
+                >
+                  {children}
+                </EmployeeDropRow>
+              )}
+              renderEmployeeHeader={(employee, areaClass) => (
+                <EmployeeDragHeader
+                  employee={employee}
+                  groupId={employee.groupId ?? ""}
+                  areaClass={areaClass}
+                  editable={
+                    props.editable &&
+                    Boolean(props.onMoveEmployee) &&
+                    Boolean(employee.groupId)
+                  }
+                />
+              )}
+              renderCell={(employee, day, cellEntries) => (
+                <ScheduleCell
+                  key={day}
+                  employee={employee}
+                  day={day}
+                  entries={cellEntries}
+                  shifts={props.shifts}
+                  editable={props.editable}
+                  selectedShiftId={props.selectedShiftId}
+                  activeDrag={activeDrag}
+                  onAssign={(employeeId, nextDay) =>
+                    props.onAssign(employeeId, nextDay)
+                  }
+                  onEdit={props.onEdit}
+                  onDelete={props.onDelete}
+                  availability={
+                    props.availabilityByEmployee?.[employee.id]?.days[
+                      String(day)
+                    ]
+                  }
+                />
+              )}
+            />
+            <ScheduleDailySummary
+              weekStart={props.weekStart}
+              entries={props.entries}
+              shifts={props.shifts}
+              countOverrides={props.countOverrides}
+              editable={props.editable}
+              onSetCountOverride={props.onSetCountOverride}
+            />
+          </div>
+        </section>
+
+        {sidebarOpen && (
+          <aside className="scheduler-palette">
+            <header className="scheduler-palette-heading">
+              <span className="scheduler-palette-kicker">Công cụ xếp lịch</span>
+              <h3>Ca làm</h3>
+              <p>
+                {props.editable
+                  ? "Chọn một ca để xếp nhanh hoặc kéo vào bảng."
+                  : "Tuần này đang khóa chỉnh sửa."}
+              </p>
+            </header>
+            {selectedShift && (
+              <div
+                className="scheduler-selection-status"
+                style={shiftStyle(
+                  resolvedShiftColor(selectedShift.label, selectedShift.color),
+                )}
+              >
+                <span>Đang chọn để xếp nhanh</span>
+                <strong>{formatShiftLabel(selectedShift.label)}</strong>
+                <button
+                  type="button"
+                  aria-label="Bỏ chọn ca"
+                  onClick={() => props.onSelectShift(null)}
+                >
+                  <CloseIcon />
+                </button>
               </div>
-              <div>
-                <strong>
-                  {scheduledEmployeeCount}/{props.employees.length}
-                </strong>
-                <span>nhân viên có ca</span>
-              </div>
+            )}
+            <div className="scheduler-shift-list">
+              {props.shifts.map((shift) => (
+                <PaletteShift
+                  key={shift.id}
+                  shift={shift}
+                  disabled={!props.editable}
+                  selected={props.selectedShiftId === shift.id}
+                  onSelect={() =>
+                    props.onSelectShift(
+                      props.selectedShiftId === shift.id ? null : shift.id,
+                    )
+                  }
+                />
+              ))}
+              {props.shifts.length === 0 && (
+                <small>Hãy tạo ca làm trước.</small>
+              )}
             </div>
-          </section>
-        </aside>
-        <div className="schedule-table-scroll">
-          <SchedulerTable
-            id="cloud-schedule-sheet"
-            groups={props.groups}
-            employees={props.employees}
-            entries={props.entries}
-            shifts={props.shifts}
-            weekStart={props.weekStart}
-            renderGroupRow={(group, areaClass, children) => (
-              <GroupDropRow
-                group={group}
-                areaClass={areaClass}
-                editable={props.editable && Boolean(props.onMoveEmployee)}
-              >
-                {children}
-              </GroupDropRow>
-            )}
-            renderEmployeeRow={(employee, group, areaClass, children) => (
-              <EmployeeDropRow
-                employee={employee}
-                group={group}
-                areaClass={areaClass}
-                editable={props.editable && Boolean(props.onMoveEmployee)}
-              >
-                {children}
-              </EmployeeDropRow>
-            )}
-            renderEmployeeHeader={(employee, areaClass) => (
-              <EmployeeDragHeader
-                employee={employee}
-                groupId={employee.groupId ?? ""}
-                areaClass={areaClass}
-                editable={
-                  props.editable &&
-                  Boolean(props.onMoveEmployee) &&
-                  Boolean(employee.groupId)
-                }
-              />
-            )}
-            renderCell={(employee, day, cellEntries) => (
-              <ScheduleCell
-                key={day}
-                employee={employee}
-                day={day}
-                entries={cellEntries}
-                shifts={props.shifts}
-                editable={props.editable}
-                selectedShiftId={props.selectedShiftId}
-                activeDrag={activeDrag}
-                onAssign={(employeeId, nextDay) =>
-                  props.onAssign(employeeId, nextDay)
-                }
-                onEdit={props.onEdit}
-                onDelete={props.onDelete}
-                availability={
-                  props.availabilityByEmployee?.[employee.id]?.days[String(day)]
-                }
-              />
-            )}
-          />
-        </div>
+            <ScheduleTrash
+              enabled={props.editable && Boolean(props.onDelete)}
+              active={activeDrag?.kind === "entry"}
+            />
+            <section
+              className="scheduler-week-overview"
+              aria-label="Tổng quan tuần"
+            >
+              <strong className="scheduler-week-overview-title">
+                Tổng quan tuần
+              </strong>
+              <div className="scheduler-week-overview-stats">
+                <div>
+                  <strong>{props.entries.length}</strong>
+                  <span>ca đã xếp</span>
+                </div>
+                <div>
+                  <strong>
+                    {scheduledEmployeeCount}/{props.employees.length}
+                  </strong>
+                  <span>nhân viên có ca</span>
+                </div>
+              </div>
+            </section>
+          </aside>
+        )}
       </div>
       <DragOverlay
         dropAnimation={{ duration: 180, easing: "cubic-bezier(.2,.8,.2,1)" }}
