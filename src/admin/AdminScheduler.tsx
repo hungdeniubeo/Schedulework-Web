@@ -36,7 +36,6 @@ import { reorderSchedulerEmployee } from "../scheduling/employeeReorderApi";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
 import { consolidateCellEntry } from "../scheduling/merge";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
-import { ScheduleSheet } from "../scheduling/ScheduleSheet";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
 import { type StaffingPeriod } from "../scheduling/staffing";
 import type {
@@ -46,6 +45,7 @@ import type {
   ShiftType,
 } from "../scheduling/types";
 import type { Availability } from "../types/domain";
+import { AdminScheduleExport } from "./AdminScheduleExport";
 import { ScheduleGrid } from "./ScheduleGrid";
 import { EntryEditor } from "./ScheduleEntryEditor";
 
@@ -725,16 +725,14 @@ export function AdminScheduler({
             }
           />
           <div className="schedule-export-stage" aria-hidden="true">
-            <ScheduleSheet
+            <AdminScheduleExport
               id="cloud-schedule-export"
-              className="schedule-export-sheet"
               groups={groups}
               employees={scheduleEmployees}
               entries={entries}
               shifts={shifts}
               weekStart={week.weekStart}
               countOverrides={week.countOverrides}
-              showStaffing
             />
           </div>
         </>
