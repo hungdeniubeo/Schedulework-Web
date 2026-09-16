@@ -59,19 +59,20 @@ export async function createWeek(
   weekStart: string,
   lockAt: string,
 ): Promise<RegistrationWeek> {
-  const { data, error } = await getSupabase()
-    .from("registration_weeks")
-    .insert({
-      week_start: weekStart,
-      lock_at: lockAt,
-      status: "open",
-    })
-    .select("*")
-    .single();
-  fail(
-    error,
-    "Không tạo được tuần đăng ký. Hãy kiểm tra ngày Thứ 2 và tuần trùng lặp.",
+  const { data, error } = await getSupabase().rpc(
+    "create_registration_workflow",
+    {
+      target_week_start: weekStart,
+      target_lock_at: lockAt,
+    },
   );
+  if (error) {
+    console.error(error);
+    const detail = `${error.code ? `[${error.code}] ` : ""}${error.message}`.trim();
+    throw new Error(
+      `Không tạo được tuần đăng ký và lịch xếp tương ứng. ${detail}`,
+    );
+  }
   return data as RegistrationWeek;
 }
 
