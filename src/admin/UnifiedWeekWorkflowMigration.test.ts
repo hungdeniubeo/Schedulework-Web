@@ -18,6 +18,8 @@ describe("unified week workflow migration", () => {
     expect(migrationSql).toContain("insert into public.registration_weeks");
     expect(migrationSql).toContain("insert into public.schedule_weeks");
     expect(migrationSql).toContain("returning * into created_week");
+    expect(migrationSql).toContain("returns jsonb");
+    expect(migrationSql).toContain("return to_jsonb(created_week)");
     expect(migrationSql).toContain(
       "grant execute on function public.create_registration_workflow(date, timestamptz)",
     );
