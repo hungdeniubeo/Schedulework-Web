@@ -65,8 +65,6 @@ export async function prepareScheduleWeekForEditing(
   week: ScheduleWeek,
   updateStatus: (id: string, status: ScheduleWeekStatus) => Promise<void>,
 ): Promise<ScheduleWeek> {
-  if (week.status === "archived")
-    throw new Error("Lịch đã lưu trữ nên không thể chỉnh sửa.");
   if (week.status === "draft") return week;
   await updateStatus(week.id, "draft");
   return { ...week, status: "draft" };
@@ -235,6 +233,7 @@ export function AdminScheduler({
   onWeekStartChange,
   onOpenAvailability,
 }: AdminSchedulerProps = {}) {
+  const routeScoped = Boolean(preferredWeekStart);
   const [groups, setGroups] = useState<Awaited<ReturnType<typeof listGroups>>>([]);
   const [employees, setEmployees] = useState<
     Awaited<ReturnType<typeof listSchedulerEmployees>>
@@ -318,7 +317,7 @@ export function AdminScheduler({
     };
   }, [loadAvailability, loadEntries, weekId]);
 
-  const editable = Boolean(week && week.status !== "archived" && !weekDataLoading);
+  const editable = Boolean(week && !weekDataLoading);
   const filteredEmployees = useMemo(
     () =>
       employees.filter(
@@ -674,7 +673,7 @@ export function AdminScheduler({
   }
 
   return (
-    <div className="scheduler-page">
+    <div className={`scheduler-page ${routeScoped ? "route-scoped" : ""}`}>
       <section className="panel scheduler-toolbar">
         <div>
           <span className="eyebrow">Xếp lịch chính thức</span>
@@ -706,7 +705,7 @@ export function AdminScheduler({
               >
                 Xuất JPG
               </button>
-              {week.status !== "archived" && (
+              {!routeScoped && week.status !== "archived" && (
                 <button
                   className="button ghost danger"
                   disabled={busy || weekDataLoading}
@@ -729,45 +728,52 @@ export function AdminScheduler({
           )}
         </div>
       </section>
-      <section className="panel scheduler-filters" aria-label="Bộ lọc lịch">
+      <section
+        className={`panel scheduler-filters ${routeScoped ? "route-scoped-filters" : ""}`}
+        aria-label="Bộ lọc lịch"
+      >
         <div className="scheduler-filter-heading">
           <div>
-            <span className="eyebrow">Bộ lọc lịch</span>
-            <h3>Chọn lịch làm việc</h3>
+            <span className="eyebrow">{routeScoped ? "Công cụ" : "Bộ lọc lịch"}</span>
+            <h3>{routeScoped ? "Tìm và lọc nhân viên" : "Chọn lịch làm việc"}</h3>
           </div>
-          <button
-            type="button"
-            className="button secondary scheduler-create-week"
-            aria-label="Tạo lịch tuần mới"
-            disabled={busy}
-            onClick={() => setCreatingWeek(true)}
-          >
-            <PlusIcon /> Tạo lịch tuần
-          </button>
+          {!routeScoped && (
+            <button
+              type="button"
+              className="button secondary scheduler-create-week"
+              aria-label="Tạo lịch tuần mới"
+              disabled={busy}
+              onClick={() => setCreatingWeek(true)}
+            >
+              <PlusIcon /> Tạo lịch tuần
+            </button>
+          )}
         </div>
         <div className="scheduler-filter-grid">
-          <label className="scheduler-filter-field schedule-week-filter">
-            <span>Tuần đang xem</span>
-            <CustomSelect
-              ariaLabel="Tuần xếp lịch"
-              value={weekId}
-              disabled={busy || weekDataLoading}
-              options={[
-                ...(!weekId ? [{ value: "", label: "Chọn tuần" }] : []),
-                ...weeks.map((item) => ({
-                  value: item.id,
-                  label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
-                })),
-              ]}
-              onChange={(nextWeekId) => {
-                setWeekDataLoading(true);
-                setEntries([]);
-                setAvailabilityByEmployee({});
-                setNotice(null);
-                setWeekId(nextWeekId);
-              }}
-            />
-          </label>
+          {!routeScoped && (
+            <label className="scheduler-filter-field schedule-week-filter">
+              <span>Tuần đang xem</span>
+              <CustomSelect
+                ariaLabel="Tuần xếp lịch"
+                value={weekId}
+                disabled={busy || weekDataLoading}
+                options={[
+                  ...(!weekId ? [{ value: "", label: "Chọn tuần" }] : []),
+                  ...weeks.map((item) => ({
+                    value: item.id,
+                    label: `${formatWeekDisplay(item.weekStart)} · ${scheduleWeekStatusLabel(item.status)}${registrationWeekStarts.includes(item.weekStart) ? " · Có đăng ký" : ""}`,
+                  })),
+                ]}
+                onChange={(nextWeekId) => {
+                  setWeekDataLoading(true);
+                  setEntries([]);
+                  setAvailabilityByEmployee({});
+                  setNotice(null);
+                  setWeekId(nextWeekId);
+                }}
+              />
+            </label>
+          )}
           <label className="scheduler-filter-field">
             <span>Tìm nhân viên</span>
             <input
@@ -931,7 +937,7 @@ export function AdminScheduler({
           onDelete={deleteEntry}
         />
       )}
-      {creatingWeek && (
+      {creatingWeek && !routeScoped && (
         <ModalBackdrop onClose={() => setCreatingWeek(false)}>
           <form
             className="create-schedule-dialog"
