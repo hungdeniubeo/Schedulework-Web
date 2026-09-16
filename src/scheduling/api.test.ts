@@ -13,6 +13,7 @@ import {
   listSchedulerEmployees,
   listScheduleAvailability,
   patchEmployee,
+  removeGroup,
   removePosition,
   softDeleteEmployee,
 } from "./api";
@@ -71,6 +72,33 @@ describe("employeeFromRow", () => {
       sortOrder: 0,
       isNew: true,
     });
+  });
+});
+
+function clientWithGroupDelete(error: { message: string } | null) {
+  const query = {
+    delete: () => query,
+    eq: async () => ({ error }),
+  };
+  return { from: () => query };
+}
+
+describe("removeGroup", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("deletes the group with one database delete", async () => {
+    supabase.client = clientWithGroupDelete(null);
+
+    await expect(removeGroup("group-1")).resolves.toBeUndefined();
+  });
+
+  it("uses generic delete failure copy instead of move-employees-first copy", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    supabase.client = clientWithGroupDelete({ message: "database failure" });
+
+    await expect(removeGroup("group-1")).rejects.toThrow("Không xóa được nhóm.");
   });
 });
 
