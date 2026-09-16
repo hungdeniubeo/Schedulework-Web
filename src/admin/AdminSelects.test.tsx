@@ -51,6 +51,15 @@ const createdRegistrationWeek: RegistrationWeek = {
 
 const createWeekStub = async () => createdRegistrationWeek;
 
+function renderUnifiedScheduler() {
+  return renderToStaticMarkup(
+    <AdminScheduler
+      preferredWeekStart="2026-09-21"
+      registrationWeekStarts={["2026-09-21"]}
+    />,
+  );
+}
+
 describe("Admin desktop selects", () => {
   it("uses the shared custom control for registration weeks", () => {
     const html = renderToStaticMarkup(
@@ -180,25 +189,27 @@ describe("Admin desktop selects", () => {
     });
   });
 
-  it("uses custom controls for scheduler filters", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("uses only the employee/group controls in the unified scheduler", () => {
+    const html = renderUnifiedScheduler();
 
     expect(html).not.toContain("<select");
-    expect(html).toContain('aria-label="Tuần xếp lịch"');
+    expect(html).not.toContain('aria-label="Tuần xếp lịch"');
     expect(html).toContain('aria-label="Lọc theo nhóm"');
+    expect(html).toContain('aria-label="Tìm nhân viên"');
   });
 
-  it("keeps week creation outside the frequently used schedule filters", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("does not expose a second week-creation action in the scheduler", () => {
+    const html = renderUnifiedScheduler();
 
-    expect(html).toContain('aria-label="Tạo lịch tuần mới"');
+    expect(html).not.toContain('aria-label="Tạo lịch tuần mới"');
     expect(html).not.toContain('aria-label="Tuần bắt đầu từ Thứ Hai"');
+    expect(html).not.toContain("Tạo lịch tuần");
   });
 
-  it("gives each schedule filter a visible label", () => {
-    const html = renderToStaticMarkup(<AdminScheduler />);
+  it("gives the remaining schedule filters visible labels", () => {
+    const html = renderUnifiedScheduler();
 
-    expect(html).toContain("Tuần đang xem");
+    expect(html).not.toContain("Tuần đang xem");
     expect(html).toContain("Tìm nhân viên");
     expect(html).toContain("Nhóm nhân viên");
   });
