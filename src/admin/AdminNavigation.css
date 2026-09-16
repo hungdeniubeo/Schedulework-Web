@@ -1,42 +1,164 @@
-.admin-tabs {
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid rgba(76, 92, 84, 0.12);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 8px 24px rgba(42, 55, 48, 0.06);
+nav.admin-tabs {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border: 0;
+  border-bottom: 1px solid rgba(69, 78, 73, 0.1);
+  border-radius: 0;
+  box-shadow: 0 4px 14px rgba(31, 36, 34, 0.04);
+}
+
+.admin-tabs-inner {
+  display: flex;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 8px clamp(14px, 3vw, 38px);
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
-.admin-tabs::-webkit-scrollbar {
+.admin-tabs-inner::-webkit-scrollbar {
   display: none;
 }
 
-.admin-tabs button {
+.admin-tabs-primary,
+.admin-tabs-management {
+  display: flex;
   flex: 0 0 auto;
-  border-radius: 11px;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-tabs-divider {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 1px;
+  margin: 0 4px;
+  background: rgba(79, 90, 84, 0.16);
+  border-radius: 999px;
+}
+
+nav.admin-tabs button {
+  position: relative;
+  min-height: 40px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  color: #666e6a;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 650;
+  white-space: nowrap;
   transition:
-    background 160ms ease,
     color 160ms ease,
-    transform 160ms ease,
+    background-color 160ms ease,
     box-shadow 160ms ease;
 }
 
-.admin-tabs button.active {
-  background: #fff;
-  box-shadow:
-    0 5px 14px rgba(42, 55, 48, 0.12),
-    inset 0 -2px 0 rgba(95, 122, 107, 0.72);
+nav.admin-tabs button::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  background: #56655d;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateX(-50%) scaleX(0.35);
+  transform-origin: center;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 
-.admin-tabs button:focus-visible {
-  outline: 2px solid rgba(82, 112, 96, 0.55);
+nav.admin-tabs button.active {
+  color: #2f3834;
+  background: #f0f3f1;
+  box-shadow: inset 0 0 0 1px rgba(76, 91, 83, 0.1);
+}
+
+nav.admin-tabs button.active::after {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+nav.admin-tabs button:focus-visible {
+  outline: 2px solid rgba(82, 112, 96, 0.5);
   outline-offset: 2px;
 }
 
+nav.admin-tabs button:active:not(:disabled) {
+  transform: none;
+}
+
 @media (hover: hover) {
-  .admin-tabs button:not(.active):hover {
-    transform: translateY(-1px);
+  nav.admin-tabs button:not(.active):hover {
+    color: #39433e;
+    background: rgba(75, 88, 81, 0.055);
+  }
+
+  nav.admin-tabs button:not(.active):hover::after {
+    opacity: 0.32;
+    transform: translateX(-50%) scaleX(0.65);
+  }
+}
+
+@media (max-width: 760px) {
+  nav.admin-tabs {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .admin-tabs-inner {
+    display: flex;
+    padding: 7px 12px;
+    gap: 7px;
+    overflow-x: auto;
+    scroll-padding-inline: 12px;
+  }
+
+  .admin-tabs-primary,
+  .admin-tabs-management {
+    display: flex;
+    gap: 3px;
+  }
+
+  .admin-tabs-divider {
+    height: 22px;
+    margin-inline: 3px;
+  }
+
+  nav.admin-tabs button {
+    min-height: 38px;
+    padding-inline: 10px;
+    border-radius: 9px;
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-tabs-inner {
+    padding-inline: 10px;
+  }
+
+  nav.admin-tabs button {
+    min-height: 36px;
+    padding-inline: 9px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  nav.admin-tabs button,
+  nav.admin-tabs button::after {
+    transition: none;
   }
 }
