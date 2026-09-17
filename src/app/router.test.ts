@@ -20,6 +20,7 @@ describe("matchRoute", () => {
   });
 
   it("matches admin routes", () => {
+    expect(matchRoute("/setup")).toEqual({ name: "setup" });
     expect(matchRoute("/admin")).toEqual({
       name: "admin",
       section: "dashboard",
