@@ -54,6 +54,8 @@ Do not use `citext`, `lower(username)`, or any case-folding index.
 
 Update `public.provision_employee_account` so provisioning receives and stores the username together with the employee profile. The function must continue to create the `employee` profile with `must_change_password = true` and create the employee row exactly as before.
 
+Add a service-role-only `public.bootstrap_first_admin(auth_user_id, account_username)` RPC. It must serialize bootstrap attempts with a transaction advisory lock, refuse creation when an Admin profile already exists, validate the exact username, and insert the first Admin profile with `must_change_password = false`.
+
 Existing RLS semantics remain unchanged. Authenticated users may continue selecting only the profile rows already allowed by the existing policies. No anonymous read policy is added for usernames; public auth/setup Edge Functions perform required lookups server-side.
 
 ## Edge Functions
@@ -75,23 +77,23 @@ Requirements:
 - Return one generic authentication error for unknown username and wrong password.
 - Add cache prevention headers.
 
-### `admin-bootstrap`
+### `bootstrap-admin`
 
 Add a dedicated one-time bootstrap Edge Function for creating the first Admin without requiring the operator to create or enter any email.
 
 Requirements:
 
 - `verify_jwt = false`, because no Admin exists yet.
-- Accept POST only.
-- Accept `{ username, password }`.
+- Accept GET for setup availability and POST for creation.
+- POST accepts `{ username, password }` only.
 - Validate username with the approved case-sensitive ASCII alphanumeric rule.
-- Require a sufficiently strong password using the same minimum password length used by the app.
+- Require the same 8-character minimum password length used by the app.
 - Before creating anything, check server-side whether any `public.profiles` row with `role = 'admin'` already exists.
-- If an Admin already exists, return a generic `SETUP_LOCKED` response and create nothing.
 - Generate a random internal Auth email server-side; the caller never sends or receives an email.
 - Create the Supabase Auth user with the supplied password and confirmed internal email.
-- Insert `public.profiles(user_id, username, role='admin', must_change_password=false)`.
+- Call the atomic `bootstrap_first_admin` RPC to insert `public.profiles(user_id, username, role='admin', must_change_password=false)`.
 - If profile creation fails after Auth user creation, delete the newly created Auth user so bootstrap is atomic from the application's perspective.
+- If a concurrent request wins first, reject the later request with `SETUP_COMPLETE` and roll back its newly created Auth user.
 - Never return the internal email or service-role details.
 - Return only a success indicator; the frontend then sends the user to `/admin/login` to authenticate normally with username + password.
 - Add cache prevention headers.
@@ -137,11 +139,12 @@ Add a one-time setup route, `/setup`.
 
 Behavior:
 
-- Shows only `Tên đăng nhập`, `Mật khẩu`, and `Xác nhận mật khẩu`.
-- Contains no email field or email wording.
-- Submits to `admin-bootstrap`.
-- On success, redirects to `/admin/login` and tells the operator to sign in with the Admin username just created.
-- If setup is locked because an Admin already exists, it must not expose account information; redirect to `/admin/login` or display a simple setup-complete message with a login action.
+- Shows only `Tên đăng nhập` and `Mật khẩu`.
+- Contains no email field, email wording, or password-confirmation field.
+- Checks `bootstrap-admin` first; if an Admin already exists, display a simple setup-complete state with an action to `/admin/login`.
+- Submits the exact username and password to `bootstrap-admin`.
+- On success, redirects to `/admin/login` so the normal username login flow is tested immediately.
+- If the setup availability check fails, do not expose the setup form until availability can be confirmed.
 - The route is only for initial system bootstrap and must not become a permanent public sign-up screen.
 
 ### Employee management
@@ -163,7 +166,7 @@ Behavior:
 - `TemporaryCredentials.email` -> `TemporaryCredentials.username`.
 - `createEmployeeAccount` input changes from `email` to `username`.
 - Add username-login request helper that calls the new Edge Function and then sets the session through the existing Supabase client.
-- Add bootstrap helper that calls `admin-bootstrap` with username/password and never accepts email.
+- Add `getAdminBootstrapAvailability()` and `bootstrapAdmin(username, password)` helpers that call `bootstrap-admin` and never accept email.
 - Existing reset/delete/change-password API behavior remains otherwise unchanged.
 
 ## One-Time Data Reset
@@ -199,11 +202,11 @@ After the reset there is no Admin account. Bootstrap is handled entirely through
 
 Bootstrap process:
 
-1. Deploy the username-auth schema and `admin-bootstrap`/`username-login` Edge Functions.
+1. Deploy the username-auth schema and `bootstrap-admin`/`username-login` Edge Functions.
 2. Open `/setup`.
-3. Enter the chosen case-sensitive Admin username, password, and password confirmation.
-4. Frontend calls `admin-bootstrap`.
-5. Backend verifies that no Admin exists, generates the hidden Auth email, creates the Auth user, and writes the Admin profile.
+3. Enter only the chosen case-sensitive Admin username and password.
+4. Frontend calls `bootstrap-admin`.
+5. Backend verifies that no Admin exists, generates the hidden Auth email, creates the Auth user, and atomically writes the Admin profile.
 6. Browser goes to `/admin/login`.
 7. Sign in using the exact username + password.
 8. Use the normal Admin UI to create Employee accounts by username.
@@ -221,9 +224,10 @@ Required coverage:
 - `Hung01` and `hung01` remain distinguishable.
 - login UI renders `Tên đăng nhập` and no email input.
 - login client sends username and installs returned tokens with `auth.setSession`.
-- `/setup` renders username/password/confirmation fields with no email field.
+- `/setup` renders only username/password fields with no email or confirmation field.
 - bootstrap API accepts username/password only and never returns email.
 - bootstrap is rejected after an Admin profile already exists.
+- concurrent bootstrap is serialized so only one Admin can be created.
 - bootstrap rollback removes a newly created Auth user if Admin profile insertion fails.
 - employee create form sends username, not email.
 - temporary credentials display/copy username, not email.
