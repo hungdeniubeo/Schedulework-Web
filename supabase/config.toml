@@ -2,3 +2,8 @@
 # The platform validates the Auth JWT first. The handler separately authorizes
 # admin account management and active-employee password changes.
 verify_jwt = true
+
+[functions.username-login]
+# Username login is the public entry point that exchanges a username/password
+# for a normal Supabase Auth session. The handler performs its own validation.
+verify_jwt = false
