@@ -11,8 +11,10 @@ import type { Session } from "@supabase/supabase-js";
 import { AppState } from "../components/AppState";
 import { BrandLogo } from "../components/BrandLogo";
 import { CowMascot } from "../components/CowMascot";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   createEmployeeAccount,
+  deleteEmployeeAccount,
   resetEmployeePassword,
   type TemporaryCredentials,
 } from "../lib/serverApi";
@@ -136,6 +138,20 @@ export function AdminDashboard({
       .finally(() => setLoading(false));
   }, [refreshBase, section]);
 
+  useEffect(() => {
+    if (section !== "availability" && section !== "dashboard") return;
+    return subscribePageRefresh(() => {
+      void refreshBase().catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Không làm mới được nhóm và nhân viên.",
+        );
+      });
+    });
+  }, [refreshBase, section]);
+
   const refreshSubmissions = useCallback(async () => {
     const request = ++submissionsRequest.current;
     if (!selectedWeekId) {
@@ -205,6 +221,10 @@ export function AdminDashboard({
     employeeId: string,
   ): Promise<TemporaryCredentials> {
     return resetEmployeePassword(employeeId, session.access_token);
+  }
+
+  async function deleteEmployee(employeeId: string): Promise<void> {
+    return deleteEmployeeAccount(employeeId, session.access_token);
   }
 
   async function addWeek(weekStart: string, lockAt: string) {
@@ -310,6 +330,7 @@ export function AdminDashboard({
             <EmployeeManager
               onAdd={addEmployee}
               onResetPassword={resetPassword}
+              onDelete={deleteEmployee}
             />
           </Suspense>
         ) : section === "groups" ? (

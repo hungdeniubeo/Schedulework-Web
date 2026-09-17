@@ -1,3 +1,4 @@
+import { UNGROUPED_GROUP_ID } from "../scheduling/scheduleSheetModel";
 import type { ScheduleEntry } from "../scheduling/types";
 
 export type SchedulerDragData =
@@ -61,6 +62,12 @@ export function resolveSchedulerDrop(
   if (!source || !target) return null;
 
   if (source.kind === "employee") {
+    if (
+      (target.kind === "employee" || target.kind === "group") &&
+      target.groupId === UNGROUPED_GROUP_ID
+    ) {
+      return null;
+    }
     if (target.kind === "employee") {
       if (source.employeeId === target.employeeId) return null;
       return {

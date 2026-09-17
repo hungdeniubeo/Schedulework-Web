@@ -20,9 +20,15 @@ describe("AdminScheduler workflow", () => {
     expect(source).toContain("intervalMs: 15_000");
   });
 
-  it("uses the clean admin export layout instead of the legacy shared ScheduleSheet", () => {
-    expect(source).toContain("AdminScheduleExport");
-    expect(source).not.toContain('import { ScheduleSheet }');
-    expect(source).toContain('id="cloud-schedule-export"');
+  it("refreshes group and employee structure separately from official entries", () => {
+    expect(source).toContain("loadStructure");
+    expect(source).toContain("listGroups()");
+    expect(source).toContain("listSchedulerEmployees()");
+    expect(source).toContain("Không làm mới được nhóm và nhân viên");
+  });
+
+  it("routes JPG export through the shared exporter", () => {
+    expect(source).toContain("exportScheduleJpg");
+    expect(source).toContain('exportScheduleJpg("cloud-schedule-export"');
   });
 });

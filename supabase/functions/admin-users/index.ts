@@ -218,6 +218,36 @@ async function resetEmployeePassword(
   return { email, temporaryPassword };
 }
 
+async function deleteEmployee(
+  request: Request,
+  body: Record<string, unknown>,
+  admin: SupabaseClient,
+) {
+  await requireAdmin(request, admin);
+  const employeeId = requiredString(body.employeeId, "Nhân viên", 64);
+  const employee = await admin
+    .from("employees")
+    .select("user_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+  if (employee.error) throw employee.error;
+  if (!employee.data) {
+    throw new ApiError(404, "EMPLOYEE_NOT_FOUND", "Không tìm thấy nhân viên.");
+  }
+
+  const deleted = await admin.auth.admin.deleteUser(employee.data.user_id, false);
+  if (deleted.error) {
+    console.error(deleted.error);
+    throw new ApiError(
+      500,
+      "DELETE_EMPLOYEE_FAILED",
+      "Không thể xóa vĩnh viễn nhân viên. Hãy kiểm tra migration database đã được áp dụng.",
+    );
+  }
+
+  return { deleted: true };
+}
+
 async function changeOwnPassword(
   request: Request,
   body: Record<string, unknown>,
@@ -284,6 +314,9 @@ Deno.serve(async (request) => {
     }
     if (body.action === "reset-employee-password") {
       return json(await resetEmployeePassword(request, body, admin));
+    }
+    if (body.action === "delete-employee") {
+      return json(await deleteEmployee(request, body, admin));
     }
     if (body.action === "change-password") {
       return json(await changeOwnPassword(request, body, admin));

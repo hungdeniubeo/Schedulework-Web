@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "../components/Icons";
+import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   addGroup,
   listGroups,
@@ -6,7 +8,7 @@ import {
   removeGroup,
 } from "../scheduling/api";
 import type { Group } from "../scheduling/types";
-import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "../components/Icons";
+import { GroupDeleteDialog } from "./GroupDeleteDialog";
 
 export function GroupManager() {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -14,14 +16,30 @@ export function GroupManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
   const load = async () => setGroups(await listGroups());
+
   useEffect(() => {
-    load().catch((reason) =>
-      setError(
-        reason instanceof Error ? reason.message : "Không tải được nhóm.",
-      ),
-    ).finally(() => setLoading(false));
+    load()
+      .catch((reason) =>
+        setError(
+          reason instanceof Error ? reason.message : "Không tải được nhóm.",
+        ),
+      )
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    return subscribePageRefresh(() => {
+      if (busy) return;
+      void load().catch((reason) => {
+        console.error(reason);
+        setError(
+          reason instanceof Error ? reason.message : "Không làm mới được nhóm.",
+        );
+      });
+    });
+  }, [busy]);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -50,6 +68,7 @@ export function GroupManager() {
       reordered[index],
     ];
     setBusy(true);
+    setError(null);
     try {
       await Promise.all(
         reordered.map((group, order) =>
@@ -60,6 +79,23 @@ export function GroupManager() {
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Không sắp xếp được nhóm.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await removeGroup(deleteTarget.id);
+      await load();
+      setDeleteTarget(null);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Không xóa được nhóm.",
       );
     } finally {
       setBusy(false);
@@ -98,7 +134,7 @@ export function GroupManager() {
                 maxLength={80}
                 required
                 placeholder="Nhập tên nhóm"
-                onChange={(e) => setName(e.target.value)}
+                onChange={(event) => setName(event.target.value)}
               />
             </label>
             <button className="button primary" disabled={busy}>
@@ -125,12 +161,29 @@ export function GroupManager() {
                 <input
                   aria-label={`Tên nhóm ${group.name}`}
                   defaultValue={group.name}
-                  onBlur={(e) => {
-                    const next = e.target.value.trim();
-                    if (next && next !== group.name)
-                      void patchGroup(group.id, { name: next })
-                        .then(load)
-                        .catch((reason) => setError(reason.message));
+                  disabled={busy}
+                  onBlur={(event) => {
+                    const input = event.currentTarget;
+                    const next = input.value.trim();
+                    if (!next) {
+                      input.value = group.name;
+                      return;
+                    }
+                    if (next === group.name) return;
+                    void (async () => {
+                      setError(null);
+                      try {
+                        await patchGroup(group.id, { name: next });
+                        await load();
+                      } catch (reason) {
+                        input.value = group.name;
+                        setError(
+                          reason instanceof Error
+                            ? reason.message
+                            : "Không cập nhật được nhóm.",
+                        );
+                      }
+                    })();
                   }}
                 />
                 <div className="row-actions">
@@ -156,18 +209,16 @@ export function GroupManager() {
                     className="button ghost danger"
                     type="button"
                     disabled={busy}
-                    onClick={() =>
-                      void removeGroup(group.id)
-                        .then(load)
-                        .catch((reason) => setError(reason.message))
-                    }
+                    onClick={() => setDeleteTarget(group)}
                   >
                     Xóa
                   </button>
                 </div>
               </div>
             ))}
-            {loading && <div className="list-state loading">Đang tải danh sách nhóm…</div>}
+            {loading && (
+              <div className="list-state loading">Đang tải danh sách nhóm…</div>
+            )}
             {groups.length === 0 && (
               <div className="list-state" hidden={loading}>
                 Chưa có nhóm. Thêm nhóm để sắp xếp nhân viên.
@@ -176,6 +227,15 @@ export function GroupManager() {
           </div>
         </section>
       </div>
+
+      {deleteTarget && (
+        <GroupDeleteDialog
+          group={deleteTarget}
+          deleting={busy}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      )}
     </div>
   );
 }

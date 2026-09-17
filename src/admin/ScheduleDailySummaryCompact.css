@@ -1,0 +1,103 @@
+/* Compact presentation for the totals footer only. */
+
+.schedule-daily-summary.compact-summary {
+  margin-top: 4px;
+  border-radius: 7px;
+}
+
+.compact-summary .schedule-daily-summary-heading,
+.compact-summary .schedule-daily-summary-card {
+  padding: 4px 6px;
+}
+
+.compact-summary .schedule-daily-summary-heading {
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.compact-summary .schedule-summary-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 5px;
+  font-size: 0.58rem;
+}
+
+.compact-summary .schedule-daily-summary-heading > span:last-child {
+  justify-items: center;
+  text-align: center;
+}
+
+.compact-summary .schedule-daily-summary-heading strong {
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.compact-summary .schedule-daily-summary-heading small {
+  margin-top: 1px;
+  font-size: 0.48rem;
+  line-height: 1;
+}
+
+.compact-summary .schedule-daily-summary-card {
+  align-content: center;
+  gap: 1px;
+  border-bottom-width: 0;
+  text-align: center;
+}
+
+.compact-summary .schedule-daily-summary-card.has-shifts {
+  border-bottom-color: transparent;
+}
+
+.compact-summary .schedule-summary-date {
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 0;
+  font-size: 0.5rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.compact-summary .schedule-summary-date strong {
+  font-size: 0.52rem;
+}
+
+.compact-summary .schedule-summary-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  min-height: 16px;
+  align-items: center;
+  gap: 3px;
+  padding-inline: 1px;
+  font-size: 0.54rem;
+  line-height: 1;
+}
+
+.compact-summary .schedule-summary-line > span {
+  text-align: center;
+}
+
+.compact-summary .schedule-summary-line > strong {
+  font-size: 0.58rem;
+  text-align: center;
+}
+
+.compact-summary .schedule-summary-line .staffing-count-input {
+  width: 30px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0 auto;
+  padding: 0 1px;
+  border-radius: 4px;
+  font-size: 0.54rem;
+  line-height: 16px;
+  text-align: center;
+}
+
+.compact-summary .schedule-summary-status {
+  height: 2px;
+  margin-top: 0;
+}

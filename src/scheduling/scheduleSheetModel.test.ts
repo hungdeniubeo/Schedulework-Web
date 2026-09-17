@@ -19,7 +19,7 @@ const employee = (
 });
 
 describe("buildScheduleGroups", () => {
-  it("renders desktop-style group sections and keeps ungrouped employees last", () => {
+  it("renders configured groups in order and keeps ungrouped employees last", () => {
     const groups: Group[] = [
       { id: "g2", name: "Nhóm 2", sortOrder: 2 },
       { id: "g1", name: "Nhóm 1", sortOrder: 1 },
@@ -37,8 +37,43 @@ describe("buildScheduleGroups", () => {
       })),
     ).toEqual([
       { name: "Nhóm 1", employees: ["a", "b"] },
+      { name: "Nhóm 2", employees: [] },
       { name: "Chưa có nhóm", employees: ["c"] },
     ]);
+  });
+
+  it("keeps empty real groups in sort order", () => {
+    const groups: Group[] = [
+      { id: "g2", name: "BAR", sortOrder: 2 },
+      { id: "g1", name: "MEAT", sortOrder: 1 },
+    ];
+    const employees = [employee("hung", "g1", 0)];
+
+    expect(
+      buildScheduleGroups(groups, employees).map((section) => ({
+        name: section.group.name,
+        employees: section.employees.map((item) => item.id),
+      })),
+    ).toEqual([
+      { name: "MEAT", employees: ["hung"] },
+      { name: "BAR", employees: [] },
+    ]);
+  });
+
+  it("adds Chưa có nhóm only when at least one employee is ungrouped", () => {
+    const groups: Group[] = [{ id: "g1", name: "MEAT", sortOrder: 0 }];
+
+    expect(
+      buildScheduleGroups(groups, [employee("hung", null, 0)]).map(
+        (section) => section.group.name,
+      ),
+    ).toEqual(["MEAT", "Chưa có nhóm"]);
+
+    expect(
+      buildScheduleGroups(groups, [employee("hung", "g1", 0)]).map(
+        (section) => section.group.name,
+      ),
+    ).toEqual(["MEAT"]);
   });
 });
 

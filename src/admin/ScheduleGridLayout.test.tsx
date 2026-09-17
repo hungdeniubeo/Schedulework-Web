@@ -54,4 +54,11 @@ describe("ScheduleGrid legacy workspace layout", () => {
     expect(html).toContain("sidebar-hidden");
     expect(html).not.toContain('<aside class="scheduler-palette"');
   });
+
+  it("uses a compact employee-column width for both the live table and totals", () => {
+    const html = render(true);
+    expect(html).toContain("legacy-scheduler-live-surface");
+    expect(html).toContain("--scheduler-employee-width:220px");
+    expect(html).toContain("schedule-daily-summary");
+  });
 });

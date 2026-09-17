@@ -21,6 +21,7 @@ import type {
   ScheduleEntry,
   ShiftType,
 } from "../scheduling/types";
+import "./AdminScheduleLive.css";
 
 const WEEKDAY_LABELS = [
   "Thứ hai",
@@ -166,14 +167,19 @@ export function SchedulerTable({
         AREA_TONE_CLASSES[index] ?? "schedule-area-neutral",
       ]),
   );
+  const liveSurface = id === "cloud-schedule-sheet";
+  const resolvedEmployeeColumnWidth = liveSurface
+    ? 220
+    : (employeeColumnWidth ?? employeeColumnWidthPx(employees));
   const wrapperStyle = {
-    "--scheduler-employee-width": `${employeeColumnWidth ?? employeeColumnWidthPx(employees)}px`,
+    "--scheduler-employee-width": `${resolvedEmployeeColumnWidth}px`,
   } as CSSProperties;
+  const liveSurfaceClass = liveSurface ? "legacy-scheduler-live-surface" : "";
 
   return (
     <section
       id={id}
-      className={`legacy-scheduler-sheet ${className}`.trim()}
+      className={`legacy-scheduler-sheet ${liveSurfaceClass} ${className}`.trim()}
       style={wrapperStyle}
     >
       <header className="legacy-scheduler-heading">
@@ -196,7 +202,7 @@ export function SchedulerTable({
         <thead>
           <tr>
             <th className="scheduler-employee-head" scope="col">
-              <span aria-hidden="true">♙</span> Nhân viên
+              <span aria-hidden="true"></span> Nhân viên
             </th>
             {dates.map((date, index) => (
               <th
@@ -217,7 +223,6 @@ export function SchedulerTable({
             const groupChildren = (
               <td colSpan={8}>
                 <div className="scheduler-group-label">
-                  <span className="scheduler-group-mark" aria-hidden="true">◈</span>
                   <strong>{group.name.toLocaleUpperCase("vi")}</strong>
                 </div>
               </td>

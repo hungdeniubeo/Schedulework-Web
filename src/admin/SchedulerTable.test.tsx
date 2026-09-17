@@ -81,6 +81,40 @@ describe("SchedulerTable legacy parity", () => {
     );
   });
 
+  it("renders empty group headings without the decorative area icon", () => {
+    const html = renderToStaticMarkup(
+      <SchedulerTable
+        groups={[
+          { id: "group-1", name: "MEAT", sortOrder: 0 },
+          { id: "group-2", name: "BAR", sortOrder: 1 },
+        ]}
+        employees={[employee]}
+        entries={[]}
+        shifts={shifts}
+        weekStart="2026-09-21"
+      />,
+    );
+
+    expect(html).toContain("MEAT");
+    expect(html).toContain("BAR");
+    expect(html).not.toContain("◈");
+  });
+
+  it("places an employee with no group under Chưa có nhóm", () => {
+    const html = renderToStaticMarkup(
+      <SchedulerTable
+        groups={[{ id: "group-1", name: "MEAT", sortOrder: 0 }]}
+        employees={[{ ...employee, groupId: null, name: "Nhân viên tự do" }]}
+        entries={[]}
+        shifts={shifts}
+        weekStart="2026-09-21"
+      />,
+    );
+
+    expect(html).toContain("CHƯA CÓ NHÓM");
+    expect(html).toContain("Nhân viên tự do");
+  });
+
   it("sorts entries by actual start time before sortOrderInCell", () => {
     expect(compareScheduleEntriesByTime(entries[0], entries[1], shifts)).toBeGreaterThan(0);
   });

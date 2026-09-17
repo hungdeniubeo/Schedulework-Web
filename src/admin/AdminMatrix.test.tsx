@@ -39,7 +39,7 @@ function submissionWith(
 }
 
 describe("AdminMatrix", () => {
-  it("reuses the grouped schedule grid as a read-only availability view", () => {
+  it("reuses the grouped schedule grid and keeps configured empty groups visible", () => {
     const html = renderToStaticMarkup(
       <AdminMatrix
         employees={[employee]}
@@ -51,6 +51,7 @@ describe("AdminMatrix", () => {
 
     expect(html).toContain("cloud-schedule-table");
     expect(html).toContain("schedule-group-row");
+    expect(html).toContain("Service");
     expect(html).toContain("Meat");
     expect(html).toContain("Part time");
     expect(html).toContain("Nguyễn Phi Hùng");

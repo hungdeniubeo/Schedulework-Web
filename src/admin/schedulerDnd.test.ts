@@ -80,6 +80,26 @@ describe("resolveSchedulerDrop", () => {
     });
   });
 
+  it("never sends the synthetic ungrouped section to the reorder API", () => {
+    const source = {
+      kind: "employee" as const,
+      employeeId: "employee-a",
+      employeeName: "A",
+      groupId: "group-meat",
+    };
+
+    expect(
+      resolveSchedulerDrop(source, { kind: "group", groupId: "ungrouped" }),
+    ).toBeNull();
+    expect(
+      resolveSchedulerDrop(source, {
+        kind: "employee",
+        employeeId: "employee-b",
+        groupId: "ungrouped",
+      }),
+    ).toBeNull();
+  });
+
   it("never turns an employee drag into a schedule assignment", () => {
     expect(
       resolveSchedulerDrop(

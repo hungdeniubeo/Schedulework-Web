@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { CloudEmployee } from "../scheduling/types";
+import source from "./EmployeeManager.tsx?raw";
 import { DeleteEmployeeDialog, EmployeeCard } from "./EmployeeManager";
 
 const employee: CloudEmployee = {
@@ -38,7 +39,7 @@ describe("employee management cards", () => {
     expect(html).not.toContain("Chỉnh sửa");
   });
 
-  it("offers reset and soft delete without deactivate/reactivate actions", () => {
+  it("offers reset and permanent delete without deactivate/reactivate actions", () => {
     const html = renderToStaticMarkup(
       <EmployeeCard
         employee={employee}
@@ -58,10 +59,17 @@ describe("employee management cards", () => {
     expect(html).not.toContain("Deactivate");
     expect(html).not.toContain("Reactivate");
   });
+
+  it("refreshes employee and group structure when the page becomes active again", () => {
+    expect(source).toContain("subscribePageRefresh");
+    expect(source).toContain("refreshStructure");
+    expect(source).toContain("listSchedulerEmployees()");
+    expect(source).toContain("listGroups()");
+  });
 });
 
 describe("employee delete confirmation", () => {
-  it("explains retained history and exposes cancel and confirm actions", () => {
+  it("warns that employee deletion is permanent and removes related schedule data", () => {
     const html = renderToStaticMarkup(
       <DeleteEmployeeDialog
         employee={employee}
@@ -71,11 +79,10 @@ describe("employee delete confirmation", () => {
       />,
     );
 
-    expect(html).toContain("Xóa nhân viên Nguyễn Phi Hùng?");
-    expect(html).toContain(
-      "Nhân viên sẽ không còn xuất hiện trong danh sách và không thể đăng nhập. Dữ liệu lịch sử vẫn được giữ lại.",
-    );
+    expect(html).toContain("Xóa vĩnh viễn nhân viên Nguyễn Phi Hùng?");
+    expect(html).toContain("Thao tác này không thể hoàn tác");
+    expect(html).toContain("dữ liệu đăng ký và lịch xếp liên quan");
     expect(html).toContain(">Hủy<");
-    expect(html).toContain(">Xóa nhân viên<");
+    expect(html).toContain(">Xóa vĩnh viễn<");
   });
 });

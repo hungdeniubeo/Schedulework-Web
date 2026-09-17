@@ -55,4 +55,18 @@ describe("ScheduleDailySummary", () => {
     expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
     expect(html).toContain('value="4"');
   });
+
+  it("marks the summary for the compact centered presentation", () => {
+    const html = renderToStaticMarkup(
+      <ScheduleDailySummary
+        weekStart="2026-09-21"
+        entries={entries}
+        shifts={shifts}
+        editable
+        onSetCountOverride={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('class="schedule-daily-summary compact-summary"');
+  });
 });
