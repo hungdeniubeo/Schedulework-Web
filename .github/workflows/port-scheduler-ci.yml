@@ -24,7 +24,9 @@ jobs:
           src/app/router.test.ts
           src/lib/pageRefresh.test.ts
           src/lib/serverApi.test.ts
+          src/lib/bootstrapAdminApi.test.ts
           src/components/AuthLoginPage.test.tsx
+          src/components/AdminSetupPage.test.tsx
           src/auth/UsernameAuthMigration.test.ts
           src/auth/BootstrapAdminMigration.test.ts
           src/admin/api.test.ts
