@@ -435,7 +435,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
       setEmployees(await listSchedulerEmployees());
     } catch (reason) {
       console.error(reason);
-      setError(reason instanceof Error ? reason.message : "Không thêm được nhân viên.");
+      setError(reason instanceof Error ? reason.message : "Không tạo được tài khoản nhân viên.");
     } finally {
       setAdding(false);
     }
@@ -613,7 +613,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
           <div className="employee-tool-heading">
             <div className="employee-tool-icon"><PlusIcon /></div>
             <div>
-              <h3>Thêm nhân viên mới</h3>
+              <h3>Tạo tài khoản nhân viên</h3>
               <p>Tài khoản tạm sẽ được tạo và chỉ hiển thị một lần.</p>
             </div>
           </div>
@@ -650,7 +650,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
               className="button primary"
               disabled={adding || initialLoading || busyId !== null || positionBusy}
             >
-              <PlusIcon /> {adding ? "Đang thêm..." : "Thêm nhân viên"}
+              <PlusIcon /> {adding ? "Đang tạo..." : "Tạo tài khoản"}
             </button>
           </form>
         </section>
@@ -700,7 +700,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
         )}
         {employees.length === 0 && (
           <div className="list-state" hidden={initialLoading}>
-            Chưa có nhân viên. Thêm nhân viên để bắt đầu.
+            Chưa có nhân viên. Tạo tài khoản nhân viên để bắt đầu.
           </div>
         )}
       </div>
