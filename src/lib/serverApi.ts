@@ -77,6 +77,16 @@ export function resetEmployeePassword(
   });
 }
 
+export async function deleteEmployeeAccount(
+  employeeId: string,
+  accessToken: string,
+): Promise<void> {
+  await callAdminUsers<{ deleted: true }>(accessToken, {
+    action: "delete-employee",
+    employeeId,
+  });
+}
+
 export async function changeEmployeePassword(
   password: string,
   accessToken: string,
