@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { getSupabase } from "../lib/config";
+import { signInWithUsername } from "../lib/serverApi";
 import { BrandLogo } from "./BrandLogo";
 
 type Props = {
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function AuthLoginPage({ title, description }: Props) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,15 +18,14 @@ export function AuthLoginPage({ title, description }: Props) {
     if (loading) return;
     setLoading(true);
     setError(null);
-    const { error: authError } = await getSupabase().auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (authError) {
-      console.error(authError);
-      setError("Email hoặc mật khẩu không đúng.");
+    try {
+      await signInWithUsername(username, password);
+    } catch (reason) {
+      console.error(reason);
+      setError("Tên đăng nhập hoặc mật khẩu không đúng.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -39,13 +38,16 @@ export function AuthLoginPage({ title, description }: Props) {
         <h1>{title}</h1>
         <p>{description}</p>
         <label>
-          Email
+          Tên đăng nhập
           <input
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
+            minLength={3}
+            maxLength={32}
+            pattern="[A-Za-z0-9]+"
             required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
           />
         </label>
         <label>
