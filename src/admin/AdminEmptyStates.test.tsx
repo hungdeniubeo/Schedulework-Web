@@ -16,6 +16,7 @@ describe("Admin management empty states", () => {
           email: "employee@example.com",
           temporaryPassword: "temporary-password",
         })}
+        onDelete={async () => undefined}
       />,
     );
     const groups = renderToStaticMarkup(<GroupManager />);

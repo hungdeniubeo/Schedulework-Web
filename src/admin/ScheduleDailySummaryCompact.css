@@ -1,13 +1,13 @@
 /* Compact presentation for the totals footer only. */
 
 .schedule-daily-summary.compact-summary {
-  margin-top: 4px;
-  border-radius: 7px;
+  margin-top: 3px;
+  border-radius: 6px;
 }
 
 .compact-summary .schedule-daily-summary-heading,
 .compact-summary .schedule-daily-summary-card {
-  padding: 4px 6px;
+  padding: 3px 5px;
 }
 
 .compact-summary .schedule-daily-summary-heading {
@@ -17,11 +17,11 @@
 }
 
 .compact-summary .schedule-summary-icon {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  border-radius: 5px;
-  font-size: 0.58rem;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 4px;
+  font-size: 0.54rem;
 }
 
 .compact-summary .schedule-daily-summary-heading > span:last-child {
@@ -30,19 +30,19 @@
 }
 
 .compact-summary .schedule-daily-summary-heading strong {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   line-height: 1;
 }
 
 .compact-summary .schedule-daily-summary-heading small {
   margin-top: 1px;
-  font-size: 0.48rem;
+  font-size: 0.46rem;
   line-height: 1;
 }
 
 .compact-summary .schedule-daily-summary-card {
   align-content: center;
-  gap: 1px;
+  gap: 0;
   border-bottom-width: 0;
   text-align: center;
 }
@@ -51,28 +51,14 @@
   border-bottom-color: transparent;
 }
 
-.compact-summary .schedule-summary-date {
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-bottom: 0;
-  font-size: 0.5rem;
-  line-height: 1;
-  text-align: center;
-}
-
-.compact-summary .schedule-summary-date strong {
-  font-size: 0.52rem;
-}
-
 .compact-summary .schedule-summary-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
-  min-height: 16px;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  min-height: 14px;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding-inline: 1px;
-  font-size: 0.54rem;
+  font-size: 0.52rem;
   line-height: 1;
 }
 
@@ -81,23 +67,23 @@
 }
 
 .compact-summary .schedule-summary-line > strong {
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   text-align: center;
 }
 
 .compact-summary .schedule-summary-line .staffing-count-input {
-  width: 30px;
-  height: 18px;
-  min-height: 18px;
+  width: 24px;
+  height: 16px;
+  min-height: 16px;
   margin: 0 auto;
   padding: 0 1px;
   border-radius: 4px;
-  font-size: 0.54rem;
-  line-height: 16px;
+  font-size: 0.52rem;
+  line-height: 14px;
   text-align: center;
 }
 
 .compact-summary .schedule-summary-status {
   height: 2px;
-  margin-top: 0;
+  margin-top: 1px;
 }
