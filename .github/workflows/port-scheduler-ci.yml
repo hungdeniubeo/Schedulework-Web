@@ -26,6 +26,7 @@ jobs:
           src/lib/serverApi.test.ts
           src/components/AuthLoginPage.test.tsx
           src/auth/UsernameAuthMigration.test.ts
+          src/auth/BootstrapAdminMigration.test.ts
           src/admin/api.test.ts
           src/admin/UnifiedWeekWorkflowMigration.test.ts
           src/admin/GroupLifecycleMigration.test.ts
@@ -83,5 +84,7 @@ jobs:
         run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/admin-users/index.ts
       - name: Deno username-login typecheck
         run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/username-login/index.ts
+      - name: Deno bootstrap-admin typecheck
+        run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/bootstrap-admin/index.ts
       - name: Diff whitespace check
         run: git diff --check origin/main...HEAD
