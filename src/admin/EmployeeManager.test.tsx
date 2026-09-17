@@ -66,6 +66,16 @@ describe("employee management cards", () => {
     expect(source).toContain("listSchedulerEmployees()");
     expect(source).toContain("listGroups()");
   });
+
+  it("creates employee accounts with a case-sensitive alphanumeric username", () => {
+    expect(source).toContain("Tên đăng nhập");
+    expect(source).toContain('pattern="[A-Za-z0-9]+"');
+    expect(source).toContain("minLength={3}");
+    expect(source).toContain("maxLength={32}");
+    expect(source).toContain("credentials.username");
+    expect(source).not.toContain("Email đăng nhập");
+    expect(source).not.toContain('type="email"');
+  });
 });
 
 describe("employee delete confirmation", () => {
