@@ -23,6 +23,9 @@ jobs:
           npm test --
           src/app/router.test.ts
           src/lib/pageRefresh.test.ts
+          src/lib/serverApi.test.ts
+          src/components/AuthLoginPage.test.tsx
+          src/auth/UsernameAuthMigration.test.ts
           src/admin/api.test.ts
           src/admin/UnifiedWeekWorkflowMigration.test.ts
           src/admin/GroupLifecycleMigration.test.ts
@@ -72,7 +75,11 @@ jobs:
         run: npm run build
       - name: Deno shared tests
         run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/_shared/*_test.ts
+      - name: Deno username-login tests
+        run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/username-login/logic_test.ts
       - name: Deno admin-users typecheck
         run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/admin-users/index.ts
+      - name: Deno username-login typecheck
+        run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/username-login/index.ts
       - name: Diff whitespace check
         run: git diff --check origin/main...HEAD
