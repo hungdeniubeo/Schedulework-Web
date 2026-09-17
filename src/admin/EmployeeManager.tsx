@@ -24,7 +24,6 @@ import {
   patchEmployee,
   patchPosition,
   removePosition,
-  softDeleteEmployee,
   swapPositionOrder,
 } from "../scheduling/api";
 import type { CloudEmployee, Group, Position } from "../scheduling/types";
@@ -36,6 +35,7 @@ import {
 type Props = {
   onAdd: (name: string, email: string) => Promise<TemporaryCredentials>;
   onResetPassword: (employeeId: string) => Promise<TemporaryCredentials>;
+  onDelete: (employeeId: string) => Promise<void>;
 };
 
 function CredentialsCard({ credentials, onClose }: {
@@ -349,17 +349,17 @@ export function DeleteEmployeeDialog({
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <h2 id={titleId}>Xóa nhân viên {employee.name}?</h2>
+        <h2 id={titleId}>Xóa vĩnh viễn nhân viên {employee.name}?</h2>
         <p>
-          Nhân viên sẽ không còn xuất hiện trong danh sách và không thể đăng nhập.
-          Dữ liệu lịch sử vẫn được giữ lại.
+          Thao tác này không thể hoàn tác. Tài khoản đăng nhập, hồ sơ nhân viên,
+          dữ liệu đăng ký và lịch xếp liên quan sẽ bị xóa vĩnh viễn khỏi database.
         </p>
         <div className="confirm-dialog-actions">
           <button className="button secondary" type="button" autoFocus disabled={deleting} onClick={onCancel}>
             Hủy
           </button>
           <button className="button danger" type="button" disabled={deleting} onClick={onConfirm}>
-            {deleting ? "Đang xóa..." : "Xóa nhân viên"}
+            {deleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
           </button>
         </div>
       </section>
@@ -367,7 +367,7 @@ export function DeleteEmployeeDialog({
   );
 }
 
-export function EmployeeManager({ onAdd, onResetPassword }: Props) {
+export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
   const [employees, setEmployees] = useState<CloudEmployee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -521,7 +521,7 @@ export function EmployeeManager({ onAdd, onResetPassword }: Props) {
     setBusyId(employee.id);
     setError(null);
     try {
-      await softDeleteEmployee(employee.id);
+      await onDelete(employee.id);
       setEmployees((current) => current.filter((item) => item.id !== employee.id));
       setDeleteTarget(null);
     } catch (reason) {
