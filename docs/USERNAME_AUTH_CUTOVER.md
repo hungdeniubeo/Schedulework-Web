@@ -4,19 +4,20 @@ This cutover changes the user-facing login identity from email to username. It d
 
 ## 1. Deploy the schema and Edge Functions
 
-From an up-to-date checkout of the branch containing the username-auth changes:
+From an up-to-date checkout of the username-auth branch:
 
 ```bash
 npx supabase db push
 npx supabase functions deploy admin-users
 npx supabase functions deploy username-login --no-verify-jwt
+npx supabase functions deploy bootstrap-admin --no-verify-jwt
 ```
 
-The frontend should not be promoted to production until the reset/bootstrap steps below are complete.
+The frontend should not be promoted to production until the bootstrap flow has been tested successfully.
 
 ## 2. Reset existing runtime data
 
-Run this once in Supabase SQL Editor:
+Run this once in Supabase SQL Editor when the old test data is no longer needed:
 
 ```sql
 begin;
@@ -42,39 +43,24 @@ This intentionally keeps:
 
 Do not add this reset SQL to a normal migration.
 
-## 3. Delete old Auth users
+Old Supabase Auth users may also be deleted from **Authentication → Users** when they are no longer needed. No Auth user needs to be created manually for the new bootstrap flow.
 
-In Supabase Dashboard:
+## 3. Bootstrap the first Admin
 
-1. Open **Authentication → Users**.
-2. Delete all old Admin/Employee Auth users.
+Open the frontend Preview URL at:
 
-The public runtime rows were already removed in step 2, so this only cleans up the old Auth identities.
-
-## 4. Bootstrap the first Admin
-
-There is intentionally no public Admin sign-up flow.
-
-1. In **Authentication → Users**, create one Auth user.
-2. Use a random technical email, for example `auth-<random-uuid>@schedulework.invalid`.
-3. Choose the Admin password and enable/confirm the user immediately.
-4. Copy the new Auth user's UUID.
-5. Run the following SQL, replacing the UUID and username:
-
-```sql
-insert into public.profiles (
-  user_id,
-  username,
-  role,
-  must_change_password
-)
-values (
-  'AUTH_USER_UUID',
-  'Admin01',
-  'admin',
-  false
-);
+```text
+/setup
 ```
+
+Enter only:
+
+- **Tên đăng nhập**
+- **Mật khẩu**
+
+Then press **Tạo tài khoản Admin**.
+
+The backend generates the hidden Supabase Auth identity automatically, creates the Admin profile, and redirects to `/admin/login`. No email, Auth UUID, or manual profile insert is required.
 
 Username rules:
 
@@ -83,11 +69,11 @@ Username rules:
 - case-sensitive
 - `Admin01` and `admin01` are different usernames
 
-The technical Auth email is never shown in the ScheduleWork login/account UI.
+After the first Admin exists, `/setup` is locked and cannot create another Admin.
 
-## 5. Validate username constraints
+## 4. Validate username constraints
 
-After old profiles are gone and the Admin profile has been created:
+After old profiles are gone and the first Admin has been created:
 
 ```sql
 alter table public.profiles
@@ -97,17 +83,15 @@ alter table public.profiles
   validate constraint profiles_username_format;
 ```
 
-## 6. Deploy the frontend
+## 5. Validate the application
 
-After the migration/functions/reset/bootstrap steps have completed, deploy the frontend commit containing username login.
-
-Validate manually:
-
-1. Open `/admin/login`.
-2. Sign in with the exact Admin username and password.
-3. Open **Nhân viên**.
-4. Create an employee using **Họ và tên + Tên đăng nhập**.
-5. Confirm the one-time credentials card contains **Tên đăng nhập + Mật khẩu tạm**, not email.
-6. Sign out and verify the employee can sign in at `/login` with username + temporary password.
-7. Complete the existing forced password-change flow.
+1. Open `/admin/login` and sign in with the exact Admin username and password created at `/setup`.
+2. Open **Nhân viên**.
+3. Create an employee using **Họ và tên + Tên đăng nhập**.
+4. Confirm the one-time credentials card contains **Tên đăng nhập + Mật khẩu tạm**, not email.
+5. Sign out and verify the employee can sign in at `/login` with username + temporary password.
+6. Complete the existing forced password-change flow.
+7. Verify username case sensitivity, for example `Hung01` must not be interchangeable with `hung01`.
 8. Confirm Admin password reset, employee deletion, registration, scheduling, publishing, and team schedule still behave as before.
+
+Only after this Preview test passes should the username-auth branch be merged to `main` for the normal Vercel Production deployment.
