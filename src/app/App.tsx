@@ -16,6 +16,11 @@ const ChangePasswordPage = lazy(() =>
     default: ChangePasswordPage,
   })),
 );
+const AdminSetupPage = lazy(() =>
+  import("../components/AdminSetupPage").then(({ AdminSetupPage }) => ({
+    default: AdminSetupPage,
+  })),
+);
 
 const routeFallback = (
   <AppState title="Một chút thôi…" message="Đang chuẩn bị trang." />
@@ -48,6 +53,12 @@ export default function App() {
 
   if (configurationError)
     return <AppState title="Thiếu cấu hình" message={configurationError} />;
+  if (route.name === "setup")
+    return (
+      <Suspense fallback={routeFallback}>
+        <AdminSetupPage navigate={navigate} />
+      </Suspense>
+    );
   if (route.name === "employee" || route.name === "employee-login") {
     return (
       <Suspense fallback={routeFallback}>
