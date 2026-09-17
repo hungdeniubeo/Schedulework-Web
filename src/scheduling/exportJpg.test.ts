@@ -50,7 +50,7 @@ describe("exportScheduleJpg", () => {
     );
   });
 
-  it("exports the visible table and totals when the legacy hidden export id is requested", async () => {
+  it("exports the dedicated export sheet instead of the live scheduler surface", async () => {
     const anchor = { href: "", download: "", click: vi.fn() };
     const liveSurface = {
       scrollWidth: 1340,
@@ -61,7 +61,7 @@ describe("exportScheduleJpg", () => {
       closest: (selector: string) =>
         selector === ".schedule-table-scroll" ? liveSurface : null,
     } as HTMLElement;
-    const legacyExport = {
+    const exportSheet = {
       scrollWidth: 700,
       scrollHeight: 400,
       getBoundingClientRect: () => ({ width: 700, height: 400 }),
@@ -75,7 +75,7 @@ describe("exportScheduleJpg", () => {
         id === "cloud-schedule-sheet"
           ? liveSheet
           : id === "cloud-schedule-export"
-            ? legacyExport
+            ? exportSheet
             : null,
       createElement: () => anchor,
     });
@@ -88,28 +88,25 @@ describe("exportScheduleJpg", () => {
     await exportScheduleJpg("cloud-schedule-export", "2026-09-21");
 
     expect(html2canvas).toHaveBeenCalledWith(
-      liveSurface,
-      expect.objectContaining({ width: 1340, height: 620 }),
+      exportSheet,
+      expect.objectContaining({ width: 700, height: 400 }),
     );
   });
 
-  it("keeps the live visual but removes interaction chrome from the exported clone", async () => {
+  it("removes interaction chrome from the exported clone", async () => {
     const anchor = { href: "", download: "", click: vi.fn() };
-    const liveSurface = {
+    const exportSheet = {
       scrollWidth: 1340,
       scrollHeight: 620,
       getBoundingClientRect: () => ({ width: 1340, height: 620 }),
     } as HTMLElement;
-    const liveSheet = {
-      closest: () => liveSurface,
-    } as unknown as HTMLElement;
     const canvas = {
       toBlob: (callback: BlobCallback) => callback(new Blob(["jpg"])),
     } as HTMLCanvasElement;
     html2canvas.mockResolvedValue(canvas);
     vi.stubGlobal("document", {
       getElementById: (id: string) =>
-        id === "cloud-schedule-sheet" ? liveSheet : null,
+        id === "cloud-schedule-export" ? exportSheet : null,
       createElement: () => anchor,
     });
     vi.stubGlobal("URL", {
@@ -125,7 +122,7 @@ describe("exportScheduleJpg", () => {
     const dropMessage = { style: {} };
     const details = { removeAttribute: vi.fn() };
     const countInput = { style: {} };
-    const clonedSurface = {
+    const clonedExport = {
       style: {},
       closest: () => null,
       querySelectorAll: (selector: string) => {
@@ -137,11 +134,10 @@ describe("exportScheduleJpg", () => {
         return [];
       },
     };
-    const clonedSheet = { closest: () => clonedSurface };
     const options = html2canvas.mock.calls[0][1];
     options.onclone({
       getElementById: (id: string) =>
-        id === "cloud-schedule-sheet" ? clonedSheet : null,
+        id === "cloud-schedule-export" ? clonedExport : null,
     } as unknown as Document);
 
     expect(deleteControl.style).toMatchObject({ display: "none" });

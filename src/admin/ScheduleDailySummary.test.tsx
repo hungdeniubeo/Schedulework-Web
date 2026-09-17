@@ -21,7 +21,7 @@ const entries: ScheduleEntry[] = [
 ];
 
 describe("ScheduleDailySummary", () => {
-  it("renders a separate legacy-style total section for all daily periods", () => {
+  it("renders compact period totals without repeating weekday and date labels", () => {
     const html = renderToStaticMarkup(
       <ScheduleDailySummary
         weekStart="2026-09-21"
@@ -35,8 +35,9 @@ describe("ScheduleDailySummary", () => {
     expect(html).toContain("Sáng");
     expect(html).toContain("Trưa");
     expect(html).toContain("Tối");
-    expect(html).toContain("Thứ hai");
-    expect(html).toContain("21/09");
+    expect(html).not.toContain("schedule-summary-date");
+    expect(html).not.toContain("Thứ hai");
+    expect(html).not.toContain("21/09");
     expect(html).not.toContain("<tfoot>");
   });
 
