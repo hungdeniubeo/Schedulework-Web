@@ -1,4 +1,4 @@
-import { getPublicSupabaseConfig } from "./config";
+import { getPublicSupabaseConfig, getSupabase } from "./config";
 
 export class ServerApiError extends Error {
   constructor(
@@ -13,8 +13,13 @@ export class ServerApiError extends Error {
 
 type ApiErrorBody = { error?: string; code?: string };
 
+type UsernameSession = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 export type TemporaryCredentials = {
-  email: string;
+  username: string;
   temporaryPassword: string;
 };
 
@@ -50,9 +55,52 @@ async function callAdminUsers<T>(
   return payload;
 }
 
+export async function signInWithUsername(
+  username: string,
+  password: string,
+): Promise<void> {
+  const { url, publishableKey } = getPublicSupabaseConfig();
+  let response: Response;
+  try {
+    response = await fetch(`${url}/functions/v1/username-login`, {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (error) {
+    console.error(error);
+    throw new ServerApiError("Không thể kết nối máy chủ.", 0, "NETWORK_ERROR");
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as ApiErrorBody & Partial<UsernameSession>;
+  if (!response.ok || !payload.accessToken || !payload.refreshToken) {
+    throw new ServerApiError(
+      payload.error || "Tên đăng nhập hoặc mật khẩu không đúng.",
+      response.status,
+      payload.code || "INVALID_CREDENTIALS",
+    );
+  }
+
+  const { error } = await getSupabase().auth.setSession({
+    access_token: payload.accessToken,
+    refresh_token: payload.refreshToken,
+  });
+  if (error) {
+    console.error(error);
+    throw new ServerApiError(
+      "Không thể tạo phiên đăng nhập.",
+      500,
+      "SESSION_FAILED",
+    );
+  }
+}
+
 export async function createEmployeeAccount(input: {
   name: string;
-  email: string;
+  username: string;
   accessToken: string;
 }): Promise<TemporaryCredentials> {
   const result = await callAdminUsers<
@@ -62,9 +110,12 @@ export async function createEmployeeAccount(input: {
   >(input.accessToken, {
     action: "create-employee",
     name: input.name,
-    email: input.email,
+    username: input.username,
   });
-  return { email: result.email, temporaryPassword: result.temporaryPassword };
+  return {
+    username: result.username,
+    temporaryPassword: result.temporaryPassword,
+  };
 }
 
 export function resetEmployeePassword(
