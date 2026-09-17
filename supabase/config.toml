@@ -7,3 +7,8 @@ verify_jwt = true
 # Username login is the public entry point that exchanges a username/password
 # for a normal Supabase Auth session. The handler performs its own validation.
 verify_jwt = false
+
+[functions.bootstrap-admin]
+# The first Admin has no session yet. The handler is public only until an Admin
+# profile exists, then it permanently rejects further bootstrap attempts.
+verify_jwt = false
