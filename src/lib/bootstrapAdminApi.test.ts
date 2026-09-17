@@ -19,7 +19,10 @@ describe("admin bootstrap API", () => {
   });
 
   it("checks whether first-admin setup is available", async () => {
-    const fetchMock = vi.fn(async () => new Response(
+    const fetchMock = vi.fn(async (
+      _input: RequestInfo | URL,
+      _init?: RequestInit,
+    ) => new Response(
       JSON.stringify({ available: true }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     ));
@@ -36,14 +39,18 @@ describe("admin bootstrap API", () => {
   });
 
   it("creates the first admin with username and password only", async () => {
-    const fetchMock = vi.fn(async () => new Response(
+    const fetchMock = vi.fn(async (
+      _input: RequestInfo | URL,
+      _init?: RequestInit,
+    ) => new Response(
       JSON.stringify({ created: true }),
       { status: 201, headers: { "Content-Type": "application/json" } },
     ));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(bootstrapAdmin("Admin01", "Password123")).resolves.toBeUndefined();
-    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const request = fetchMock.mock.calls[0]?.[1];
+    if (!request) throw new Error("bootstrap request was not captured");
     expect(JSON.parse(String(request.body))).toEqual({
       username: "Admin01",
       password: "Password123",
