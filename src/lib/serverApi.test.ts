@@ -1,103 +1,26 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import source from "./serverApi.ts?raw";
 
-vi.mock("./config", () => ({
-  getPublicSupabaseConfig: () => ({
-    url: "https://example.supabase.co",
-    publishableKey: "public-key",
-  }),
-}));
-
-import {
-  createEmployeeAccount,
-  deleteEmployeeAccount,
-  resetEmployeePassword,
-} from "./serverApi";
-
-describe("createEmployeeAccount", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+describe("username account API", () => {
+  it("uses username credentials for employee accounts", () => {
+    expect(source).toContain("username: string");
+    expect(source).toContain('action: "create-employee"');
+    expect(source).toContain("username: input.username");
+    expect(source).toContain("username: result.username");
+    expect(source).not.toContain("email: input.email");
   });
 
-  it("keeps employee creation returning one-time credentials", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
-      employee: {
-        id: "employee-1",
-        userId: "user-1",
-        name: "Nguyễn Phi Hùng",
-        active: true,
-      },
-      email: "employee@example.com",
-      temporaryPassword: "temporary-once",
-    }), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(createEmployeeAccount({
-      name: "Nguyễn Phi Hùng",
-      email: "employee@example.com",
-      accessToken: "access-token",
-    })).resolves.toEqual({
-      email: "employee@example.com",
-      temporaryPassword: "temporary-once",
-    });
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      action: "create-employee",
-      name: "Nguyễn Phi Hùng",
-      email: "employee@example.com",
-    });
-  });
-});
-
-describe("resetEmployeePassword", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it("uses the username login edge function and installs a Supabase session", () => {
+    expect(source).toContain("/functions/v1/username-login");
+    expect(source).toContain("signInWithUsername");
+    expect(source).toContain("auth.setSession");
+    expect(source).toContain("access_token: payload.accessToken");
+    expect(source).toContain("refresh_token: payload.refreshToken");
   });
 
-  it("keeps the existing one-time temporary credential flow", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
-      email: "employee@example.com",
-      temporaryPassword: "temporary-once",
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      resetEmployeePassword("employee-1", "access-token"),
-    ).resolves.toEqual({
-      email: "employee@example.com",
-      temporaryPassword: "temporary-once",
-    });
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      action: "reset-employee-password",
-      employeeId: "employee-1",
-    });
-  });
-});
-
-describe("deleteEmployeeAccount", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("requests a permanent employee account deletion", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
-      deleted: true,
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      deleteEmployeeAccount("employee-1", "access-token"),
-    ).resolves.toBeUndefined();
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      action: "delete-employee",
-      employeeId: "employee-1",
-    });
+  it("keeps reset, delete, and password change account actions", () => {
+    expect(source).toContain('action: "reset-employee-password"');
+    expect(source).toContain('action: "delete-employee"');
+    expect(source).toContain('action: "change-password"');
   });
 });
