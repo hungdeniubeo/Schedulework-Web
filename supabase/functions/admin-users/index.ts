@@ -3,6 +3,10 @@ import {
   type SupabaseClient,
 } from "npm:@supabase/supabase-js@2.116.0";
 import { generateTemporaryPassword } from "../_shared/temporary_password.ts";
+import {
+  createInternalAuthEmail,
+  isValidUsername,
+} from "../_shared/username.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +37,17 @@ function requiredString(value: unknown, field: string, max: number): string {
     throw new ApiError(400, "INVALID_REQUEST", `${field} không hợp lệ.`);
   }
   return value.trim();
+}
+
+function requiredUsername(value: unknown): string {
+  if (typeof value !== "string" || !isValidUsername(value)) {
+    throw new ApiError(
+      400,
+      "INVALID_USERNAME",
+      "Tên đăng nhập chỉ được chứa chữ cái và số, dài từ 3 đến 32 ký tự.",
+    );
+  }
+  return value;
 }
 
 async function authenticatedUser(request: Request, admin: SupabaseClient) {
@@ -97,25 +112,21 @@ async function createEmployee(
 ) {
   await requireAdmin(request, admin);
   const name = requiredString(body.name, "Tên nhân viên", 120);
-  const email = requiredString(body.email, "Email", 254).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new ApiError(400, "INVALID_EMAIL", "Email không hợp lệ.");
-  }
-
+  const username = requiredUsername(body.username);
   const temporaryPassword = generateTemporaryPassword();
+  const internalEmail = createInternalAuthEmail();
+
   const created = await admin.auth.admin.createUser({
-    email,
+    email: internalEmail,
     password: temporaryPassword,
     email_confirm: true,
   });
   if (created.error || !created.data.user) {
     console.error(created.error);
     throw new ApiError(
-      created.error?.status === 422 ? 409 : 500,
-      created.error?.status === 422 ? "EMAIL_EXISTS" : "CREATE_USER_FAILED",
-      created.error?.status === 422
-        ? "Email này đã có tài khoản."
-        : "Không tạo được tài khoản nhân viên.",
+      500,
+      "CREATE_USER_FAILED",
+      "Không tạo được tài khoản nhân viên.",
     );
   }
 
@@ -123,9 +134,11 @@ async function createEmployee(
   const provisioned = await admin.rpc("provision_employee_account", {
     auth_user_id: authUser.id,
     employee_name: name,
+    account_username: username,
   });
   if (provisioned.error || !provisioned.data) {
     console.error(provisioned.error);
+    const usernameExists = provisioned.error?.code === "23505";
     const cleanup = await admin.auth.admin.deleteUser(authUser.id);
     if (cleanup.error) {
       console.error(cleanup.error);
@@ -133,6 +146,13 @@ async function createEmployee(
         500,
         "PROVISIONING_ROLLBACK_FAILED",
         "Tạo hồ sơ thất bại và không thể tự dọn tài khoản Auth. Hãy kiểm tra Supabase Auth.",
+      );
+    }
+    if (usernameExists) {
+      throw new ApiError(
+        409,
+        "USERNAME_EXISTS",
+        "Tên đăng nhập này đã được sử dụng.",
       );
     }
     throw new ApiError(
@@ -149,7 +169,7 @@ async function createEmployee(
       name: provisioned.data.name,
       active: provisioned.data.active,
     },
-    email,
+    username,
     temporaryPassword,
   };
 }
@@ -173,23 +193,19 @@ async function resetEmployeePassword(
   }
 
   const userId = employee.data.user_id;
-  const [authUser, profile] = await Promise.all([
-    admin.auth.admin.getUserById(userId),
-    admin
-      .from("profiles")
-      .select("must_change_password")
-      .eq("user_id", userId)
-      .single(),
-  ]);
-  const email = authUser.data.user?.email;
-  if (authUser.error || !email) {
+  const profile = await admin
+    .from("profiles")
+    .select("username, must_change_password")
+    .eq("user_id", userId)
+    .single();
+  if (profile.error || !profile.data.username) {
+    if (profile.error) console.error(profile.error);
     throw new ApiError(
       404,
       "AUTH_USER_NOT_FOUND",
       "Không tìm thấy tài khoản Auth.",
     );
   }
-  if (profile.error) throw profile.error;
 
   const flagUpdate = await admin
     .from("profiles")
@@ -215,7 +231,7 @@ async function resetEmployeePassword(
     );
   }
 
-  return { email, temporaryPassword };
+  return { username: profile.data.username, temporaryPassword };
 }
 
 async function deleteEmployee(
