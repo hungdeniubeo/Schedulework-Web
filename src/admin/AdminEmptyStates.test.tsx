@@ -23,8 +23,8 @@ describe("Admin management empty states", () => {
     const shifts = renderToStaticMarkup(<ShiftManager />);
 
     expect(employees).toContain("Chưa có nhân viên.");
-    expect(employees).toContain("Thêm nhân viên");
-    expect(employees).not.toContain("Tạo tài khoản");
+    expect(employees).toContain("Tạo tài khoản");
+    expect(employees).not.toContain("Email đăng nhập");
     expect(groups).toContain("Chưa có nhóm.");
     expect(groups).toContain("Nhóm làm việc");
     expect(shifts).toContain("Chưa có ca làm.");
