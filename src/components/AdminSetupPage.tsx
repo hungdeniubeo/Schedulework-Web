@@ -55,7 +55,7 @@ export function AdminSetupPage({ navigate }: Props) {
     }
   }
 
-  if (available === null && !error) {
+  if (available === null) {
     return (
       <main className="login-page">
         <section className="login-card">
@@ -64,7 +64,7 @@ export function AdminSetupPage({ navigate }: Props) {
             <strong>ScheduleWork</strong>
           </div>
           <h1>Thiết lập Admin</h1>
-          <p>Đang kiểm tra thiết lập...</p>
+          <p>{error ?? "Đang kiểm tra thiết lập..."}</p>
         </section>
       </main>
     );
