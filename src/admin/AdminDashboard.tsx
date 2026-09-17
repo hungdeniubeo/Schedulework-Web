@@ -14,6 +14,7 @@ import { CowMascot } from "../components/CowMascot";
 import { subscribePageRefresh } from "../lib/pageRefresh";
 import {
   createEmployeeAccount,
+  deleteEmployeeAccount,
   resetEmployeePassword,
   type TemporaryCredentials,
 } from "../lib/serverApi";
@@ -222,6 +223,10 @@ export function AdminDashboard({
     return resetEmployeePassword(employeeId, session.access_token);
   }
 
+  async function deleteEmployee(employeeId: string): Promise<void> {
+    return deleteEmployeeAccount(employeeId, session.access_token);
+  }
+
   async function addWeek(weekStart: string, lockAt: string) {
     setWeekBusy(true);
     try {
@@ -325,6 +330,7 @@ export function AdminDashboard({
             <EmployeeManager
               onAdd={addEmployee}
               onResetPassword={resetPassword}
+              onDelete={deleteEmployee}
             />
           </Suspense>
         ) : section === "groups" ? (
@@ -430,23 +436,6 @@ export function AdminDashboard({
           </Suspense>
         )}
       </main>
-      <footer
-        className="love-gyukaku-banner"
-        aria-label="I love Gyu-kaku ❤️❤️❤️"
-      >
-        <div className="love-gyukaku-track" aria-hidden="true">
-          {[0, 1].map((group) => (
-            <div className="love-gyukaku-group" key={group}>
-              {[0, 1, 2, 3, 4, 5].map((item) => (
-                <span className="love-gyukaku-message" key={item}>
-                  I love Gyu-kaku{" "}
-                  <span className="love-gyukaku-hearts">❤️❤️❤️</span>
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </footer>
     </div>
   );
 }
