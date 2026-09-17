@@ -9,11 +9,11 @@ describe("Admin management empty states", () => {
     const employees = renderToStaticMarkup(
       <EmployeeManager
         onAdd={async () => ({
-          email: "employee@example.com",
+          username: "Employee01",
           temporaryPassword: "temporary-password",
         })}
         onResetPassword={async () => ({
-          email: "employee@example.com",
+          username: "Employee01",
           temporaryPassword: "temporary-password",
         })}
         onDelete={async () => undefined}
