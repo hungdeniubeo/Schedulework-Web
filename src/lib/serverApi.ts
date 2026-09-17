@@ -55,6 +55,64 @@ async function callAdminUsers<T>(
   return payload;
 }
 
+export async function getAdminBootstrapAvailability(): Promise<boolean> {
+  const { url, publishableKey } = getPublicSupabaseConfig();
+  let response: Response;
+  try {
+    response = await fetch(`${url}/functions/v1/bootstrap-admin`, {
+      method: "GET",
+      headers: { apikey: publishableKey },
+    });
+  } catch (error) {
+    console.error(error);
+    throw new ServerApiError("Không thể kết nối máy chủ.", 0, "NETWORK_ERROR");
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as ApiErrorBody & {
+    available?: boolean;
+  };
+  if (!response.ok || typeof payload.available !== "boolean") {
+    throw new ServerApiError(
+      payload.error || "Không kiểm tra được trạng thái thiết lập.",
+      response.status,
+      payload.code || "BOOTSTRAP_STATUS_FAILED",
+    );
+  }
+  return payload.available;
+}
+
+export async function bootstrapAdmin(
+  username: string,
+  password: string,
+): Promise<void> {
+  const { url, publishableKey } = getPublicSupabaseConfig();
+  let response: Response;
+  try {
+    response = await fetch(`${url}/functions/v1/bootstrap-admin`, {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (error) {
+    console.error(error);
+    throw new ServerApiError("Không thể kết nối máy chủ.", 0, "NETWORK_ERROR");
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as ApiErrorBody & {
+    created?: boolean;
+  };
+  if (!response.ok || payload.created !== true) {
+    throw new ServerApiError(
+      payload.error || "Không thể tạo tài khoản Admin.",
+      response.status,
+      payload.code || "BOOTSTRAP_FAILED",
+    );
+  }
+}
+
 export async function signInWithUsername(
   username: string,
   password: string,
