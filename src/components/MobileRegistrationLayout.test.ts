@@ -1,10 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-
-const css = readFileSync(
-  new URL("../styles/mobile-registration.css", import.meta.url),
-  "utf8",
-);
+import css from "../styles/mobile-registration.css?raw";
 
 describe("mobile registration layout", () => {
   it("centers the mobile option picker in the viewport", () => {
