@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import css from "../styles/mobile-registration.css?raw";
+import css from "../styles/mobile-registration.css?inline";
 
 describe("mobile registration layout", () => {
   it("centers the mobile option picker in the viewport", () => {
