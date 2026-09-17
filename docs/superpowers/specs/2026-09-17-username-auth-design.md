@@ -25,7 +25,7 @@ Because Supabase password sign-in natively accepts email or phone, each Auth use
 ### Login flow
 
 1. User enters `username` and `password` on `/login` or `/admin/login`.
-2. Frontend calls a new public Edge Function, `username-login`, with the exact username and password.
+2. Frontend calls a public Edge Function, `username-login`, with the exact username and password.
 3. The Edge Function validates username syntax without changing case.
 4. Using a service-role client, the function performs an exact case-sensitive lookup in `public.profiles` to resolve `user_id`.
 5. The function loads that Auth user by ID and reads the internal Auth email.
@@ -38,9 +38,9 @@ All login failures return the same user-facing message: `Tên đăng nhập ho�
 
 ### Internal Auth email
 
-Employee account creation generates a random internal email independent of the username, for example using a UUID under an application-only domain. The email is not derived from username, so case-sensitive usernames remain safe even though email identity handling may normalize case.
+Account creation generates a random internal email independent of the username, for example using a UUID under an application-only domain. The email is not derived from username, so case-sensitive usernames remain safe even though email identity handling may normalize case.
 
-The internal email is only an implementation detail of Supabase Auth. It is not displayed in login forms, employee management, temporary credentials, or normal application UI.
+The internal email is only an implementation detail of Supabase Auth. It is not displayed in setup, login forms, employee management, temporary credentials, or normal application UI.
 
 ## Database Changes
 
@@ -54,7 +54,7 @@ Do not use `citext`, `lower(username)`, or any case-folding index.
 
 Update `public.provision_employee_account` so provisioning receives and stores the username together with the employee profile. The function must continue to create the `employee` profile with `must_change_password = true` and create the employee row exactly as before.
 
-Existing RLS semantics remain unchanged. Authenticated users may continue selecting only the profile rows already allowed by the existing policies. No anonymous read policy is added for usernames; the public login Edge Function performs the lookup using server-side privileges.
+Existing RLS semantics remain unchanged. Authenticated users may continue selecting only the profile rows already allowed by the existing policies. No anonymous read policy is added for usernames; public auth/setup Edge Functions perform required lookups server-side.
 
 ## Edge Functions
 
@@ -74,6 +74,29 @@ Requirements:
 - Return only the tokens needed by `auth.setSession`.
 - Return one generic authentication error for unknown username and wrong password.
 - Add cache prevention headers.
+
+### `admin-bootstrap`
+
+Add a dedicated one-time bootstrap Edge Function for creating the first Admin without requiring the operator to create or enter any email.
+
+Requirements:
+
+- `verify_jwt = false`, because no Admin exists yet.
+- Accept POST only.
+- Accept `{ username, password }`.
+- Validate username with the approved case-sensitive ASCII alphanumeric rule.
+- Require a sufficiently strong password using the same minimum password length used by the app.
+- Before creating anything, check server-side whether any `public.profiles` row with `role = 'admin'` already exists.
+- If an Admin already exists, return a generic `SETUP_LOCKED` response and create nothing.
+- Generate a random internal Auth email server-side; the caller never sends or receives an email.
+- Create the Supabase Auth user with the supplied password and confirmed internal email.
+- Insert `public.profiles(user_id, username, role='admin', must_change_password=false)`.
+- If profile creation fails after Auth user creation, delete the newly created Auth user so bootstrap is atomic from the application's perspective.
+- Never return the internal email or service-role details.
+- Return only a success indicator; the frontend then sends the user to `/admin/login` to authenticate normally with username + password.
+- Add cache prevention headers.
+
+The endpoint is permanently locked as soon as an Admin profile exists. It is not a general Admin-registration API.
 
 ### `admin-users`
 
@@ -108,6 +131,19 @@ If provisioning fails after Auth user creation, keep the existing rollback behav
 
 Both Admin and Employee routes continue using the same component, so both login modes change together.
 
+### First Admin setup
+
+Add a one-time setup route, `/setup`.
+
+Behavior:
+
+- Shows only `Tên đăng nhập`, `Mật khẩu`, and `Xác nhận mật khẩu`.
+- Contains no email field or email wording.
+- Submits to `admin-bootstrap`.
+- On success, redirects to `/admin/login` and tells the operator to sign in with the Admin username just created.
+- If setup is locked because an Admin already exists, it must not expose account information; redirect to `/admin/login` or display a simple setup-complete message with a login action.
+- The route is only for initial system bootstrap and must not become a permanent public sign-up screen.
+
 ### Employee management
 
 `src/admin/EmployeeManager.tsx`:
@@ -116,6 +152,7 @@ Both Admin and Employee routes continue using the same component, so both login 
 - Preserve the separate employee display name field.
 - Credentials card shows `Tên đăng nhập` + temporary password.
 - Copy-to-clipboard text uses username.
+- Primary action wording should describe account creation, e.g. `Tạo tài khoản`/`Thêm nhân viên`, with no email terminology.
 - No email field remains in the normal account-management UI.
 - All group, position, reorder, reset-password, delete, active-state, and employee settings behavior remains unchanged.
 
@@ -126,6 +163,7 @@ Both Admin and Employee routes continue using the same component, so both login 
 - `TemporaryCredentials.email` -> `TemporaryCredentials.username`.
 - `createEmployeeAccount` input changes from `email` to `username`.
 - Add username-login request helper that calls the new Edge Function and then sets the session through the existing Supabase client.
+- Add bootstrap helper that calls `admin-bootstrap` with username/password and never accepts email.
 - Existing reset/delete/change-password API behavior remains otherwise unchanged.
 
 ## One-Time Data Reset
@@ -153,20 +191,24 @@ Keep schema and reusable configuration data, including:
 - scheduler functionality
 - all application features
 
-The reset sequence must respect foreign keys. Auth users should be deleted through the Supabase Auth Admin API/Dashboard rather than unsupported direct manipulation of Auth tables. The implementation may provide a one-time local reset script, but it must require explicit execution and a service-role secret supplied at runtime; no service-role secret may be committed.
+The reset sequence must respect foreign keys. Existing Auth users may be deleted separately through supported Supabase Admin tooling when desired; the normal username UI never asks for or exposes their technical emails.
 
 ## Bootstrap Admin
 
-After the reset there is no Admin account, so one bootstrap Admin must be created explicitly.
+After the reset there is no Admin account. Bootstrap is handled entirely through ScheduleWork instead of requiring manual email creation in Supabase Dashboard.
 
 Bootstrap process:
 
-1. Create one Supabase Auth user with a generated internal email and the chosen Admin password.
-2. Insert a `public.profiles` row for that Auth user with the chosen case-sensitive username, `role = 'admin'`, and `must_change_password = false`.
-3. Login through `/admin/login` using username + password.
-4. Use the normal Admin UI to create all Employee accounts by username.
+1. Deploy the username-auth schema and `admin-bootstrap`/`username-login` Edge Functions.
+2. Open `/setup`.
+3. Enter the chosen case-sensitive Admin username, password, and password confirmation.
+4. Frontend calls `admin-bootstrap`.
+5. Backend verifies that no Admin exists, generates the hidden Auth email, creates the Auth user, and writes the Admin profile.
+6. Browser goes to `/admin/login`.
+7. Sign in using the exact username + password.
+8. Use the normal Admin UI to create Employee accounts by username.
 
-This bootstrap process is operational setup, not a permanent public registration feature. ScheduleWork continues to have no public sign-up.
+Once the first Admin exists, subsequent calls to the bootstrap endpoint are blocked. The hidden email remains an implementation detail only and is never part of the operator workflow.
 
 ## Testing Requirements
 
@@ -179,6 +221,10 @@ Required coverage:
 - `Hung01` and `hung01` remain distinguishable.
 - login UI renders `Tên đăng nhập` and no email input.
 - login client sends username and installs returned tokens with `auth.setSession`.
+- `/setup` renders username/password/confirmation fields with no email field.
+- bootstrap API accepts username/password only and never returns email.
+- bootstrap is rejected after an Admin profile already exists.
+- bootstrap rollback removes a newly created Auth user if Admin profile insertion fails.
 - employee create form sends username, not email.
 - temporary credentials display/copy username, not email.
 - server API types and payloads use username.
@@ -203,7 +249,7 @@ This change does not:
 - alter shift rules or availability behavior.
 - change Admin vs Employee permissions.
 - remove password reset/change functionality.
-- add public account registration.
+- add general public account registration.
 - add username self-service editing.
 - migrate old accounts or preserve their historical schedule data.
 - expose internal Auth emails in the user-facing UI.
