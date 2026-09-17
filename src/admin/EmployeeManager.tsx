@@ -33,7 +33,7 @@ import {
 } from "./employeePositions";
 
 type Props = {
-  onAdd: (name: string, email: string) => Promise<TemporaryCredentials>;
+  onAdd: (name: string, username: string) => Promise<TemporaryCredentials>;
   onResetPassword: (employeeId: string) => Promise<TemporaryCredentials>;
   onDelete: (employeeId: string) => Promise<void>;
 };
@@ -43,7 +43,7 @@ function CredentialsCard({ credentials, onClose }: {
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const text = `Email: ${credentials.email}\nMật khẩu tạm: ${credentials.temporaryPassword}`;
+  const text = `Tên đăng nhập: ${credentials.username}\nMật khẩu tạm: ${credentials.temporaryPassword}`;
 
   async function copy() {
     try {
@@ -63,7 +63,7 @@ function CredentialsCard({ credentials, onClose }: {
           <CloseIcon />
         </button>
       </div>
-      <label>Email<code>{credentials.email}</code></label>
+      <label>Tên đăng nhập<code>{credentials.username}</code></label>
       <label>Mật khẩu tạm<code>{credentials.temporaryPassword}</code></label>
       <button className="button secondary" type="button" onClick={() => void copy()}>
         {copied ? "Đã copy" : "Copy thông tin"}
@@ -374,7 +374,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
   const [initialLoading, setInitialLoading] = useState(true);
   const [positionBusy, setPositionBusy] = useState(false);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -418,7 +418,7 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
     event.preventDefault();
     if (
       !name.trim()
-      || !email.trim()
+      || !/^[A-Za-z0-9]{3,32}$/.test(username)
       || adding
       || initialLoading
       || busyId !== null
@@ -428,9 +428,9 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
     setError(null);
     setCredentials(null);
     try {
-      const created = await onAdd(name.trim(), email.trim());
+      const created = await onAdd(name.trim(), username);
       setName("");
-      setEmail("");
+      setUsername("");
       setCredentials(created);
       setEmployees(await listSchedulerEmployees());
     } catch (reason) {
@@ -631,15 +631,19 @@ export function EmployeeManager({ onAdd, onResetPassword, onDelete }: Props) {
               />
             </label>
             <label className="field">
-              <span>Email đăng nhập</span>
+              <span>Tên đăng nhập</span>
               <input
-                aria-label="Email nhân viên"
-                type="email"
+                aria-label="Tên đăng nhập nhân viên"
+                type="text"
+                autoComplete="off"
+                minLength={3}
+                maxLength={32}
+                pattern="[A-Za-z0-9]+"
                 required
-                placeholder="nhanvien@example.com"
-                value={email}
+                placeholder="Ví dụ: Hung01"
+                value={username}
                 disabled={adding || initialLoading || busyId !== null || positionBusy}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => setUsername(event.target.value)}
               />
             </label>
             <button
