@@ -2,11 +2,6 @@ function resolveScheduleExportElement(
   sourceDocument: Document,
   elementId: string,
 ): HTMLElement | null {
-  if (elementId === "cloud-schedule-export") {
-    const liveSheet = sourceDocument.getElementById("cloud-schedule-sheet");
-    const liveSurface = liveSheet?.closest<HTMLElement>(".schedule-table-scroll");
-    if (liveSurface) return liveSurface;
-  }
   return sourceDocument.getElementById(elementId);
 }
 
