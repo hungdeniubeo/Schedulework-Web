@@ -208,11 +208,11 @@ export function AdminDashboard({
 
   async function addEmployee(
     name: string,
-    email: string,
+    username: string,
   ): Promise<TemporaryCredentials> {
     return createEmployeeAccount({
       name,
-      email,
+      username,
       accessToken: session.access_token,
     });
   }
