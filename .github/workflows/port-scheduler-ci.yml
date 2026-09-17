@@ -77,6 +77,8 @@ jobs:
         run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/_shared/*_test.ts
       - name: Deno username-login tests
         run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/username-login/logic_test.ts
+      - name: Deno bootstrap-admin tests
+        run: npx --yes deno@latest test --config supabase/functions/deno.json supabase/functions/bootstrap-admin/logic_test.ts
       - name: Deno admin-users typecheck
         run: npx --yes deno@latest check --config supabase/functions/deno.json supabase/functions/admin-users/index.ts
       - name: Deno username-login typecheck
