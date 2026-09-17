@@ -7,7 +7,11 @@ vi.mock("./config", () => ({
   }),
 }));
 
-import { createEmployeeAccount, resetEmployeePassword } from "./serverApi";
+import {
+  createEmployeeAccount,
+  deleteEmployeeAccount,
+  resetEmployeePassword,
+} from "./serverApi";
 
 describe("createEmployeeAccount", () => {
   afterEach(() => {
@@ -69,6 +73,30 @@ describe("resetEmployeePassword", () => {
     });
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
       action: "reset-employee-password",
+      employeeId: "employee-1",
+    });
+  });
+});
+
+describe("deleteEmployeeAccount", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("requests a permanent employee account deletion", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
+      deleted: true,
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      deleteEmployeeAccount("employee-1", "access-token"),
+    ).resolves.toBeUndefined();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      action: "delete-employee",
       employeeId: "employee-1",
     });
   });
