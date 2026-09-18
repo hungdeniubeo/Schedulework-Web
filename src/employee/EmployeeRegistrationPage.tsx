@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvailabilityEditor } from "../components/AvailabilityEditor";
+import { AvailabilityMascot } from "./AvailabilityMascot";
 import { AppState } from "../components/AppState";
 import {
   createEmptyAvailability,
@@ -291,13 +292,18 @@ export function EmployeeRegistrationPage({
 
   return (
     <div className="employee-page">
-      <header className="employee-hero">
-        <span className="eyebrow">ScheduleWork</span>
-        <h1>Chào, {context.employee.name}</h1>
-        <p>{formatRegistrationWeekLabel(context.week.weekStart)}</p>
-        <strong className="week-range">
-          {formatWeekRange(context.week.weekStart)}
-        </strong>
+      <header className="employee-hero employee-registration-hero">
+        <div className="employee-registration-intro">
+          <div className="employee-registration-copy">
+            <span className="eyebrow">ScheduleWork</span>
+            <h1>Chào, {context.employee.name}</h1>
+            <p>{formatRegistrationWeekLabel(context.week.weekStart)}</p>
+            <strong className="week-range">
+              {formatWeekRange(context.week.weekStart)}
+            </strong>
+          </div>
+          <AvailabilityMascot />
+        </div>
         <div className="deadline-box">
           <span>Hạn đăng ký</span>
           <strong>{formatDeadline(context.week.lockAt)}</strong>
