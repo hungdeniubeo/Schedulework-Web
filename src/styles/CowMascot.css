@@ -1,13 +1,11 @@
-/* Cute interactive Gyu-Kaku cow mascot, inspired by page mascots that react to the cursor. */
+/* Image-based Gyu-Kaku mascot with light Koboyo-style interaction. */
 .cow-mascot-stage {
-  --cow-eye-x: 0px;
-  --cow-eye-y: 0px;
-  --cow-follow-x: 0px;
-  --cow-follow-y: 0px;
-  --cow-lean: 0deg;
+  --cow-x: 0px;
+  --cow-y: 0px;
+  --cow-tilt: 0deg;
   position: relative;
-  width: min(100%, 390px);
-  min-height: 360px;
+  width: min(100%, 360px);
+  min-height: 350px;
   justify-self: center;
   display: grid;
   place-items: center;
@@ -17,43 +15,60 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.cow-mascot-motion {
+.cow-mascot-parallax {
   width: 100%;
   transform:
-    translate3d(var(--cow-follow-x), var(--cow-follow-y), 0)
-    rotate(var(--cow-lean));
-  transform-origin: center 72%;
+    translate3d(var(--cow-x), var(--cow-y), 0)
+    rotate(var(--cow-tilt));
+  transform-origin: 50% 78%;
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform;
 }
 
-.cow-mascot {
-  display: block;
+.cow-mascot-float {
   width: 100%;
-  overflow: visible;
-  filter: drop-shadow(0 18px 20px rgba(70, 27, 22, 0.16));
-  transform-origin: center 72%;
-  animation: cow-cute-float 3.8s ease-in-out infinite;
-  transition: filter 220ms ease;
+  animation: cow-mascot-float 3.8s ease-in-out infinite;
+  transform-origin: 50% 86%;
 }
 
-.cow-mascot-stage:hover .cow-mascot {
+.cow-mascot-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 20px rgba(67, 29, 25, 0.18));
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 220ms ease;
+}
+
+.cow-mascot-stage:hover .cow-mascot-float {
+  animation: cow-mascot-cheer 1.25s ease-in-out infinite;
+}
+
+.cow-mascot-stage:hover .cow-mascot-image {
+  transform: scale(1.025);
   filter:
-    drop-shadow(0 20px 22px rgba(70, 27, 22, 0.18))
-    drop-shadow(0 0 16px rgba(225, 61, 48, 0.12));
+    drop-shadow(0 20px 22px rgba(67, 29, 25, 0.2))
+    drop-shadow(0 0 16px rgba(229, 65, 48, 0.12));
+}
+
+.cow-mascot-stage:active .cow-mascot-image {
+  transform: scale(0.95) rotate(-2deg);
 }
 
 .cow-mascot-glow {
   position: absolute;
   z-index: -2;
-  width: 78%;
+  width: 80%;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 45%, rgba(255, 242, 215, 0.94) 0 33%, transparent 67%),
-    radial-gradient(circle, rgba(235, 71, 47, 0.18), rgba(244, 151, 70, 0.04) 62%, transparent 72%);
-  filter: blur(7px);
-  animation: cow-cute-glow 4.6s ease-in-out infinite;
+    radial-gradient(circle at 50% 48%, rgba(255, 242, 218, 0.96) 0 35%, transparent 68%),
+    radial-gradient(circle, rgba(231, 67, 47, 0.2), rgba(244, 153, 73, 0.04) 62%, transparent 74%);
+  filter: blur(8px);
+  animation: cow-mascot-glow 4.4s ease-in-out infinite;
 }
 
 .cow-mascot-spark,
@@ -62,243 +77,60 @@
   z-index: 2;
   pointer-events: none;
   user-select: none;
-  text-shadow: 0 4px 12px rgba(122, 31, 25, 0.15);
 }
 
 .cow-mascot-spark {
-  color: #e85c43;
+  color: #e95d46;
   font-size: 28px;
-  animation: cow-cute-spark 3.2s ease-in-out infinite;
+  text-shadow: 0 4px 12px rgba(122, 31, 25, 0.15);
+  animation: cow-mascot-spark 3.1s ease-in-out infinite;
 }
 
 .cow-mascot-spark-one {
   top: 15%;
-  left: 9%;
+  left: 5%;
 }
 
 .cow-mascot-spark-two {
-  top: 23%;
-  right: 7%;
-  font-size: 21px;
-  animation-delay: -1.4s;
+  top: 28%;
+  right: 3%;
+  font-size: 20px;
+  animation-delay: -1.35s;
 }
 
 .cow-mascot-heart {
   top: 8%;
-  right: 20%;
+  right: 17%;
   color: #d93431;
   font-size: 25px;
-  animation: cow-cute-heart 3.6s ease-in-out infinite;
+  text-shadow: 0 4px 12px rgba(122, 31, 25, 0.14);
+  animation: cow-mascot-heart 3.5s ease-in-out infinite;
 }
 
-.cow-character,
-.cow-head,
-.cow-ear,
-.cow-arm,
-.cow-tail,
-.cow-eye,
-.cow-pupil,
-.cow-hair {
-  transform-box: fill-box;
-}
-
-.cow-character {
-  transform-origin: center bottom;
-}
-
-.cow-head {
-  transform-origin: center 76%;
-  animation: cow-cute-head 4.8s ease-in-out infinite;
-}
-
-.cow-ear-left {
-  transform-origin: right center;
-  animation: cow-cute-ear-left 5s ease-in-out infinite;
-}
-
-.cow-ear-right {
-  transform-origin: left center;
-  animation: cow-cute-ear-right 5s ease-in-out infinite;
-}
-
-.cow-tail {
-  transform-origin: left center;
-  animation: cow-cute-tail 3.8s ease-in-out infinite;
-}
-
-.cow-eye {
-  transform-origin: center;
-  animation: cow-cute-blink 5.4s infinite;
-}
-
-.cow-pupil {
-  transform:
-    translate(var(--cow-eye-x), var(--cow-eye-y));
-  transform-origin: center;
-  transition: transform 120ms ease-out;
-}
-
-.cow-arm-left {
-  transform-origin: right top;
-}
-
-.cow-arm-wave {
-  transform-origin: left bottom;
-}
-
-.cow-mascot-stage:hover .cow-arm-wave {
-  animation: cow-cute-wave 1.05s ease-in-out infinite;
-}
-
-.cow-mascot-stage:hover .cow-cheek {
-  opacity: 0.9;
-}
-
-.cow-mascot-stage:active .cow-eye {
-  animation: none;
-  transform: scaleY(0.08);
-}
-
-.cow-mascot-stage:active .cow-character {
-  animation: cow-cute-poke 480ms cubic-bezier(0.22, 1.2, 0.36, 1);
-}
-
-.cow-ground-shadow {
-  fill: rgba(83, 37, 31, 0.14);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: cow-cute-shadow 3.8s ease-in-out infinite;
-}
-
-.cow-apron-kanji {
-  fill: #b82020;
-  font-family: ui-rounded, "Arial Rounded MT Bold", sans-serif;
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.cow-apron-wordmark {
-  fill: #9d1c1c;
-  font-family: ui-rounded, "Arial Rounded MT Bold", sans-serif;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 1px;
-}
-
-@keyframes cow-cute-float {
+@keyframes cow-mascot-float {
   0%,
   100% {
-    transform: translateY(0) rotate(-0.4deg);
+    transform: translateY(0) rotate(-0.35deg);
   }
   50% {
-    transform: translateY(-9px) rotate(0.8deg);
+    transform: translateY(-9px) rotate(0.55deg);
   }
 }
 
-@keyframes cow-cute-head {
+@keyframes cow-mascot-cheer {
   0%,
   100% {
-    transform: rotate(0deg);
-  }
-  42% {
-    transform: rotate(-1.8deg);
-  }
-  72% {
-    transform: rotate(1.6deg);
-  }
-}
-
-@keyframes cow-cute-blink {
-  0%,
-  44%,
-  48%,
-  100% {
-    transform: scaleY(1);
-  }
-  46% {
-    transform: scaleY(0.08);
-  }
-}
-
-@keyframes cow-cute-ear-left {
-  0%,
-  72%,
-  100% {
-    transform: rotate(0deg);
-  }
-  77% {
-    transform: rotate(-8deg);
-  }
-  82% {
-    transform: rotate(2deg);
-  }
-}
-
-@keyframes cow-cute-ear-right {
-  0%,
-  72%,
-  100% {
-    transform: rotate(0deg);
-  }
-  77% {
-    transform: rotate(8deg);
-  }
-  82% {
-    transform: rotate(-2deg);
-  }
-}
-
-@keyframes cow-cute-tail {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(8deg);
-  }
-}
-
-@keyframes cow-cute-wave {
-  0%,
-  100% {
-    transform: rotate(0deg);
+    transform: translateY(-2px) rotate(-1.2deg);
   }
   35% {
-    transform: rotate(-14deg);
+    transform: translateY(-10px) rotate(1.5deg);
   }
   68% {
-    transform: rotate(8deg);
+    transform: translateY(-5px) rotate(-0.8deg);
   }
 }
 
-@keyframes cow-cute-poke {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  35% {
-    transform: translateY(8px) scale(0.96, 1.04);
-  }
-  70% {
-    transform: translateY(-9px) scale(1.04, 0.97);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes cow-cute-shadow {
-  0%,
-  100% {
-    transform: scaleX(1);
-    opacity: 0.14;
-  }
-  50% {
-    transform: scaleX(0.84);
-    opacity: 0.08;
-  }
-}
-
-@keyframes cow-cute-glow {
+@keyframes cow-mascot-glow {
   0%,
   100% {
     transform: scale(0.96);
@@ -310,7 +142,7 @@
   }
 }
 
-@keyframes cow-cute-spark {
+@keyframes cow-mascot-spark {
   0%,
   100% {
     transform: translateY(0) scale(0.82) rotate(0deg);
@@ -322,7 +154,7 @@
   }
 }
 
-@keyframes cow-cute-heart {
+@keyframes cow-mascot-heart {
   0%,
   100% {
     transform: translateY(0) rotate(-8deg) scale(0.9);
@@ -330,53 +162,47 @@
   }
   50% {
     transform: translateY(-8px) rotate(6deg) scale(1.08);
-    opacity: 0.95;
+    opacity: 0.96;
   }
 }
 
 @media (max-width: 680px) {
   .cow-mascot-stage {
-    width: min(100%, 280px);
-    min-height: 260px;
+    width: min(100%, 270px);
+    min-height: 270px;
     margin-top: -4px;
   }
 
   .cow-mascot-spark {
-    font-size: 22px;
+    font-size: 21px;
   }
 
   .cow-mascot-heart {
-    font-size: 20px;
+    font-size: 19px;
   }
 }
 
 @media (hover: none) {
-  .cow-mascot-stage:hover .cow-arm-wave {
-    animation: none;
+  .cow-mascot-stage:hover .cow-mascot-float {
+    animation: cow-mascot-float 3.8s ease-in-out infinite;
   }
 
-  .cow-mascot-stage:hover .cow-mascot {
-    filter: drop-shadow(0 16px 18px rgba(70, 27, 22, 0.16));
+  .cow-mascot-stage:hover .cow-mascot-image {
+    transform: none;
+    filter: drop-shadow(0 16px 18px rgba(67, 29, 25, 0.18));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cow-mascot,
+  .cow-mascot-float,
   .cow-mascot-glow,
   .cow-mascot-spark,
-  .cow-mascot-heart,
-  .cow-head,
-  .cow-ear,
-  .cow-tail,
-  .cow-eye,
-  .cow-arm-wave,
-  .cow-ground-shadow,
-  .cow-character {
+  .cow-mascot-heart {
     animation: none !important;
   }
 
-  .cow-mascot-motion,
-  .cow-pupil {
+  .cow-mascot-parallax,
+  .cow-mascot-image {
     transition: none;
   }
 }
