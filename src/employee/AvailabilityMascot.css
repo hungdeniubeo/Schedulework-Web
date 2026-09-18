@@ -16,19 +16,40 @@
   width: clamp(100px, 20vw, 148px);
   display: grid;
   place-items: center;
-  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
   user-select: none;
   isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.availability-mascot:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 5px;
+  border-radius: 18px;
+}
+
+.availability-mascot-reaction {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  transform-origin: 50% 88%;
+  will-change: transform;
 }
 
 .availability-mascot img {
-  position: relative;
-  z-index: 1;
   display: block;
   width: 100%;
   max-height: 158px;
   object-fit: contain;
   object-position: center bottom;
+  pointer-events: none;
   filter:
     drop-shadow(0 10px 12px rgba(0, 0, 0, 0.22))
     drop-shadow(0 2px 2px rgba(255, 255, 255, 0.08));
@@ -49,6 +70,18 @@
     transparent 72%
   );
   filter: blur(5px);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.availability-mascot:hover .availability-mascot-glow {
+  transform: scale(1.08);
+  opacity: 1.2;
+}
+
+.availability-mascot:active .availability-mascot-reaction {
+  transform: scale(0.94);
 }
 
 .availability-mascot-float-a img {
@@ -61,6 +94,70 @@
 
 .availability-mascot-float-c img {
   animation: availability-mascot-float-c 5.2s ease-in-out infinite;
+}
+
+.availability-mascot-react-pop {
+  animation: availability-mascot-react-pop 720ms cubic-bezier(0.2, 1.25, 0.35, 1);
+}
+
+.availability-mascot-react-wiggle {
+  animation: availability-mascot-react-wiggle 720ms ease-in-out;
+}
+
+.availability-mascot-react-twirl {
+  animation: availability-mascot-react-twirl 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.availability-mascot-burst {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+
+.availability-mascot-burst i {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  display: block;
+  font-style: normal;
+  line-height: 1;
+  opacity: 0;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.availability-mascot-burst-heart {
+  color: #ff6f7d;
+  font-size: 22px;
+  animation: availability-mascot-burst-heart 700ms ease-out forwards;
+}
+
+.availability-mascot-burst-star-one,
+.availability-mascot-burst-star-two {
+  color: #ffd36a;
+  font-size: 19px;
+}
+
+.availability-mascot-burst-star-one {
+  animation: availability-mascot-burst-star-one 680ms ease-out forwards;
+}
+
+.availability-mascot-burst-star-two {
+  animation: availability-mascot-burst-star-two 740ms ease-out forwards;
+}
+
+.availability-mascot-burst-dot-one,
+.availability-mascot-burst-dot-two {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 9px;
+}
+
+.availability-mascot-burst-dot-one {
+  animation: availability-mascot-burst-dot-one 620ms ease-out forwards;
+}
+
+.availability-mascot-burst-dot-two {
+  animation: availability-mascot-burst-dot-two 700ms ease-out forwards;
 }
 
 @keyframes availability-mascot-float-a {
@@ -104,6 +201,149 @@
   }
 }
 
+@keyframes availability-mascot-react-pop {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+
+  28% {
+    transform: scale(0.9, 1.08) translateY(4px);
+  }
+
+  58% {
+    transform: scale(1.1, 0.94) translateY(-12px);
+  }
+
+  78% {
+    transform: scale(0.98, 1.02) translateY(2px);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes availability-mascot-react-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  18% {
+    transform: rotate(-8deg) scale(1.04);
+  }
+
+  38% {
+    transform: rotate(8deg) scale(1.06);
+  }
+
+  58% {
+    transform: rotate(-5deg) scale(1.04);
+  }
+
+  78% {
+    transform: rotate(3deg) scale(1.02);
+  }
+}
+
+@keyframes availability-mascot-react-twirl {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  38% {
+    transform: translateY(-11px) rotate(-9deg) scale(1.06);
+  }
+
+  68% {
+    transform: translateY(-5px) rotate(8deg) scale(1.04);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes availability-mascot-burst-heart {
+  0% {
+    transform: translate(-50%, -20%) scale(0.35) rotate(-8deg);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(34px, -66px) scale(1.08) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes availability-mascot-burst-star-one {
+  0% {
+    transform: translate(-50%, -20%) scale(0.35) rotate(0deg);
+    opacity: 0;
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-58px, -44px) scale(1.1) rotate(-28deg);
+    opacity: 0;
+  }
+}
+
+@keyframes availability-mascot-burst-star-two {
+  0% {
+    transform: translate(-50%, -20%) scale(0.35) rotate(0deg);
+    opacity: 0;
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(55px, -28px) scale(0.9) rotate(30deg);
+    opacity: 0;
+  }
+}
+
+@keyframes availability-mascot-burst-dot-one {
+  0% {
+    transform: translate(-50%, -20%) scale(0.4);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translate(-45px, -8px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes availability-mascot-burst-dot-two {
+  0% {
+    transform: translate(-50%, -20%) scale(0.4);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translate(44px, 0) scale(1);
+    opacity: 0;
+  }
+}
+
 @media (max-width: 520px) {
   .employee-registration-intro {
     min-height: 126px;
@@ -122,6 +362,15 @@
   .availability-mascot img {
     max-height: 124px;
   }
+
+  .availability-mascot-burst-heart {
+    font-size: 18px;
+  }
+
+  .availability-mascot-burst-star-one,
+  .availability-mascot-burst-star-two {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 380px) {
@@ -139,7 +388,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .availability-mascot img {
+  .availability-mascot img,
+  .availability-mascot-reaction,
+  .availability-mascot-burst i {
     animation: none !important;
+  }
+
+  .availability-mascot-glow {
+    transition: none;
   }
 }

@@ -10,6 +10,14 @@ describe("availability mascot randomizer", () => {
     expect(pickRandomMascot(mascots, () => 0.999)).toBe("third");
   });
 
+  it("can use the same randomizer for mascot click reactions", () => {
+    const reactions = ["pop", "wiggle", "twirl"] as const;
+
+    expect(pickRandomMascot(reactions, () => 0.01)).toBe("pop");
+    expect(pickRandomMascot(reactions, () => 0.51)).toBe("wiggle");
+    expect(pickRandomMascot(reactions, () => 0.99)).toBe("twirl");
+  });
+
   it("returns null when the mascot folder is empty", () => {
     expect(pickRandomMascot([], () => 0.5)).toBeNull();
   });
