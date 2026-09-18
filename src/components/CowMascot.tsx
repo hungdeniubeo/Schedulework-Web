@@ -1,375 +1,402 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
 import "../styles/CowMascot.css";
 
-const GYU_KAKU_LOGO_URL =
-  "https://gyu-kaku.com.vn/wp-content/uploads/2026/01/gyukaku-logo.webp";
+const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
 export function CowMascot() {
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "touch") return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = clamp(
+      ((event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2,
+    );
+    const y = clamp(
+      ((event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2,
+    );
+
+    event.currentTarget.style.setProperty("--cow-eye-x", `${x * 7}px`);
+    event.currentTarget.style.setProperty("--cow-eye-y", `${y * 5}px`);
+    event.currentTarget.style.setProperty("--cow-follow-x", `${x * 5}px`);
+    event.currentTarget.style.setProperty("--cow-follow-y", `${y * 3}px`);
+    event.currentTarget.style.setProperty("--cow-lean", `${x * 2}deg`);
+  }
+
+  function handlePointerLeave(event: ReactPointerEvent<HTMLDivElement>) {
+    event.currentTarget.style.setProperty("--cow-eye-x", "0px");
+    event.currentTarget.style.setProperty("--cow-eye-y", "0px");
+    event.currentTarget.style.setProperty("--cow-follow-x", "0px");
+    event.currentTarget.style.setProperty("--cow-follow-y", "0px");
+    event.currentTarget.style.setProperty("--cow-lean", "0deg");
+  }
+
   return (
-    <svg
-      className="cow-mascot"
-      viewBox="0 0 360 300"
+    <div
+      className="cow-mascot-stage"
       role="img"
-      aria-labelledby="cow-mascot-title"
+      aria-label="Linh vật bò Gyu-Kaku chibi đang vẫy tay"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
     >
-      <title id="cow-mascot-title">Linh vật bò Gyu-Kaku chibi</title>
+      <span className="cow-mascot-glow" aria-hidden="true" />
+      <span className="cow-mascot-spark cow-mascot-spark-one" aria-hidden="true">
+        ✦
+      </span>
+      <span className="cow-mascot-spark cow-mascot-spark-two" aria-hidden="true">
+        ✦
+      </span>
+      <span className="cow-mascot-heart" aria-hidden="true">
+        ♥
+      </span>
 
-      <defs>
-        <linearGradient id="cow-fur" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#fffdf8" />
-          <stop offset="1" stopColor="#f4e7d6" />
-        </linearGradient>
+      <div className="cow-mascot-motion">
+        <svg
+          className="cow-mascot"
+          viewBox="0 0 420 420"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            <linearGradient id="cute-cow-fur" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#fffdf8" />
+              <stop offset="1" stopColor="#f5eadb" />
+            </linearGradient>
+            <linearGradient id="cute-cow-apron" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ef4438" />
+              <stop offset="1" stopColor="#bd201f" />
+            </linearGradient>
+            <linearGradient id="cute-cow-muzzle" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ffd5d2" />
+              <stop offset="1" stopColor="#f1aaa8" />
+            </linearGradient>
+          </defs>
 
-        <linearGradient id="cow-muzzle" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f4bbb4" />
-          <stop offset="1" stopColor="#dfa09b" />
-        </linearGradient>
-
-        <linearGradient id="cow-apron" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ef5b4b" />
-          <stop offset="1" stopColor="#b82020" />
-        </linearGradient>
-
-        <radialGradient id="cow-eye-water" cx="34%" cy="24%" r="78%">
-          <stop offset="0" stopColor="#6a4b46" />
-          <stop offset="0.38" stopColor="#3b2926" />
-          <stop offset="0.72" stopColor="#251918" />
-          <stop offset="1" stopColor="#120d0c" />
-        </radialGradient>
-
-        <filter id="cow-soft-shadow" x="-35%" y="-35%" width="170%" height="190%">
-          <feDropShadow
-            dx="0"
-            dy="10"
-            stdDeviation="9"
-            floodColor="#5e231e"
-            floodOpacity=".18"
-          />
-        </filter>
-      </defs>
-
-      <ellipse
-        className="cow-ground-shadow"
-        cx="180"
-        cy="276"
-        rx="92"
-        ry="13"
-        fill="#6f211d"
-        opacity=".14"
-      />
-
-      <g className="cow-character" filter="url(#cow-soft-shadow)">
-        {/* Body */}
-        <ellipse
-          className="cow-body"
-          cx="180"
-          cy="218"
-          rx="76"
-          ry="63"
-          fill="url(#cow-fur)"
-          stroke="#4b2a25"
-          strokeWidth="6"
-        />
-
-        {/* Legs */}
-        <g className="cow-legs">
-          <path
-            d="M139 247c-5 18-5 28 2 31 9 4 17-3 18-18"
-            fill="none"
-            stroke="#4b2a25"
-            strokeWidth="13"
-            strokeLinecap="round"
-          />
-          <path
-            d="M221 247c5 18 5 28-2 31-9 4-17-3-18-18"
-            fill="none"
-            stroke="#4b2a25"
-            strokeWidth="13"
-            strokeLinecap="round"
-          />
-        </g>
-
-        {/* Apron */}
-        <path
-          className="cow-apron"
-          d="M132 204c12-18 84-18 96 0l-8 68c-24 12-56 12-80 0Z"
-          fill="url(#cow-apron)"
-          stroke="#8f1d1d"
-          strokeWidth="4"
-        />
-        <path
-          d="M147 214c21 9 45 9 66 0"
-          fill="none"
-          stroke="#ffd8cb"
-          strokeWidth="4"
-          strokeLinecap="round"
-          opacity=".9"
-        />
-
-        {/* Gyu-Kaku logo badge */}
-        <g className="cow-apron-logo" aria-hidden="true">
-          <rect
-            x="148"
-            y="222"
-            width="64"
-            height="30"
-            rx="10"
-            fill="#fff"
-            stroke="#f3c9bf"
-            strokeWidth="2"
-          />
-          <image
-            href={GYU_KAKU_LOGO_URL}
-            x="153"
-            y="226"
-            width="54"
-            height="22"
-            preserveAspectRatio="xMidYMid meet"
-          />
-        </g>
-
-        {/* Real arms */}
-        <g className="cow-arm cow-arm-left">
-          <path
-            d="M126 205c-24 3-38 17-44 34"
-            fill="none"
-            stroke="#f5eadb"
-            strokeWidth="24"
-            strokeLinecap="round"
-          />
-          <path
-            d="M126 205c-24 3-38 17-44 34"
-            fill="none"
-            stroke="#4b2a25"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          <circle cx="80" cy="241" r="13" fill="#f5eadb" stroke="#4b2a25" strokeWidth="5" />
-        </g>
-
-        <g className="cow-arm cow-arm-right">
-          <path
-            d="M234 205c24 3 38 17 44 34"
-            fill="none"
-            stroke="#f5eadb"
-            strokeWidth="24"
-            strokeLinecap="round"
-          />
-          <path
-            d="M234 205c24 3 38 17 44 34"
-            fill="none"
-            stroke="#4b2a25"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          <circle cx="280" cy="241" r="13" fill="#f5eadb" stroke="#4b2a25" strokeWidth="5" />
-        </g>
-
-        {/* Head */}
-        <g className="cow-head">
-          {/* Horns */}
-          <path
-            className="cow-horn cow-horn-left"
-            d="M120 72c-22-21-20-42-8-45 13-3 25 13 31 35"
-            fill="#f3d39c"
-            stroke="#4b2a25"
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-          <path
-            className="cow-horn cow-horn-right"
-            d="M240 72c22-21 20-42 8-45-13-3-25 13-31 35"
-            fill="#f3d39c"
-            stroke="#4b2a25"
-            strokeWidth="5"
-            strokeLinecap="round"
+          <ellipse
+            className="cow-ground-shadow"
+            cx="210"
+            cy="389"
+            rx="119"
+            ry="17"
           />
 
-          {/* Ears */}
-          <g className="cow-ear cow-ear-left">
-            <path
-              d="M129 78c-31-17-58-11-62 6-4 18 25 30 58 17Z"
-              fill="#f4e7d6"
-              stroke="#4b2a25"
-              strokeWidth="6"
-            />
-            <path d="M112 87c-17-7-28-4-31 2 7 7 17 9 30 7Z" fill="#e9aaa6" />
-          </g>
+          <g className="cow-character">
+            <g className="cow-tail">
+              <path
+                d="M306 304c37 5 43 34 25 48"
+                fill="none"
+                stroke="#4b2b27"
+                strokeWidth="13"
+                strokeLinecap="round"
+              />
+              <path
+                d="M330 348c20-12 34 2 25 16-9 13-29 7-30-6"
+                fill="#5b3832"
+                stroke="#4b2b27"
+                strokeWidth="5"
+              />
+            </g>
 
-          <g className="cow-ear cow-ear-right">
-            <path
-              d="M231 78c31-17 58-11 62 6 4 18-25 30-58 17Z"
-              fill="#f4e7d6"
-              stroke="#4b2a25"
-              strokeWidth="6"
-            />
-            <path d="M248 87c17-7 28-4 31 2-7 7-17 9-30 7Z" fill="#e9aaa6" />
-          </g>
-
-          {/* Face */}
-          <path
-            d="M180 52c61 0 102 38 96 101-5 54-42 83-96 83s-91-29-96-83c-6-63 35-101 96-101Z"
-            fill="url(#cow-fur)"
-            stroke="#4b2a25"
-            strokeWidth="6"
-          />
-
-          {/* Spots */}
-          <path
-            d="M116 73c18-14 38-16 52-7-4 26-23 40-49 35-8-8-10-18-3-28Z"
-            fill="#55342f"
-          />
-          <path
-            d="M226 67c23 12 35 31 34 54-20 4-38-5-48-23 0-14 5-24 14-31Z"
-            fill="#55342f"
-          />
-
-          {/* Eyes */}
-          <g className="cow-eye cow-eye-left">
             <ellipse
-              className="cow-eye-ball"
-              cx="145"
-              cy="127"
-              rx="13"
-              ry="16"
-              fill="url(#cow-eye-water)"
-            />
-            <ellipse
-              className="cow-eye-depth"
-              cx="145"
-              cy="134"
-              rx="8.5"
-              ry="4.2"
-              fill="#9a6e68"
-              opacity=".16"
-            />
-            <path
-              className="cow-eye-waterline"
-              d="M137 136c5 3 11 3 16 0"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              opacity=".22"
-            />
-            <circle
-              className="cow-eye-highlight cow-eye-highlight-main"
-              cx="140"
-              cy="120"
-              r="4.6"
-              fill="#fff"
-            />
-            <circle
-              className="cow-eye-highlight cow-eye-highlight-small"
-              cx="151"
-              cy="131"
-              r="2.3"
-              fill="#fff"
-              opacity=".88"
-            />
-            <path
-              className="cow-eye-sparkle cow-eye-sparkle-a"
-              d="M154 116l1.3 2.8 2.8 1.3-2.8 1.3-1.3 2.8-1.3-2.8-2.8-1.3 2.8-1.3Z"
-              fill="#fff"
-            />
-            <circle
-              className="cow-eye-sparkle cow-eye-sparkle-b"
-              cx="136"
-              cy="130"
-              r="1.4"
-              fill="#fff"
-            />
-          </g>
-
-          <g className="cow-eye cow-eye-right">
-            <ellipse
-              className="cow-eye-ball"
-              cx="215"
-              cy="127"
-              rx="13"
-              ry="16"
-              fill="url(#cow-eye-water)"
-            />
-            <ellipse
-              className="cow-eye-depth"
-              cx="215"
-              cy="134"
-              rx="8.5"
-              ry="4.2"
-              fill="#9a6e68"
-              opacity=".16"
-            />
-            <path
-              className="cow-eye-waterline"
-              d="M207 136c5 3 11 3 16 0"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              opacity=".22"
-            />
-            <circle
-              className="cow-eye-highlight cow-eye-highlight-main"
+              className="cow-body"
               cx="210"
-              cy="120"
-              r="4.6"
-              fill="#fff"
+              cy="304"
+              rx="96"
+              ry="82"
+              fill="url(#cute-cow-fur)"
+              stroke="#4b2b27"
+              strokeWidth="7"
             />
-            <circle
-              className="cow-eye-highlight cow-eye-highlight-small"
-              cx="221"
-              cy="131"
-              r="2.3"
-              fill="#fff"
-              opacity=".88"
+
+            <g className="cow-feet">
+              <path
+                d="M151 348c-9 21-5 40 14 42 20 2 29-12 30-30"
+                fill="#f6ebdd"
+                stroke="#4b2b27"
+                strokeWidth="7"
+                strokeLinecap="round"
+              />
+              <path
+                d="M269 348c9 21 5 40-14 42-20 2-29-12-30-30"
+                fill="#f6ebdd"
+                stroke="#4b2b27"
+                strokeWidth="7"
+                strokeLinecap="round"
+              />
+              <path
+                d="M153 376c15 8 28 7 39-1"
+                fill="none"
+                stroke="#5b3832"
+                strokeWidth="12"
+                strokeLinecap="round"
+              />
+              <path
+                d="M267 376c-15 8-28 7-39-1"
+                fill="none"
+                stroke="#5b3832"
+                strokeWidth="12"
+                strokeLinecap="round"
+              />
+            </g>
+
+            <path
+              className="cow-apron"
+              d="M131 278c19-28 139-28 158 0l-12 91c-39 17-95 17-134 0Z"
+              fill="url(#cute-cow-apron)"
+              stroke="#8f1d1d"
+              strokeWidth="6"
             />
             <path
-              className="cow-eye-sparkle cow-eye-sparkle-a"
-              d="M224 116l1.3 2.8 2.8 1.3-2.8 1.3-1.3 2.8-1.3-2.8-2.8-1.3 2.8-1.3Z"
-              fill="#fff"
+              d="M152 281c33 12 83 12 116 0"
+              fill="none"
+              stroke="#ffbab2"
+              strokeWidth="5"
+              strokeLinecap="round"
+              opacity=".7"
             />
-            <circle
-              className="cow-eye-sparkle cow-eye-sparkle-b"
-              cx="206"
-              cy="130"
-              r="1.4"
-              fill="#fff"
+            <rect
+              x="168"
+              y="307"
+              width="84"
+              height="46"
+              rx="13"
+              fill="#fffdf8"
+              stroke="#f5c5bd"
+              strokeWidth="3"
             />
+            <text
+              className="cow-apron-kanji"
+              x="210"
+              y="327"
+              textAnchor="middle"
+            >
+              牛角
+            </text>
+            <text
+              className="cow-apron-wordmark"
+              x="210"
+              y="345"
+              textAnchor="middle"
+            >
+              GYU-KAKU
+            </text>
+
+            <g className="cow-arm cow-arm-left">
+              <path
+                d="M135 285c-27 8-43 28-43 50"
+                fill="none"
+                stroke="#4b2b27"
+                strokeWidth="31"
+                strokeLinecap="round"
+              />
+              <path
+                d="M135 285c-27 8-43 28-43 50"
+                fill="none"
+                stroke="#f7ecdf"
+                strokeWidth="21"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="91"
+                cy="337"
+                r="17"
+                fill="#5b3832"
+                stroke="#4b2b27"
+                strokeWidth="5"
+              />
+            </g>
+
+            <g className="cow-arm cow-arm-wave">
+              <path
+                d="M285 286c26-18 42-38 50-64"
+                fill="none"
+                stroke="#4b2b27"
+                strokeWidth="31"
+                strokeLinecap="round"
+              />
+              <path
+                d="M285 286c26-18 42-38 50-64"
+                fill="none"
+                stroke="#f7ecdf"
+                strokeWidth="21"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="337"
+                cy="214"
+                r="18"
+                fill="#5b3832"
+                stroke="#4b2b27"
+                strokeWidth="5"
+              />
+              <path
+                d="M351 195l15-11M356 210l19-2"
+                fill="none"
+                stroke="#e43a32"
+                strokeWidth="5"
+                strokeLinecap="round"
+              />
+            </g>
+
+            <g className="cow-head">
+              <path
+                className="cow-horn cow-horn-left"
+                d="M127 84c-18-25-10-45 4-48 15-3 27 15 28 39"
+                fill="#f4cf93"
+                stroke="#4b2b27"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+              <path
+                className="cow-horn cow-horn-right"
+                d="M293 84c18-25 10-45-4-48-15-3-27 15-28 39"
+                fill="#f4cf93"
+                stroke="#4b2b27"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+
+              <g className="cow-ear cow-ear-left">
+                <path
+                  d="M130 96c-42-28-79-18-83 8-4 25 35 43 79 25Z"
+                  fill="#fffaf3"
+                  stroke="#4b2b27"
+                  strokeWidth="7"
+                />
+                <path
+                  d="M112 108c-24-10-42-4-46 5 10 11 27 13 45 6Z"
+                  fill="#f5aba9"
+                />
+              </g>
+              <g className="cow-ear cow-ear-right">
+                <path
+                  d="M290 96c42-28 79-18 83 8 4 25-35 43-79 25Z"
+                  fill="#fffaf3"
+                  stroke="#4b2b27"
+                  strokeWidth="7"
+                />
+                <path
+                  d="M308 108c24-10 42-4 46 5-10 11-27 13-45 6Z"
+                  fill="#f5aba9"
+                />
+              </g>
+
+              <ellipse
+                className="cow-face"
+                cx="210"
+                cy="166"
+                rx="145"
+                ry="121"
+                fill="url(#cute-cow-fur)"
+                stroke="#4b2b27"
+                strokeWidth="8"
+              />
+
+              <path
+                d="M92 119c25-38 62-48 91-31-7 34-30 53-69 49-13-4-20-10-22-18Z"
+                fill="#5b3832"
+              />
+              <path
+                d="M276 79c36 8 59 33 65 70-34 10-62-5-77-34 0-17 4-28 12-36Z"
+                fill="#5b3832"
+              />
+
+              <path
+                className="cow-hair"
+                d="M176 54c9-24 28-34 36-19 5-16 27-18 31-1 15-6 26 12 13 24-19 14-55 17-80-4Z"
+                fill="#fffaf3"
+                stroke="#4b2b27"
+                strokeWidth="6"
+                strokeLinejoin="round"
+              />
+
+              <g className="cow-eye cow-eye-left">
+                <ellipse
+                  className="cow-eye-white"
+                  cx="159"
+                  cy="166"
+                  rx="34"
+                  ry="39"
+                  fill="#fff"
+                  stroke="#4b2b27"
+                  strokeWidth="6"
+                />
+                <g className="cow-pupil">
+                  <ellipse cx="161" cy="171" rx="19" ry="24" fill="#3d2825" />
+                  <circle cx="153" cy="159" r="7" fill="#fff" />
+                  <circle cx="169" cy="177" r="3.5" fill="#fff" opacity=".85" />
+                </g>
+              </g>
+
+              <g className="cow-eye cow-eye-right">
+                <ellipse
+                  className="cow-eye-white"
+                  cx="261"
+                  cy="166"
+                  rx="34"
+                  ry="39"
+                  fill="#fff"
+                  stroke="#4b2b27"
+                  strokeWidth="6"
+                />
+                <g className="cow-pupil">
+                  <ellipse cx="259" cy="171" rx="19" ry="24" fill="#3d2825" />
+                  <circle cx="251" cy="159" r="7" fill="#fff" />
+                  <circle cx="267" cy="177" r="3.5" fill="#fff" opacity=".85" />
+                </g>
+              </g>
+
+              <ellipse
+                className="cow-cheek cow-cheek-left"
+                cx="114"
+                cy="207"
+                rx="26"
+                ry="13"
+                fill="#f6a9ab"
+                opacity=".72"
+              />
+              <ellipse
+                className="cow-cheek cow-cheek-right"
+                cx="306"
+                cy="207"
+                rx="26"
+                ry="13"
+                fill="#f6a9ab"
+                opacity=".72"
+              />
+
+              <ellipse
+                className="cow-muzzle"
+                cx="210"
+                cy="224"
+                rx="72"
+                ry="48"
+                fill="url(#cute-cow-muzzle)"
+                stroke="#4b2b27"
+                strokeWidth="6"
+              />
+              <ellipse cx="184" cy="217" rx="7" ry="9" fill="#72423c" />
+              <ellipse cx="236" cy="217" rx="7" ry="9" fill="#72423c" />
+
+              <path
+                className="cow-smile"
+                d="M185 239c8 8 17 12 25 12s17-4 25-12"
+                fill="none"
+                stroke="#4b2b27"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+              <path
+                className="cow-tongue"
+                d="M199 251c7 13 16 13 23 0"
+                fill="#ec7f84"
+                stroke="#4b2b27"
+                strokeWidth="4"
+                strokeLinejoin="round"
+              />
+            </g>
           </g>
-
-          {/* Blush */}
-          <ellipse className="cow-cheek cow-cheek-left" cx="120" cy="158" rx="17" ry="8" fill="#f4a7a7" opacity=".56" />
-          <ellipse className="cow-cheek cow-cheek-right" cx="240" cy="158" rx="17" ry="8" fill="#f4a7a7" opacity=".56" />
-
-          {/* Muzzle */}
-          <path
-            className="cow-muzzle"
-            d="M128 171c0-27 23-42 52-42s52 15 52 42-22 45-52 45-52-18-52-45Z"
-            fill="url(#cow-muzzle)"
-            stroke="#4b2a25"
-            strokeWidth="5"
-          />
-          <ellipse cx="157" cy="169" rx="5" ry="7" fill="#76433e" />
-          <ellipse cx="203" cy="169" rx="5" ry="7" fill="#76433e" />
-
-          {/* Smile */}
-          <path
-            className="cow-smile"
-            d="M161 188c11 10 27 10 38 0"
-            fill="none"
-            stroke="#4b2a25"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          <path
-            className="cow-tongue"
-            d="M175 196c4 5 8 5 12 0"
-            fill="none"
-            stroke="#c95f68"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-        </g>
-      </g>
-    </svg>
+        </svg>
+      </div>
+    </div>
   );
 }
