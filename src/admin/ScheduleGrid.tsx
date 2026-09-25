@@ -612,7 +612,7 @@ export function ScheduleGrid(props: Props) {
                   {children}
                 </EmployeeDropRow>
               )}
-              renderEmployeeHeader={(employee, areaClass) => (
+              renderEmployeeHeader={(employee) => (
                 <EmployeeDragHeader
                   employee={employee}
                   groupId={employee.groupId ?? ""}
