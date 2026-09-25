@@ -657,7 +657,7 @@ export function ScheduleGrid(props: Props) {
               weekStart={props.weekStart}
               entries={props.entries}
               shifts={props.shifts}
-                          />
+            />
           </div>
         </section>
 
