@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useMemo, type CSSProperties, type ReactNode } from "react";
 import { DAY_KEYS } from "../types/domain";
 import {
   addDateOnlyDays,
@@ -156,17 +156,42 @@ export function SchedulerTable({
   id,
   className = "",
 }: SchedulerTableProps) {
-  const sections = buildScheduleGroups(groups, employees);
-  const dates = DAY_KEYS.map((_, index) => addDateOnlyDays(weekStart, index));
-  const { month, year } = monthAndYear(weekStart);
-  const areaClassByGroupId = new Map<string, string>(
-    [...groups]
-      .sort((first, second) => first.sortOrder - second.sortOrder)
-      .map((group, index): [string, string] => [
-        group.id,
-        AREA_TONE_CLASSES[index] ?? "schedule-area-neutral",
-      ]),
+  const sections = useMemo(
+    () => buildScheduleGroups(groups, employees),
+    [groups, employees],
   );
+  const dates = useMemo(
+    () => DAY_KEYS.map((_, index) => addDateOnlyDays(weekStart, index)),
+    [weekStart],
+  );
+  const { month, year } = monthAndYear(weekStart);
+  const areaClassByGroupId = useMemo(
+    () =>
+      new Map<string, string>(
+        [...groups]
+          .sort((first, second) => first.sortOrder - second.sortOrder)
+          .map((group, index): [string, string] => [
+            group.id,
+            AREA_TONE_CLASSES[index] ?? "schedule-area-neutral",
+          ]),
+      ),
+    [groups],
+  );
+  const entriesByCell = useMemo(() => {
+    const indexed = new Map<string, ScheduleEntry[]>();
+    for (const entry of entries) {
+      const key = `${entry.employeeId}:${entry.dayOfWeek}`;
+      const cellEntries = indexed.get(key);
+      if (cellEntries) cellEntries.push(entry);
+      else indexed.set(key, [entry]);
+    }
+    for (const cellEntries of indexed.values()) {
+      cellEntries.sort((first, second) =>
+        compareScheduleEntriesByTime(first, second, shifts),
+      );
+    }
+    return indexed;
+  }, [entries, shifts]);
   const liveSurface = id === "cloud-schedule-sheet";
   const resolvedEmployeeColumnWidth = liveSurface
     ? 220
@@ -263,15 +288,8 @@ export function SchedulerTable({
                       </th>
                       {DAY_KEYS.map((key) => {
                         const day = Number(key);
-                        const cellEntries = entries
-                          .filter(
-                            (entry) =>
-                              entry.employeeId === employee.id &&
-                              entry.dayOfWeek === day,
-                          )
-                          .sort((first, second) =>
-                            compareScheduleEntriesByTime(first, second, shifts),
-                          );
+                        const cellEntries =
+                          entriesByCell.get(`${employee.id}:${day}`) ?? [];
                         return renderCell ? (
                           renderCell(employee, day, cellEntries)
                         ) : (
