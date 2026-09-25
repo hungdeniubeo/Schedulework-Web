@@ -34,7 +34,6 @@ export function ScheduleDailySummary({
       aria-label="Tổng ca theo ngày"
     >
       <header className="schedule-daily-summary-heading">
-        <span className="schedule-summary-icon" aria-hidden="true">▦</span>
         <span>
           <strong>TỔNG CA</strong>
           <small>Theo buổi trong ngày</small>
