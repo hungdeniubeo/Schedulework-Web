@@ -17,7 +17,6 @@ type Props = {
   entries: ScheduleEntry[];
   shifts: ShiftType[];
   weekStart: string;
-  countOverrides?: Record<string, number>;
 };
 
 export function AdminScheduleExport({
@@ -27,7 +26,6 @@ export function AdminScheduleExport({
   entries,
   shifts,
   weekStart,
-  countOverrides = {},
 }: Props) {
   const exportStyle = {
     "--scheduler-employee-width": `${EXPORT_EMPLOYEE_COLUMN_WIDTH}px`,
@@ -52,7 +50,6 @@ export function AdminScheduleExport({
         weekStart={weekStart}
         entries={entries}
         shifts={shifts}
-        countOverrides={countOverrides}
       />
     </section>
   );
