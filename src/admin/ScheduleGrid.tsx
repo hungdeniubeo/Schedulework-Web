@@ -326,12 +326,10 @@ function ScheduleTrash({ enabled, active }: { enabled: boolean; active: boolean 
 function EmployeeDragHeader({
   employee,
   groupId,
-  areaClass,
   editable,
 }: {
   employee: CloudEmployee;
   groupId: string;
-  areaClass: string;
   editable: boolean;
 }) {
   const drag = useDraggable({
@@ -359,10 +357,6 @@ function EmployeeDragHeader({
       >
         <span aria-hidden="true">⠿</span>
       </button>
-      <span
-        className={`scheduler-employee-dot ${areaClass}`}
-        aria-hidden="true"
-      />
       <span className="schedule-employee-copy">
         <strong className="schedule-employee-name">{employee.name}</strong>
         {employee.positionName && (
@@ -622,7 +616,6 @@ export function ScheduleGrid(props: Props) {
                 <EmployeeDragHeader
                   employee={employee}
                   groupId={employee.groupId ?? ""}
-                  areaClass={areaClass}
                   editable={
                     props.editable &&
                     Boolean(props.onMoveEmployee) &&
