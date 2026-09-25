@@ -28,7 +28,6 @@ import {
   resolvedShiftColor,
   shiftStyle,
 } from "../scheduling/shiftStyle";
-import type { StaffingPeriod } from "../scheduling/staffing";
 import type {
   CloudEmployee,
   Group,
@@ -500,12 +499,6 @@ type Props = {
   onEdit: (entry: ScheduleEntry) => void;
   onDelete?: (entry: ScheduleEntry) => void;
   availabilityByEmployee?: Record<string, Availability>;
-  countOverrides?: Record<string, number>;
-  onSetCountOverride?: (
-    day: number,
-    period: StaffingPeriod,
-    value: string,
-  ) => void;
   sidebarOpen?: boolean;
   onSidebarOpenChange?: (open: boolean) => void;
 };
@@ -664,10 +657,7 @@ export function ScheduleGrid(props: Props) {
               weekStart={props.weekStart}
               entries={props.entries}
               shifts={props.shifts}
-              countOverrides={props.countOverrides}
-              editable={props.editable}
-              onSetCountOverride={props.onSetCountOverride}
-            />
+                          />
           </div>
         </section>
 
