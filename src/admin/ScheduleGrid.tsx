@@ -75,6 +75,7 @@ function PaletteShift({
       {...drag.listeners}
       {...drag.attributes}
       aria-pressed={selected}
+      aria-label={formatShiftLabel(shift.label)}
     >
       <span className="scheduler-shift-dot" aria-hidden="true" />
       <span className="scheduler-shift-label">
