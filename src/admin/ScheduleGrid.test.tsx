@@ -197,7 +197,7 @@ describe("Admin scheduler availability guidance", () => {
     const html = render();
     expect(html).toContain('class="schedule-employee-name"');
     expect(html).toContain('class="schedule-employee-position"');
-    expect(html).toContain("scheduler-employee-dot");
+    expect(html).not.toContain("scheduler-employee-dot");
     expect(html).toContain("Nguyễn Phi Hùng");
     expect(html).toContain("Bếp trưởng");
   });
