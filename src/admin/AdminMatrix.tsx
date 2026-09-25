@@ -76,6 +76,13 @@ export function AdminMatrix({
               : availability.status === "off"
                 ? "off"
                 : "working";
+            const detail = availability
+              ? formatAvailabilityDetail(availability)
+              : "—";
+            const detailParts =
+              availability?.status === "available" && detail.includes(" / ")
+                ? detail.split(" / ")
+                : [detail];
 
             return (
               <td key={day}>
@@ -83,9 +90,18 @@ export function AdminMatrix({
                   className={`matrix-cell ${kind}`}
                   style={color ? shiftStyle(color) : undefined}
                 >
-                  {availability
-                    ? formatAvailabilityDetail(availability)
-                    : "—"}
+                  {detailParts.length > 1 ? (
+                    <span className="matrix-cell-shift-lines">
+                      {detailParts.map((part, index) => (
+                        <span key={`${part}-${index}`}>
+                          {part}
+                          {index < detailParts.length - 1 ? " /" : ""}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    detail
+                  )}
                   {preset && <small>{preset}</small>}
                 </span>
               </td>
