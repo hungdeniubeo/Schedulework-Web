@@ -242,7 +242,6 @@ export function SchedulerTable({
                     renderEmployeeHeader(employee, areaClass)
                   ) : (
                     <div className="schedule-employee-identity">
-                      <span className={`scheduler-employee-dot ${areaClass}`} />
                       <span className="schedule-employee-copy">
                         <strong className="schedule-employee-name">{employee.name}</strong>
                         {employee.positionName && (
