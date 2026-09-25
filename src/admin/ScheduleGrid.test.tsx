@@ -179,8 +179,6 @@ describe("Admin scheduler availability guidance", () => {
         onMove={() => undefined}
         onEdit={() => undefined}
         onDelete={() => undefined}
-        countOverrides={{ "1:Đ": 4 }}
-        onSetCountOverride={() => undefined}
       />,
     );
 
@@ -188,9 +186,11 @@ describe("Admin scheduler availability guidance", () => {
     expect(html).not.toContain("<tfoot>");
     expect(html).toContain("schedule-daily-summary");
     expect(html).toContain("TỔNG CA");
-    expect(html.match(/class="staffing-count-input"/g)).toHaveLength(21);
-    expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
-    expect(html).toContain('value="4"');
+    expect(html).not.toContain("staffing-count-input");
+    expect(html).not.toContain("<input");
+    expect(html).toContain("<span>Sáng</span><strong>1</strong>");
+    expect(html).toContain("<span>Trưa</span><strong>0</strong>");
+    expect(html).toContain("<span>Tối</span><strong>1</strong>");
   });
 
   it("exposes readable employee identity with group dot and position", () => {
