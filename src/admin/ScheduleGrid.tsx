@@ -1,7 +1,6 @@
 import {
   DndContext,
   DragOverlay,
-  MeasuringStrategy,
   PointerSensor,
   pointerWithin,
   useDraggable,
@@ -563,7 +562,6 @@ export function ScheduleGrid(props: Props) {
     <DndContext
       sensors={sensors}
       collisionDetection={scheduleCollisionDetection}
-      measuring={{ droppable: { strategy: MeasuringStrategy.BeforeDragging } }}
       onDragStart={dragStart}
       onDragCancel={dragCancel}
       onDragEnd={dragEnd}
