@@ -139,9 +139,10 @@
 }
 
 .scheduler-employee-head {
-  color: #5a635e !important;
+  color: #4f5853 !important;
   background: #f8faf9 !important;
-  font-size: 0.76rem;
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .scheduler-day-head > span,
@@ -151,9 +152,9 @@
 
 .scheduler-day-head > span {
   margin-bottom: 4px;
-  color: #868e8a;
-  font-size: 0.68rem;
-  font-weight: 600;
+  color: #6f7873;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .scheduler-day-head > strong {
