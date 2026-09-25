@@ -582,7 +582,6 @@ export function ScheduleGrid(props: Props) {
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <span aria-hidden="true">≡</span>
-              Ca làm
             </button>
           </div>
           <div className="schedule-table-scroll">
