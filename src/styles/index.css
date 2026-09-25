@@ -3489,16 +3489,20 @@ select:disabled {
 .scheduler-palette .scheduler-shift-label {
   min-width: 0;
   flex: 0 1 auto;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   color: var(--shift-ink);
   font-weight: 850;
-  line-height: 1.22;
+  line-height: 1.15;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .scheduler-palette .scheduler-shift-label > span {
-  display: inline;
+  display: block;
+  white-space: nowrap;
 }
 
 .scheduler-palette .scheduler-shift:hover:not(:disabled) {
