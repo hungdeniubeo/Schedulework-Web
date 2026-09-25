@@ -41,20 +41,18 @@ describe("ScheduleDailySummary", () => {
     expect(html).not.toContain("<tfoot>");
   });
 
-  it("uses the manual override while keeping the existing input semantics", () => {
+  it("renders automatic totals as read-only values so schedule changes stay in sync", () => {
     const html = renderToStaticMarkup(
       <ScheduleDailySummary
         weekStart="2026-09-21"
         entries={entries}
         shifts={shifts}
-        countOverrides={{ "1:Đ": 4 }}
-        editable
-        onSetCountOverride={() => undefined}
       />,
     );
 
-    expect(html).toContain('aria-label="Tổng ca Tối ngày 1"');
-    expect(html).toContain('value="4"');
+    expect(html).not.toContain("staffing-count-input");
+    expect(html).not.toContain("<input");
+    expect(html).toContain('aria-label="1 ca đã xếp"');
   });
 
   it("marks the summary for the compact centered presentation", () => {
@@ -63,8 +61,6 @@ describe("ScheduleDailySummary", () => {
         weekStart="2026-09-21"
         entries={entries}
         shifts={shifts}
-        editable
-        onSetCountOverride={() => undefined}
       />,
     );
 
