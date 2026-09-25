@@ -17,21 +17,11 @@ type Props = {
   weekStart: string;
   entries: ScheduleEntry[];
   shifts: ShiftType[];
-  countOverrides?: Record<string, number>;
-  editable?: boolean;
-  onSetCountOverride?: (
-    day: number,
-    period: StaffingPeriod,
-    value: string,
-  ) => void;
 };
 
 export function ScheduleDailySummary({
   entries,
   shifts,
-  countOverrides = {},
-  editable = false,
-  onSetCountOverride,
 }: Props) {
   const automaticCounts = periodCounts(entries, shifts);
   const dailyShiftCounts = DAYS.map((day) =>
@@ -58,32 +48,12 @@ export function ScheduleDailySummary({
             className={`schedule-daily-summary-card ${shiftCount > 0 ? "has-shifts" : ""}`}
             key={day}
           >
-            {PERIODS.map(({ key, label }) => {
-              const value =
-                countOverrides[`${day}:${key}`] ??
-                automaticCounts[index][key];
-              return (
-                <div className="schedule-summary-line" key={key}>
-                  <span>{label}</span>
-                  {editable && onSetCountOverride ? (
-                    <input
-                      key={`${day}:${key}:${value}`}
-                      className="staffing-count-input"
-                      type="number"
-                      min="0"
-                      defaultValue={value}
-                      aria-label={`Tổng ca ${label} ngày ${day}`}
-                      title="Nhập số để chỉnh tay; xóa trắng để dùng số tự động"
-                      onBlur={(event) =>
-                        onSetCountOverride(day, key, event.currentTarget.value)
-                      }
-                    />
-                  ) : (
-                    <strong>{value}</strong>
-                  )}
-                </div>
-              );
-            })}
+            {PERIODS.map(({ key, label }) => (
+              <div className="schedule-summary-line" key={key}>
+                <span>{label}</span>
+                <strong>{automaticCounts[index][key]}</strong>
+              </div>
+            ))}
             <span
               className={`schedule-summary-status staffing-status-${status}`}
               aria-label={`${shiftCount} ca đã xếp`}
