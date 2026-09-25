@@ -581,7 +581,7 @@ export function ScheduleGrid(props: Props) {
               aria-expanded={sidebarOpen}
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              <span aria-hidden="true">▦</span>
+              <span aria-hidden="true">≡</span>
               Ca làm
             </button>
           </div>
