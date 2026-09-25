@@ -37,7 +37,6 @@ import { exportScheduleJpg } from "../scheduling/exportJpg";
 import { consolidateCellEntry } from "../scheduling/merge";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
-import { type StaffingPeriod } from "../scheduling/staffing";
 import type {
   ScheduleEntry,
   ScheduleWeek,
@@ -537,31 +536,6 @@ export function AdminScheduler({
     }
   }
 
-  async function setOverride(day: number, period: StaffingPeriod, raw: string) {
-    if (!week || !editable || busy) return;
-    const next = { ...week.countOverrides };
-    const key = `${day}:${period}`;
-    if (raw.trim() === "") delete next[key];
-    else next[key] = Math.max(0, Number(raw) || 0);
-    setBusy(true);
-    setError(null);
-    try {
-      await ensureDraftWeek();
-      await patchScheduleWeek(week.id, { countOverrides: next });
-      setWeeks((current) =>
-        current.map((item) =>
-          item.id === week.id
-            ? { ...item, status: "draft", countOverrides: next }
-            : item,
-        ),
-      );
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không lưu được tổng ca.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="scheduler-page route-scoped">
       <section className="panel scheduler-toolbar">
@@ -752,10 +726,6 @@ export function AdminScheduler({
             onEdit={(entry) => editable && setEditing(entry)}
             onDelete={(entry) => void deleteEntry(entry.id)}
             availabilityByEmployee={availabilityByEmployee}
-            countOverrides={week.countOverrides}
-            onSetCountOverride={(day, period, value) =>
-              void setOverride(day, period, value)
-            }
           />
           <div className="schedule-export-stage" aria-hidden="true">
             <AdminScheduleExport
@@ -765,7 +735,6 @@ export function AdminScheduler({
               entries={entries}
               shifts={shifts}
               weekStart={week.weekStart}
-              countOverrides={week.countOverrides}
             />
           </div>
         </>
