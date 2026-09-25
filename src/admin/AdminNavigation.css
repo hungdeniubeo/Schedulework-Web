@@ -1,4 +1,7 @@
 nav.admin-tabs {
+  position: sticky;
+  z-index: calc(var(--z-navigation) - 1);
+  top: 72px;
   display: block;
   width: 100%;
   padding: 0;
@@ -145,6 +148,10 @@ nav.admin-tabs button:active:not(:disabled) {
 }
 
 @media (max-width: 520px) {
+  nav.admin-tabs {
+    top: 64px;
+  }
+
   .admin-tabs-inner {
     padding-inline: 10px;
   }
