@@ -4,6 +4,18 @@ import type { ScheduleEntry, ShiftType } from "./types";
 export type StaffingStatus = "unset" | "critical" | "warning" | "good";
 export type StaffingPeriod = "S" | "T" | "Đ";
 
+const HOUR = 60;
+const SUBSTANTIAL_OVERLAP = 2 * HOUR;
+const PERIOD_WINDOWS: Array<{
+  key: StaffingPeriod;
+  start: number;
+  end: number;
+}> = [
+  { key: "S", start: 10 * HOUR, end: 14 * HOUR },
+  { key: "T", start: 14 * HOUR, end: 18 * HOUR },
+  { key: "Đ", start: 17 * HOUR, end: 23 * HOUR },
+];
+
 export function staffingStatusForShiftCount(
   shiftCount: number,
 ): StaffingStatus {
@@ -14,12 +26,7 @@ export function staffingStatusForShiftCount(
 }
 
 export function periodsForRange(range: TimeRange): StaffingPeriod[] {
-  const windows = [
-    { key: "S" as const, start: 0, end: 14 * 60 },
-    { key: "T" as const, start: 14 * 60, end: 17 * 60 },
-    { key: "Đ" as const, start: 17 * 60, end: 24 * 60 },
-  ];
-  const coverage = windows.map((window) => ({
+  const coverage = PERIOD_WINDOWS.map((window) => ({
     key: window.key,
     overlap: Math.max(
       0,
@@ -27,14 +34,28 @@ export function periodsForRange(range: TimeRange): StaffingPeriod[] {
     ),
   }));
   const substantial = coverage
-    .filter(({ overlap }) => overlap >= 2 * 60)
+    .filter(({ overlap }) => overlap >= SUBSTANTIAL_OVERLAP)
     .map(({ key }) => key);
   if (substantial.length) return substantial;
-  return [
-    coverage.reduce((best, current) =>
-      current.overlap > best.overlap ? current : best,
-    ).key,
-  ];
+
+  const overlapping = coverage.filter(({ overlap }) => overlap > 0);
+  if (!overlapping.length) return [];
+
+  const maxOverlap = Math.max(...overlapping.map(({ overlap }) => overlap));
+  const tied = overlapping.filter(({ overlap }) => overlap === maxOverlap);
+  if (tied.length === 1) return [tied[0].key];
+
+  // 17:00-18:00 is the flexible hand-off between afternoon and evening.
+  // A shift that starts at/after 17:00 belongs to evening; one that starts
+  // before 17:00 stays with the earlier period when the overlap is tied.
+  if (range.start >= 17 * HOUR && tied.some(({ key }) => key === "Đ")) {
+    return ["Đ"];
+  }
+  if (range.start >= 14 * HOUR && tied.some(({ key }) => key === "T")) {
+    return ["T"];
+  }
+  if (tied.some(({ key }) => key === "S")) return ["S"];
+  return [tied[0].key];
 }
 
 export function periodCounts(
