@@ -82,6 +82,31 @@ describe("AdminMatrix", () => {
     expect(html).toContain("Nghỉ · Em có lịch học");
   });
 
+  it("shows split availability ranges on separate lines", () => {
+    const submission = submissionWith((availability) => {
+      availability.days["1"] = {
+        status: "available",
+        preset: "full",
+        intervals: [
+          { start: "10:00", end: "14:00" },
+          { start: "19:00", end: "23:00" },
+        ],
+      };
+    });
+    const html = renderToStaticMarkup(
+      <AdminMatrix
+        employees={[employee]}
+        groups={groups}
+        submissions={[submission]}
+        weekStart="2026-09-14"
+      />,
+    );
+
+    expect(html).toContain('class="matrix-cell-shift-lines"');
+    expect(html).toContain("<span>10h–14h /</span>");
+    expect(html).toContain("<span>19h–23h</span>");
+  });
+
   it("uses the existing semantic shift color for available hours", () => {
     const submission = submissionWith((availability) => {
       availability.days["1"] = {
