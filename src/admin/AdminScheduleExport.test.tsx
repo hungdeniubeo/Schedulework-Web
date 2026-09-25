@@ -41,7 +41,6 @@ describe("AdminScheduleExport", () => {
         entries={[entry]}
         shifts={[shift]}
         weekStart="2026-09-21"
-        countOverrides={{ "1:Đ": 4 }}
       />,
     );
 
@@ -54,6 +53,7 @@ describe("AdminScheduleExport", () => {
     expect(html).not.toContain("schedule-entry-delete");
     expect(html).not.toContain("schedule-employee-drag-handle");
     expect(html).not.toContain("scheduler-palette");
+    expect(html).not.toContain("<input");
   });
 
   it("keeps the export totals aligned to the same wide employee column as the reference layout", () => {
