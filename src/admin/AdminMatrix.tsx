@@ -49,11 +49,6 @@ export function AdminMatrix({
           </button>
         )}
       </div>
-      <div className="schedule-legend" aria-label="Chú giải lịch đăng ký">
-        <span><i className="legend-dot working" />Có thể đi làm</span>
-        <span><i className="legend-dot off" />Nghỉ</span>
-        <span><i className="legend-dot missing" />Chưa đăng ký</span>
-      </div>
       <div className="matrix-scroll">
         <ScheduleSheet
           className="availability-schedule-sheet"
