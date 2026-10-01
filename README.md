@@ -2,44 +2,50 @@
 
 # ScheduleWork Web
 
-**Internal workforce scheduling for availability, shift planning, and weekly publishing.**
+### Plan availability. Build schedules. Publish with confidence.
 
-React · TypeScript · Vite · Supabase · Vercel
+A clean internal scheduling platform for small teams.
+
+<p>
+  <a href="https://schedulework-web.vercel.app/"><strong>Live App</strong></a>
+  &nbsp;•&nbsp;
+  <a href="#features">Features</a>
+  &nbsp;•&nbsp;
+  <a href="#getting-started">Getting Started</a>
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Deploy-Vercel-000000?style=flat-square&logo=vercel&logoColor=white" alt="Vercel" />
+</p>
 
 </div>
 
-## Overview
+---
 
-ScheduleWork Web is a lightweight scheduling app built for a small internal team. Employees submit availability, while admins review requests, build weekly schedules, check conflicts, and publish the final schedule.
+## About
+
+**ScheduleWork Web** helps employees submit weekly availability and gives admins one place to review requests, build schedules, detect conflicts, and publish the final week.
+
+Built for a small internal team with a simple employee/admin workflow.
 
 ## Features
 
-### Employee
-- Sign in with username and password.
-- Submit and update weekly availability before the deadline.
-- View published schedules.
-- Export schedules as JPG.
-- Responsive layout for desktop and mobile.
-
-### Admin
-- Manage employees, groups, positions, and shifts.
-- Open, lock, reopen, and archive registration weeks.
-- Review employee availability in one place.
-- Build schedules with drag and drop.
-- Detect scheduling conflicts and staffing issues.
-- Publish official schedules.
+| Employee | Admin |
+| --- | --- |
+| Submit weekly availability | Manage employees, groups, positions & shifts |
+| Update availability before deadline | Open, lock & archive registration weeks |
+| View published schedules | Review availability in one matrix |
+| Export schedule as JPG | Build schedules with drag & drop |
+| Responsive desktop/mobile UI | Detect conflicts & publish schedules |
 
 ## Tech Stack
 
-- **Frontend:** React 19, TypeScript, Vite
-- **Backend:** Supabase PostgreSQL + Edge Functions
-- **Auth:** Supabase Auth
-- **Security:** PostgreSQL Row Level Security
-- **Drag & Drop:** dnd-kit
-- **Testing:** Vitest
-- **Deployment:** Vercel / Cloudflare Pages
+`React 19` · `TypeScript` · `Vite` · `Supabase` · `PostgreSQL` · `dnd-kit` · `Vitest` · `Vercel`
 
-## Quick Start
+## Getting Started
 
 ```bash
 git clone https://github.com/hungdeniubeo/Schedulework-Web.git
@@ -55,28 +61,32 @@ VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=<your-key>
 ```
 
-Production build:
+Build for production:
 
 ```bash
 npm run build
 ```
 
-## Project Structure
+## Structure
 
 ```text
-src/        React application
+src/        Application UI and scheduling logic
 supabase/   Database migrations and Edge Functions
 tests/      Application tests
 docs/       Project documentation
 ```
 
-## Notes
+## Scope & Security
 
-- Designed for one internal team of up to 20 employees.
-- No public signup flow.
-- Draft schedules are admin-only until published.
-- Never expose Supabase service-role credentials in frontend environment variables.
+- Built for one internal team of up to 20 employees.
+- No public signup; accounts are managed internally.
+- Draft schedules stay private until published.
+- Sensitive Supabase credentials remain server-side.
 
-## Maintainer
+---
 
-Maintained by [@hungdeniubeo](https://github.com/hungdeniubeo).
+<div align="center">
+
+Maintained by [@hungdeniubeo](https://github.com/hungdeniubeo)
+
+</div>
