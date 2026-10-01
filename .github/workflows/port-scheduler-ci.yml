@@ -5,6 +5,7 @@ on:
     branches:
       - feat/port-schedulework-scheduler
       - feat/username-auth
+      - fix/logo-polish-remove-availability-legend
 
 jobs:
   test-build:
