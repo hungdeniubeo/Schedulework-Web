@@ -1,5 +1,4 @@
-const GYU_KAKU_LOGO_URL =
-  "https://gyu-kaku.com.vn/wp-content/uploads/2026/01/gyukaku-logo.webp";
+const GYU_KAKU_LOGO_URL = "/gyukaku-logo.png";
 
 type HomeTarget = {
   path: string;
