@@ -1,0 +1,21 @@
+name: Verify logo and legend change
+
+on:
+  push:
+    branches:
+      - fix/logo-polish-remove-availability-legend
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Targeted regression tests
+        run: npm test -- src/components/BrandLogo.test.tsx src/admin/AdminMatrix.test.tsx
+      - name: Production build
+        run: npm run build
