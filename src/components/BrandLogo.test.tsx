@@ -13,6 +13,14 @@ describe("BrandLogo", () => {
     expect(logoImage.props.src).toBe("/gyukaku-logo.png");
   });
 
+  it("renders the logo as a square mark", () => {
+    const logoButton = BrandLogo();
+    const logoImage = logoButton.props.children;
+
+    expect(logoImage.props.width).toBe(44);
+    expect(logoImage.props.height).toBe(44);
+  });
+
   it("goes back when the logo button is pressed", () => {
     const back = vi.fn();
     vi.stubGlobal("history", { back });
