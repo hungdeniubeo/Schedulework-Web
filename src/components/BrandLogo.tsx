@@ -1,3 +1,5 @@
+import "./BrandLogo.css";
+
 const GYU_KAKU_LOGO_URL = "/gyukaku-logo.png";
 
 type HomeTarget = {
@@ -38,9 +40,11 @@ export function BrandLogo({ home, mobileHome }: Props = {}) {
       onClick={handleClick}
     >
       <img
-        className="hfe-site-logo-img elementor-animation- brand-logo-image"
+        className="brand-logo-image"
         src={GYU_KAKU_LOGO_URL}
         alt="Gyu-Kaku"
+        width={44}
+        height={44}
         decoding="async"
       />
     </button>

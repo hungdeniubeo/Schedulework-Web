@@ -61,6 +61,21 @@ describe("AdminMatrix", () => {
     expect(html).not.toContain("Xem đăng ký của");
   });
 
+  it("does not render the availability legend", () => {
+    const html = renderToStaticMarkup(
+      <AdminMatrix
+        employees={[employee]}
+        groups={groups}
+        submissions={[]}
+        weekStart="2026-09-14"
+      />,
+    );
+
+    expect(html).not.toContain("schedule-legend");
+    expect(html).not.toContain("Chú giải lịch đăng ký");
+    expect(html).not.toContain("Chưa đăng ký</span>");
+  });
+
   it("shows the full reason below an off day", () => {
     const submission = submissionWith((availability) => {
       availability.days["1"] = {

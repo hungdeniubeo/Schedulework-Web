@@ -2,10 +2,6 @@
   padding-bottom: 16px;
 }
 
-.admin-availability-matrix .schedule-legend {
-  margin: 0 20px 16px;
-}
-
 .admin-availability-matrix .matrix-scroll {
   border-top: 1px solid var(--line);
 }
@@ -164,10 +160,6 @@
 @media (max-width: 720px) {
   .admin-availability-matrix .panel-heading {
     padding-bottom: 12px;
-  }
-
-  .admin-availability-matrix .schedule-legend {
-    margin-inline: 16px;
   }
 
   .availability-empty-state {
