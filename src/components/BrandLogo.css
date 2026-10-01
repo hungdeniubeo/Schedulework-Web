@@ -1,0 +1,38 @@
+.brand-logo-back .brand-logo-image {
+  width: 44px;
+  height: 44px;
+  display: block;
+  flex: 0 0 auto;
+  padding: 4px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid rgba(31, 36, 34, 0.12);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgba(31, 36, 34, 0.08),
+    0 6px 16px rgba(31, 36, 34, 0.12);
+}
+
+.admin-header .brand-logo-back .brand-logo-image,
+.employee-brand .brand-logo-back .brand-logo-image,
+.login-card .brand-logo-back .brand-logo-image,
+.center-state .brand-logo-back .brand-logo-image {
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 12px;
+}
+
+@media (max-width: 680px) {
+  .admin-header .brand-logo-back .brand-logo-image,
+  .employee-brand .brand-logo-back .brand-logo-image,
+  .login-card .brand-logo-back .brand-logo-image,
+  .center-state .brand-logo-back .brand-logo-image {
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+    border-radius: 11px;
+  }
+}
