@@ -6,6 +6,13 @@ describe("BrandLogo", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses the bundled local Gyu-Kaku logo asset", () => {
+    const logoButton = BrandLogo();
+    const logoImage = logoButton.props.children;
+
+    expect(logoImage.props.src).toBe("/gyukaku-logo.png");
+  });
+
   it("goes back when the logo button is pressed", () => {
     const back = vi.fn();
     vi.stubGlobal("history", { back });
