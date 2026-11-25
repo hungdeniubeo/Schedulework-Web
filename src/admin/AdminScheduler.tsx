@@ -34,6 +34,7 @@ import { availabilityNoticeForEntry } from "../scheduling/availabilityNotice";
 import { moveEmployeeLocally } from "../scheduling/employeeOrder";
 import { reorderSchedulerEmployee } from "../scheduling/employeeReorderApi";
 import { exportScheduleJpg } from "../scheduling/exportJpg";
+import { exportScheduleExcel } from "../scheduling/exportExcel";
 import { consolidateCellEntry } from "../scheduling/merge";
 import { findScheduleIssues, getEntryIssue } from "../scheduling/overlap";
 import { employeesForSchedule } from "../scheduling/scheduleSheetModel";
@@ -536,6 +537,20 @@ export function AdminScheduler({
     }
   }
 
+  function exportCurrentExcel() {
+    if (!week) return;
+    if (findScheduleIssues(entries, shifts).length > 0) {
+      setError("Không thể xuất Excel vì lịch còn ca bị trùng hoặc thiếu thông tin hợp lệ.");
+      return;
+    }
+    setError(null);
+    try {
+      exportScheduleExcel(groups, scheduleEmployees, entries, shifts, week.weekStart);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không xuất được Excel.");
+    }
+  }
+
   return (
     <div className="scheduler-page route-scoped">
       <section className="panel scheduler-toolbar">
@@ -558,6 +573,14 @@ export function AdminScheduler({
                 onClick={() => void exportCurrentSchedule()}
               >
                 Xuất JPG
+              </button>
+              <button
+                className="button secondary"
+                type="button"
+                disabled={busy || weekDataLoading}
+                onClick={exportCurrentExcel}
+              >
+                Xuất Excel
               </button>
               {editable && (
                 <button
